@@ -1,0 +1,85 @@
+MinePOS - COFFEE SHOP POS
+Feature & Screen List
+
+===================================
+FEATURES
+===================================
+
+Platform Fundamentals
+- Windows, Android, Web - single Flutter codebase
+- Thai/English switchable language
+- Role-based UI ("one app, configurable role")
+
+Core POS Modules
+- Order taking with auto order numbers
+- Kitchen Display System (KDS) with real-time WebSocket updates
+- Payments: Cash + Thai PromptPay QR
+- Thermal receipt printing (Bluetooth or USB only)
+- Menu management
+- Reports with CSV export
+- Discounts - per-item or per-order, fixed amount or percentage
+
+Special Features
+- Optional customer-facing display
+- Toggleable stock tracking per menu item
+- Thermal printer support via Bluetooth or USB
+
+Hosting & Connectivity
+- Self-host on Windows PC/Desktop only (Dart Shelf HTTP/WebSocket server)
+  - Android and other devices connect as clients to the desktop host
+- Online/cloud mode as a switchable alternative
+- mDNS discovery for automatic device connection on Wi-Fi
+- Offline order buffering with auto-sync
+
+Security
+- Username/password login with bcrypt hashing
+- JWT tokens with role encoded
+- Staff management with force logout
+- OTP-based password recovery via registered email
+
+===================================
+SCREENS (22 total)
+===================================
+
+Onboarding (first launch)
+1. Welcome - create new shop or join existing host
+2. Shop setup - name, logo, address, tax ID, email, receipt footer
+3. First admin account creation
+4. Connection mode selection - local (desktop only) or cloud
+5. Printer setup
+6. Setup complete / summary
+
+Auth
+7. Login
+8. Forgot password - enter username
+9. OTP verification
+10. Reset password
+
+Cashier
+11. New order / order taking
+12. Order history
+13. Payment - cash or PromptPay QR
+14. Receipt preview / print
+
+Kitchen
+15. Kitchen Display System (KDS)
+
+Manager
+16. Reports & CSV export
+17. Menu management - item list + add/edit form
+18. Staff management - add, deactivate, force logout
+19. Settings - role, connection mode, printer, language
+
+Special / Optional
+20. Customer-facing display
+
+Role & Connection Setup (re-config)
+21. Role selection screen
+22. Connection setup - server URL or mDNS discovery
+
+===================================
+OPEN QUESTIONS
+===================================
+- Unify shop email and admin account email into one field, or keep separate?
+- Should Web builds act as clients connecting to the local host over LAN
+  (potential HTTP/HTTPS mixed content issues in browsers)?

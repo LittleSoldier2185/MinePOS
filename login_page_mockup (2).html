@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cozy Cafe Mockup - Terracotta Gold</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Premium Sans and Display fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Quicksand:wght@300..700&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      font-family: 'Montserrat', sans-serif;
+    }
+    .font-cozy {
+      font-family: 'Quicksand', sans-serif;
+    }
+    .custom-shadow {
+      box-shadow: 0 15px 35px -5px rgba(224, 124, 70, 0.4);
+    }
+    .inner-inset-shadow {
+      box-shadow: inset 0 2px 5px 0 rgba(224, 124, 70, 0.2);
+    }
+    /* Smooth custom scrollbars for logs and panels */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(224, 124, 70, 0.05);
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(224, 124, 70, 0.2);
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(224, 124, 70, 0.4);
+    }
+    /* Dynamic warm dust/grain animation */
+    @keyframes subtle-drift {
+      0% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(1%, -1%) scale(1.03); }
+      100% { transform: translate(0, 0) scale(1); }
+    }
+    .animate-drift {
+      animation: subtle-drift 25s infinite ease-in-out alternate;
+    }
+  </style>
+</head>
+<body class="h-full bg-[#E07C46] overflow-hidden select-none transition-colors duration-500 relative">
+
+  <!-- Main Container -->
+  <div class="flex h-full w-full flex-col md:flex-row relative z-10">
+    
+    <!-- LEFT PANE: Form & Dashboard Interactive Zone (50% Width) -->
+    <div id="leftPane" class="w-full md:w-1/2 flex flex-col justify-center items-center p-6 md:p-12 relative overflow-y-auto min-h-screen md:min-h-0 z-20 transition-all duration-700 bg-[#E07C46]">
+
+      <!-- Login Form View Box -->
+      <div id="authView" class="w-full max-w-[460px] flex flex-col justify-center items-center transition-all duration-500 opacity-100">
+        
+        <!-- Welcome Header (Strict match to uppercase spaced style using 10% Accent color) -->
+        <h1 class="text-[#F7F4ED] text-4xl md:text-5xl tracking-[0.25em] uppercase font-light mb-8 text-center select-none">
+          Welcome
+        </h1>
+
+        <!-- Card Container matching design bounds using 30% Secondary Color -->
+        <div class="bg-[#FFDBCB] rounded-[2.8rem] p-8 md:p-10 w-full custom-shadow flex flex-col justify-center aspect-[4/4.8] transition-all duration-300 border border-[#F7F4ED]/20 relative overflow-hidden group">
+          
+          <!-- Subtle backplate graphic highlights -->
+          <div class="absolute -right-12 -top-12 w-32 h-32 rounded-full bg-[#F7F4ED]/20 pointer-events-none transition-transform duration-500 group-hover:scale-125"></div>
+          
+          <!-- Clustered tight form structure -->
+          <form id="loginForm" class="flex flex-col gap-3 relative z-10" onsubmit="triggerLogin(event)">
+            
+            <!-- Username section -->
+            <div class="flex flex-col">
+              <label for="username" class="text-[#E07C46] font-bold tracking-wide mb-1 text-base pl-6 font-cozy">
+                Username/Email
+              </label>
+              <!-- Input utilizes 10% Accent Color #F7F4ED as background -->
+              <input 
+                type="text" 
+                id="username" 
+                name="username" 
+                required
+                placeholder="cozycafe@gmail.com"
+                class="w-full bg-[#F7F4ED] border-none rounded-full py-3.5 px-6 text-[#E07C46] text-base outline-none focus:ring-4 focus:ring-[#F7F4ED]/60 transition-all inner-inset-shadow placeholder-[#E07C46]/40 font-cozy font-medium"
+              />
+            </div>
+
+            <!-- Password section -->
+            <div class="flex flex-col relative">
+              <label for="password" class="text-[#E07C46] font-bold tracking-wide mb-1 text-base pl-6 font-cozy">
+                Password
+              </label>
+              <div class="relative">
+                <input 
+                  type="password" 
+                  id="password" 
+                  name="password" 
+                  required
+                  placeholder="••••••••"
+                  class="w-full bg-[#F7F4ED] border-none rounded-full py-3.5 px-6 text-[#E07C46] text-base outline-none focus:ring-4 focus:ring-[#F7F4ED]/60 transition-all inner-inset-shadow pr-14 placeholder-[#E07C46]/40 font-cozy font-medium"
+                />
+                <!-- Toggle password hidden state -->
+                <button 
+                  type="button" 
+                  onclick="togglePassword()" 
+                  class="absolute right-5 top-1/2 -translate-y-1/2 text-[#E07C46]/60 hover:text-[#E07C46] transition-colors p-1"
+                  aria-label="Toggle password view"
+                >
+                  <svg id="eyeIcon" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Forget Password Text Button closely styled -->
+            <div class="pl-6">
+              <button 
+                type="button" 
+                onclick="showNotification('Reset Sent', 'We simulated password instructions being sent over to your email address!')"
+                class="text-[#E07C46]/80 hover:text-[#E07C46] text-xs font-bold hover:underline cursor-pointer transition-all focus:outline-none"
+              >
+                Forget Password
+              </button>
+            </div>
+
+            <!-- Authentic Pill submit Button centered dynamically using 10% Accent color -->
+            <div class="flex justify-center mt-2">
+              <button 
+                type="submit" 
+                id="submitBtn"
+                class="bg-[#F7F4ED] text-[#E07C46] rounded-full py-3 px-14 text-base font-bold shadow-md hover:bg-white hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-md transition-all duration-200 cursor-pointer focus:outline-none font-cozy"
+              >
+                Sign in
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+
+    </div>
+    
+    <!-- RIGHT PANE: Cozy bookstore/cafe graphic matching original design template perfectly -->
+    <div id="rightPane" class="hidden md:block w-1/2 relative bg-[#1e2213] overflow-hidden">
+      <!-- Verbatim local asset loading with backup fallback placeholder -->
+      <div 
+        class="absolute inset-0 bg-cover bg-center transition-all duration-[1500ms] animate-drift filter saturate-[1.05] brightness-95"
+        style="background-image: url('image_b00f0a.jpg'), url('https://images.unsplash.com/photo-1521017432531-fbd92d768814?auto=format&fit=crop&q=80&w=1200');"
+      ></div>
+      
+      <!-- Overlay gradients to match the cozy candle-glow mood -->
+      <div id="overlayGlow" class="absolute inset-0 bg-gradient-to-tr from-amber-950/40 via-[#E07C46]/25 to-black/35 mix-blend-multiply transition-colors duration-500"></div>
+    </div>
+
+  </div>
+
+  <!-- Dialog / Custom Alert Box Overlay -->
+  <div id="dialogOverlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300">
+    <div class="bg-[#FFDBCB] border-[6px] border-[#F7F4ED] p-6 rounded-[2.5rem] max-w-sm w-11/12 text-center shadow-2xl transform scale-95 transition-transform duration-300" id="dialogCard">
+      <h3 id="dialogTitle" class="text-xl font-bold text-[#E07C46] mb-2 uppercase tracking-wider font-cozy">Cozy Alert</h3>
+      <p id="dialogBody" class="text-[#E07C46] mb-6 text-sm font-cozy"></p>
+      <button 
+        onclick="hideNotification()" 
+        class="bg-[#F7F4ED] text-[#E07C46] font-bold px-10 py-3 rounded-full shadow hover:bg-white active:scale-95 transition-all text-sm font-cozy"
+      >
+        Understood
+      </button>
+    </div>
+  </div>
+
+  <!-- Web-based sound synthesis and UI interaction scripts -->
+  <script>
+    // Stable State management
+    let audioCtx = null;
+
+    // Elements lookup
+    const passwordField = document.getElementById('password');
+    const eyeIcon = document.getElementById('eyeIcon');
+    const dialogOverlay = document.getElementById('dialogOverlay');
+    const dialogCard = document.getElementById('dialogCard');
+    const dialogTitle = document.getElementById('dialogTitle');
+    const dialogBody = document.getElementById('dialogBody');
+
+    // Handle simple login notification without changing screen view
+    function triggerLogin(event) {
+      event.preventDefault();
+      const userValue = document.getElementById('username').value;
+      const usernameDisplay = userValue.split('@')[0];
+      
+      // Open clean dialog notification on successful login
+      showNotification(
+        'Welcome Back!', 
+        `Successfully simulated authentication for ${usernameDisplay}. You remain securely on the homepage mockup.`
+      );
+    }
+
+    // Handle standard eye toggle on password fields
+    function togglePassword() {
+      if (passwordField.type === 'password') {
+        passwordField.type = 'text';
+        eyeIcon.innerHTML = `
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M21 12c-1.292 4.338-5.31 7.5-10.063 7.5-1.017 0-2.006-.145-2.94-.415m13.061-7.085a10.463 10.463 0 0 0-1.282-3.845m-2.434-2.14C16.54 3.686 14.343 3.5 12 3.5c-4.756 0-8.774 3.162-10.063 7.5a10.463 10.463 0 0 0 2.62 4.417" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="m15 9-6 6M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+        `;
+      } else {
+        passwordField.type = 'password';
+        eyeIcon.innerHTML = `
+          <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+        `;
+      }
+    }
+
+    function showNotification(title, message) {
+      dialogTitle.textContent = title;
+      dialogBody.textContent = message;
+      dialogOverlay.classList.remove('opacity-0', 'pointer-events-none');
+      dialogCard.classList.remove('scale-95');
+      dialogCard.classList.add('scale-100');
+    }
+
+    function hideNotification() {
+      dialogOverlay.classList.add('opacity-0', 'pointer-events-none');
+      dialogCard.classList.remove('scale-100');
+      dialogCard.classList.add('scale-95');
+    }
+
+    // Simulated action trigger for POS item orders
+    function simulateOrder(itemName) {
+      // Small synthesized ping for purchase response
+      if (audioCtx) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5 note chime
+        gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.5);
+      }
+      showNotification('Order Placed!', `Your order of 1x "${itemName}" was simulated successfully. Enjoy!`);
+    }
+  </script>
+</body>
+</html>
