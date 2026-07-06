@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../auth/login_screen.dart';
 import '../connect/connect_screen.dart';
 import '../shop_setup/create_shop_screen.dart';
 
@@ -45,23 +46,61 @@ class WelcomeScreen extends StatelessWidget {
                       padding: const EdgeInsets.all(24),
                       child: Column(
                         children: [
+                          // Primary daily action — local / offline login
                           SizedBox(
                             width: double.infinity,
-                            child: ElevatedButton(
+                            child: ElevatedButton.icon(
+                              icon: const Icon(Icons.point_of_sale, size: 18),
+                              label: const Text('OPEN REGISTER'),
                               onPressed: () => Navigator.of(context).push(
-                                MaterialPageRoute(builder: (_) => const ConnectScreen()),
+                                MaterialPageRoute(
+                                  builder: (_) => const LoginScreen(
+                                    serverAddress: 'This device — offline mode',
+                                  ),
+                                ),
                               ),
-                              child: const Text('CONNECT TO SERVER'),
                             ),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 8),
+                          const Row(
+                            children: [
+                              Expanded(child: Divider()),
+                              Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 10),
+                                child: Text(
+                                  'or',
+                                  style: TextStyle(
+                                      color: AppColors.muted, fontSize: 12),
+                                ),
+                              ),
+                              Expanded(child: Divider()),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          // Client device connecting to a remote host
                           SizedBox(
                             width: double.infinity,
-                            child: OutlinedButton(
+                            child: OutlinedButton.icon(
+                              icon: const Icon(Icons.wifi, size: 18),
+                              label: const Text('CONNECT TO SERVER'),
                               onPressed: () => Navigator.of(context).push(
-                                MaterialPageRoute(builder: (_) => const CreateShopScreen()),
+                                MaterialPageRoute(
+                                    builder: (_) => const ConnectScreen()),
                               ),
-                              child: const Text('CREATE SHOP'),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          // First-time setup only
+                          SizedBox(
+                            width: double.infinity,
+                            child: TextButton.icon(
+                              icon: const Icon(Icons.add_business_outlined,
+                                  size: 16),
+                              label: const Text('CREATE SHOP'),
+                              onPressed: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                    builder: (_) => const CreateShopScreen()),
+                              ),
                             ),
                           ),
                         ],
