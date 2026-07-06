@@ -1,3 +1,8 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+
+import '../../../core/services/server_client.dart';
 import '../models/menu_item.dart';
 
 class MenuService {
@@ -35,7 +40,6 @@ class MenuService {
     MenuItem(id: 'f6', name: 'Waffle', category: 'Food', price: 110),
   ];
 
-  // Fixed ordering for known categories; new ones append after.
   static const _categoryOrder = ['Coffee', 'Tea', 'Cold', 'Food'];
 
   final List<MenuItem> _items = List.of(_defaultItems);
@@ -62,6 +66,26 @@ class MenuService {
   List<MenuItem> allItemsForCategory(String category) =>
       _items.where((m) => m.category == category).toList();
 
+  // ── Server sync ───────────────────────────────────────────────────────────
+
+  /// Loads menu from server if connected; silently keeps local state on failure.
+  Future<void> fetchFromServer() async {
+    final client = ServerClient.instance;
+    if (!client.isConnected) return;
+    try {
+      final res = await http
+          .get(client.uri('/menu'), headers: client.headers)
+          .timeout(const Duration(seconds: 8));
+      if (res.statusCode == 200) {
+        final list = jsonDecode(res.body) as List;
+        _items
+          ..clear()
+          ..addAll(list.map(
+              (j) => MenuItem.fromJson(j as Map<String, dynamic>)));
+      }
+    } catch (_) {}
+  }
+
   // ── Write ─────────────────────────────────────────────────────────────────
 
   MenuItem addItem({
@@ -78,15 +102,20 @@ class MenuService {
       available: available,
     );
     _items.add(item);
+    _serverCreate(item);
     return item;
   }
 
   void updateItem(MenuItem updated) {
     final i = _items.indexWhere((m) => m.id == updated.id);
     if (i >= 0) _items[i] = updated;
+    _serverUpdate(updated);
   }
 
-  void deleteItem(String id) => _items.removeWhere((m) => m.id == id);
+  void deleteItem(String id) {
+    _items.removeWhere((m) => m.id == id);
+    _serverDelete(id);
+  }
 
   void toggleAvailability(String id) {
     final i = _items.indexWhere((m) => m.id == id);
@@ -99,5 +128,50 @@ class MenuService {
       price: m.price,
       available: !m.available,
     );
+    _serverToggle(id);
+  }
+
+  // ── Server fire-and-forget helpers ────────────────────────────────────────
+
+  Future<void> _serverCreate(MenuItem item) async {
+    final client = ServerClient.instance;
+    if (!client.isConnected) return;
+    try {
+      await http
+          .post(client.uri('/menu'),
+              headers: client.headers, body: jsonEncode(item.toJson()))
+          .timeout(const Duration(seconds: 8));
+    } catch (_) {}
+  }
+
+  Future<void> _serverUpdate(MenuItem item) async {
+    final client = ServerClient.instance;
+    if (!client.isConnected) return;
+    try {
+      await http
+          .put(client.uri('/menu/${item.id}'),
+              headers: client.headers, body: jsonEncode(item.toJson()))
+          .timeout(const Duration(seconds: 8));
+    } catch (_) {}
+  }
+
+  Future<void> _serverDelete(String id) async {
+    final client = ServerClient.instance;
+    if (!client.isConnected) return;
+    try {
+      await http
+          .delete(client.uri('/menu/$id'), headers: client.headers)
+          .timeout(const Duration(seconds: 8));
+    } catch (_) {}
+  }
+
+  Future<void> _serverToggle(String id) async {
+    final client = ServerClient.instance;
+    if (!client.isConnected) return;
+    try {
+      await http
+          .patch(client.uri('/menu/$id/toggle'), headers: client.headers)
+          .timeout(const Duration(seconds: 8));
+    } catch (_) {}
   }
 }

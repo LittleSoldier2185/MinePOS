@@ -1,0 +1,91 @@
+import 'package:shelf/shelf.dart';
+import 'package:shelf_router/shelf_router.dart';
+
+import '../config.dart';
+import '../database.dart';
+import '../utils.dart';
+
+void registerMenuRoutes(Router router, AppDb db, ServerConfig config) {
+  router.get('/menu', (Request req) => _getMenu(req, db, config));
+  router.post('/menu', (Request req) => _createItem(req, db, config));
+  router.put('/menu/<id>', (Request req, String id) => _updateItem(req, id, db, config));
+  router.delete('/menu/<id>', (Request req, String id) => _deleteItem(req, id, db, config));
+  router.patch('/menu/<id>/toggle', (Request req, String id) => _toggleItem(req, id, db, config));
+}
+
+// GET /menu
+Response _getMenu(Request req, AppDb db, ServerConfig config) {
+  if (extractClaims(req, config.jwtSecret) == null) return unauthorized();
+  final items = db.getMenuItems();
+  return jsonOk(items.map((i) => i.toJson()).toList());
+}
+
+// POST /menu  { name, category, price, available? }
+Future<Response> _createItem(
+    Request req, AppDb db, ServerConfig config) async {
+  if (extractClaims(req, config.jwtSecret) == null) return unauthorized();
+
+  final body = await parseJsonBody(req);
+  final name = (body?['name'] as String?)?.trim();
+  final category = (body?['category'] as String?)?.trim();
+  final price = (body?['price'] as num?)?.toDouble();
+
+  if (name == null || name.isEmpty ||
+      category == null || category.isEmpty ||
+      price == null || price <= 0) {
+    return jsonError('name, category and price (> 0) are required');
+  }
+
+  final available = body?['available'] as bool? ?? true;
+  final item = db.createMenuItem(
+    name: name,
+    category: category,
+    price: price,
+    available: available,
+  );
+  return jsonOk(item.toJson(), status: 201);
+}
+
+// PUT /menu/:id  { name, category, price, available }
+Future<Response> _updateItem(
+    Request req, String id, AppDb db, ServerConfig config) async {
+  if (extractClaims(req, config.jwtSecret) == null) return unauthorized();
+
+  final body = await parseJsonBody(req);
+  final name = (body?['name'] as String?)?.trim();
+  final category = (body?['category'] as String?)?.trim();
+  final price = (body?['price'] as num?)?.toDouble();
+  final available = body?['available'] as bool?;
+
+  if (name == null || category == null || price == null || available == null) {
+    return jsonError('name, category, price and available are required');
+  }
+
+  final updated = db.updateMenuItem(
+    id: id,
+    name: name,
+    category: category,
+    price: price,
+    available: available,
+  );
+  if (updated == null) return notFound('Menu item not found');
+  return jsonOk(updated.toJson());
+}
+
+// DELETE /menu/:id
+Response _deleteItem(
+    Request req, String id, AppDb db, ServerConfig config) {
+  if (extractClaims(req, config.jwtSecret) == null) return unauthorized();
+  final deleted = db.deleteMenuItem(id);
+  if (!deleted) return notFound('Menu item not found');
+  return Response(204);
+}
+
+// PATCH /menu/:id/toggle
+Response _toggleItem(
+    Request req, String id, AppDb db, ServerConfig config) {
+  if (extractClaims(req, config.jwtSecret) == null) return unauthorized();
+  final item = db.toggleMenuItem(id);
+  if (item == null) return notFound('Menu item not found');
+  return jsonOk(item.toJson());
+}

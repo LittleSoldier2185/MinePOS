@@ -1,15 +1,20 @@
-/// Stubbed connection check — no MinePOS host server exists yet.
-/// Swap the body of [testConnection] for a real HTTP health-check call
-/// (e.g. `GET http://$address/health`) once the Dart Shelf host exists.
-class ConnectionService {
-  Future<bool> testConnection(String address) async {
-    await Future.delayed(const Duration(milliseconds: 900));
+import 'package:http/http.dart' as http;
 
+class ConnectionService {
+  /// Returns true if [address] responds to the MinePOS health endpoint.
+  /// Sets no global state — the caller (ConnectScreen) stores the address.
+  Future<bool> testConnection(String address) async {
     final trimmed = address.trim();
     if (trimmed.isEmpty) return false;
 
-    // A bare minimum shape check so obviously-invalid input fails visibly.
-    final hostPortPattern = RegExp(r'^[\w.\-]+(:\d{1,5})?$');
-    return hostPortPattern.hasMatch(trimmed);
+    try {
+      final url = Uri.parse('http://$trimmed/health');
+      final response = await http
+          .get(url)
+          .timeout(const Duration(seconds: 5));
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
   }
 }

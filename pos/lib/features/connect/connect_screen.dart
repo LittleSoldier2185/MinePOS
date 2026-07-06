@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../core/window/platform_window.dart';
@@ -54,6 +55,7 @@ class _ConnectScreenState extends State<ConnectScreen> with SingleTickerProvider
     setState(() => _connecting = false);
 
     if (success) {
+      ServerClient.instance.baseUrl = address.trim();
       Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => LoginScreen(serverAddress: address.trim())),
       );

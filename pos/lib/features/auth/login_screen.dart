@@ -40,7 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
 
-    final success = await _authService.login(
+    final result = await _authService.login(
       _usernameController.text,
       _passwordController.text,
     );
@@ -48,7 +48,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     setState(() => _signingIn = false);
 
-    if (success) {
+    if (result.success) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const HomePlaceholderScreen(title: 'Welcome back!')),
         (route) => false,
@@ -61,6 +61,11 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: BackButton(color: AppColors.muted),
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(

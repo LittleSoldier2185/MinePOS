@@ -1,16 +1,44 @@
-/// Stubbed password-reset flow.
-/// All three methods always succeed on valid inputs.
-/// Replace each with a real HTTP call once the backend exists;
-/// the callers already handle both outcomes so the UI won't change.
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+
+import '../../../core/services/server_client.dart';
+
 class PasswordResetService {
   Future<bool> requestOtp(String username) async {
-    await Future.delayed(const Duration(milliseconds: 900));
-    return username.trim().isNotEmpty;
+    final client = ServerClient.instance;
+    if (!client.isConnected) return false;
+
+    try {
+      final res = await http
+          .post(
+            client.uri('/auth/request-otp'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'username': username.trim()}),
+          )
+          .timeout(const Duration(seconds: 10));
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<bool> verifyOtp(String username, String otp) async {
-    await Future.delayed(const Duration(milliseconds: 700));
-    return otp.length == 6;
+    final client = ServerClient.instance;
+    if (!client.isConnected) return false;
+
+    try {
+      final res = await http
+          .post(
+            client.uri('/auth/verify-otp'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'username': username.trim(), 'otp': otp.trim()}),
+          )
+          .timeout(const Duration(seconds: 10));
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<bool> resetPassword(
@@ -18,7 +46,24 @@ class PasswordResetService {
     String otp,
     String newPassword,
   ) async {
-    await Future.delayed(const Duration(milliseconds: 900));
-    return newPassword.length >= 8;
+    final client = ServerClient.instance;
+    if (!client.isConnected) return false;
+
+    try {
+      final res = await http
+          .post(
+            client.uri('/auth/reset-password'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'username': username.trim(),
+              'otp': otp.trim(),
+              'newPassword': newPassword,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
   }
 }

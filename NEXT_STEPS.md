@@ -17,15 +17,15 @@
 - **OrderService** — in-memory singleton, auto-incrementing order numbers, today's stats helpers.
 
 ## Stubbed — needs real implementation when backend exists
-- `ConnectionService.testConnection` — fake delay; needs real HTTP health-check.
-- `AuthService.login` — always succeeds; needs bcrypt + JWT against server.
-- `PasswordResetService` — all three methods always pass; needs HTTP + email OTP.
-- `MenuService` — in-memory only; changes reset on restart; needs persistence + server sync.
-- `OrderService` — in-memory only; resets on app restart; needs persistence + server sync.
+- `ConnectionService.testConnection` — ✓ real HTTP GET /health.
+- `AuthService.login` — ✓ real HTTP POST /auth/login with bcrypt + JWT.
+- `PasswordResetService` — ✓ real HTTP OTP flow (OTP printed to server console; wire email/SMS later).
+- `MenuService` — ✓ fetchFromServer() + fire-and-forget writes; local fallback if server unreachable.
+- `OrderService` — ✓ complete() POSTs to server; loadFromServer() for history.
 - Printer setup step — records preference only; no real Bluetooth/USB discovery.
 
 ## Not started yet
-- **Backend** (`server/` — Dart Shelf): health endpoint, mDNS broadcast, auth (bcrypt + JWT), order storage, WebSocket for KDS. Needed before any stub becomes real.
+- **Backend** (`server/` �� Dart Shelf): ✓ done (health, mDNS broadcast, bcrypt+JWT auth, menu CRUD, order storage). Run with `dart run bin/server.dart` from `server/`. Requires `sqlite3.dll` on Windows PATH (download from https://sqlite.org/download.html). Configure via env vars: `MINEPOS_PORT` (default 8080), `MINEPOS_ADMIN_USER`, `MINEPOS_ADMIN_PASS`, `MINEPOS_SHOP_NAME`, `MINEPOS_JWT_SECRET`, `MINEPOS_DATA_DIR`.
 - **Manager screens** (16, 18–19):
   - Screen 16: Reports & CSV export
   - Screen 18: Staff management (add staff, deactivate, force logout)
@@ -43,7 +43,7 @@
 1. ~~Forgot Password / OTP / Reset~~ ✓
 2. ~~Cashier flow (screens 11–14)~~ ✓
 3. ~~**Manager — Menu Management (screen 17)**~~ ✓
-4. **Dart Shelf backend** (minimal: health + mDNS + auth) — makes all stubs real.
-5. Manager — Staff / Reports / Settings (screens 16, 18, 19).
+4. ~~**Dart Shelf backend** (minimal: health + mDNS + auth)~~ ✓
+5. **Manager — Staff / Reports / Settings (screens 16, 18, 19).**
 6. Kitchen Display System (screen 15).
 7. Remaining screens (20, 21).

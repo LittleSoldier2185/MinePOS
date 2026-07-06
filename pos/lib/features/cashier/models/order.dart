@@ -38,4 +38,16 @@ class Order {
         '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
     return '$date $time';
   }
+
+  factory Order.fromJson(Map<String, dynamic> json) => Order(
+        orderNumber: json['orderNumber'] as int,
+        items: (json['items'] as List)
+            .map((i) => OrderItem.fromJson(i as Map<String, dynamic>))
+            .toList(),
+        createdAt: DateTime.parse(json['createdAt'] as String),
+        paymentMethod: (json['paymentMethod'] as String) == 'promptpay'
+            ? PaymentMethod.promptpay
+            : PaymentMethod.cash,
+        amountPaid: (json['amountPaid'] as num?)?.toDouble(),
+      );
 }

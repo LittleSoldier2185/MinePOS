@@ -49,7 +49,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     await Future.delayed(const Duration(milliseconds: 400));
 
     if (!mounted) return;
-    final order = OrderService.instance.complete(
+    final order = await OrderService.instance.complete(
       items: widget.items,
       paymentMethod: _method,
       amountPaid: _method == PaymentMethod.cash ? _amountPaid : null,

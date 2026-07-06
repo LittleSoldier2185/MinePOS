@@ -1,10 +1,47 @@
-/// Stubbed sign-in check — no MinePOS host exists yet to hold real
-/// credentials (bcrypt hashing + JWT issuance are server-side work).
-/// Swap the body of [login] for a real HTTP call once the host exists; the
-/// caller already handles both outcomes so the UI won't need to change.
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+
+import '../../../core/services/server_client.dart';
+
+class AuthResult {
+  const AuthResult({required this.success, this.role, this.username});
+  final bool success;
+  final String? role;
+  final String? username;
+}
+
 class AuthService {
-  Future<bool> login(String username, String password) async {
-    await Future.delayed(const Duration(milliseconds: 900));
-    return username.trim().isNotEmpty && password.isNotEmpty;
+  Future<AuthResult> login(String username, String password) async {
+    final client = ServerClient.instance;
+    if (!client.isConnected) {
+      return const AuthResult(success: false);
+    }
+
+    try {
+      final res = await http
+          .post(
+            client.uri('/auth/login'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'username': username.trim(),
+              'password': password,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        client.token = data['token'] as String;
+        return AuthResult(
+          success: true,
+          role: data['role'] as String?,
+          username: data['username'] as String?,
+        );
+      }
+      return const AuthResult(success: false);
+    } catch (_) {
+      return const AuthResult(success: false);
+    }
   }
 }

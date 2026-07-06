@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/responsive/breakpoints.dart';
+import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
 import '../cashier/models/order.dart';
 import '../cashier/order_history_screen.dart';
@@ -67,6 +68,7 @@ Future<void> _confirmLogout(BuildContext context) async {
     ),
   );
   if (ok == true && context.mounted) {
+    ServerClient.instance.clear();
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const WelcomeScreen()),
       (route) => false,
