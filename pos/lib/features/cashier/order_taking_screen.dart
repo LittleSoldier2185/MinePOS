@@ -18,10 +18,10 @@ class OrderTakingScreen extends StatefulWidget {
 
 class _OrderTakingScreenState extends State<OrderTakingScreen>
     with SingleTickerProviderStateMixin {
-  final _menuService = MenuService();
+  final _menuService = MenuService.instance;
   TabController? _tabController;
 
-  String _selectedCategory = MenuService.categories.first;
+  String _selectedCategory = MenuService.instance.categories.first;
   final List<OrderItem> _cart = [];
 
   int get _cartCount => _cart.fold(0, (s, i) => s + i.quantity);
@@ -203,10 +203,10 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
             padding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             scrollDirection: Axis.horizontal,
-            itemCount: MenuService.categories.length,
+            itemCount: _menuService.categories.length,
             separatorBuilder: (_, _) => const SizedBox(width: 8),
             itemBuilder: (context, i) {
-              final cat = MenuService.categories[i];
+              final cat = _menuService.categories[i];
               final selected = cat == _selectedCategory;
               return GestureDetector(
                 onTap: () => setState(() => _selectedCategory = cat),

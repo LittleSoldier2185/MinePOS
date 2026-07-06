@@ -13,33 +13,37 @@
 - **Payment** (screen 13) — Cash (quick-fill buttons, live change calculation) + PromptPay (placeholder QR panel pending PromptPay ID config). Passes completed `Order` to receipt.
 - **Receipt** (screen 14) — Full receipt card (items, total, change), Print stub, "New Order" pushes a fresh `OrderTakingScreen` keeping hub in stack.
 - **Order History** (screen 12) — expandable list tiles showing per-order item breakdown, cash/PromptPay details.
-- **MenuService** — 24 stub items across 4 categories (Coffee, Tea, Cold, Food) with Thai Baht prices.
+- **MenuService** — singleton with 24 default items; full CRUD (add/edit/delete/toggle) via `MenuManagementScreen`.
 - **OrderService** — in-memory singleton, auto-incrementing order numbers, today's stats helpers.
 
-## Stubbed and will need real implementations later
-- `ConnectionService.testConnection` (`lib/features/connect/services/connection_service.dart`) — simulates success/failure; needs a real HTTP health-check once a host exists.
-- `AuthService.login` (`lib/features/auth/services/auth_service.dart`) — always succeeds once fields are filled; needs real credential checking (bcrypt + JWT) against a server.
-- `HomePlaceholderScreen` — stands in for the real role-based dashboard.
-- Printer setup step — records a Bluetooth/USB/Skip preference only, no actual device discovery.
+## Stubbed — needs real implementation when backend exists
+- `ConnectionService.testConnection` — fake delay; needs real HTTP health-check.
+- `AuthService.login` — always succeeds; needs bcrypt + JWT against server.
+- `PasswordResetService` — all three methods always pass; needs HTTP + email OTP.
+- `MenuService` — in-memory only; changes reset on restart; needs persistence + server sync.
+- `OrderService` — in-memory only; resets on app restart; needs persistence + server sync.
+- Printer setup step — records preference only; no real Bluetooth/USB discovery.
 
 ## Not started yet
-- **Backend**: no Dart Shelf HTTP/WebSocket host server exists at all. Needed for: real auth, real connection checks, mDNS *broadcasting* (the client-side discovery code already expects service type `_minepos._tcp`), offline order buffering/sync, KDS websocket updates.
-- **Role selection screen** (21).
-- **Cashier screens** (11–14): order taking, order history, payment (cash/PromptPay QR), receipt preview/print.
-- **Kitchen Display System** (15).
-- **Manager screens** (16–19): reports/CSV export, menu management, staff management, settings.
-- **Customer-facing display** (20).
-- Thermal receipt printing (Bluetooth/USB) — real integration.
+- **Backend** (`server/` — Dart Shelf): health endpoint, mDNS broadcast, auth (bcrypt + JWT), order storage, WebSocket for KDS. Needed before any stub becomes real.
+- **Manager screens** (16, 18–19):
+  - Screen 16: Reports & CSV export
+  - Screen 18: Staff management (add staff, deactivate, force logout)
+  - Screen 19: Settings (role, connection mode, printer, language)
+- **Kitchen Display System** (screen 15) — WebSocket-driven live order board.
+- **Role selection screen** (screen 21).
+- **Customer-facing display** (screen 20).
+- Thermal receipt printing — real Bluetooth/USB integration.
 
-## Open question (from the original spec)
-Web builds connecting to a local `http://` host from an `https://`-served page may be blocked as mixed content. Surfaced as a UI note on the Connect screen for now; a real fix needs the host server to serve TLS.
+## Open questions
+- Web builds: mixed-content HTTP→HTTPS; needs TLS on the host server.
+- Offline session rules: owner = persistent, worker = 30 min idle timeout (see memory note).
 
-## Auth rules to implement (offline mode)
-- **Shop owner** — persistent offline session (no expiry). Logs in once, stays logged in.
-- **Workers / non-owner staff** — session must time out automatically (suggested: configurable, default 30 min idle). Force re-login on expiry.
-- Implementation: store JWT locally; on app resume check `exp` claim. Skip expiry check if `role == owner`.
-
-## Suggested order
-1. ~~Forgot Password / OTP / Reset flow~~ — **done**.
-2. Start the Dart Shelf backend — even a minimal server (health endpoint + mDNS broadcast) lets `ConnectionService` and `AuthService` become real instead of stubbed.
-3. Cashier flow (order taking → payment → receipt) — the core POS loop and the next big chunk of screens.
+## Suggested next order
+1. ~~Forgot Password / OTP / Reset~~ ✓
+2. ~~Cashier flow (screens 11–14)~~ ✓
+3. ~~**Manager — Menu Management (screen 17)**~~ ✓
+4. **Dart Shelf backend** (minimal: health + mDNS + auth) — makes all stubs real.
+5. Manager — Staff / Reports / Settings (screens 16, 18, 19).
+6. Kitchen Display System (screen 15).
+7. Remaining screens (20, 21).

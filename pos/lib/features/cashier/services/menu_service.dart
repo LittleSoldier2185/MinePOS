@@ -1,7 +1,10 @@
 import '../models/menu_item.dart';
 
 class MenuService {
-  static const _items = <MenuItem>[
+  MenuService._();
+  static final instance = MenuService._();
+
+  static const _defaultItems = <MenuItem>[
     // Coffee
     MenuItem(id: 'c1', name: 'Espresso', category: 'Coffee', price: 65),
     MenuItem(id: 'c2', name: 'Americano', category: 'Coffee', price: 75),
@@ -32,16 +35,69 @@ class MenuService {
     MenuItem(id: 'f6', name: 'Waffle', category: 'Food', price: 110),
   ];
 
-  static const List<String> categories = [
-    'Coffee',
-    'Tea',
-    'Cold',
-    'Food',
-  ];
+  // Fixed ordering for known categories; new ones append after.
+  static const _categoryOrder = ['Coffee', 'Tea', 'Cold', 'Food'];
+
+  final List<MenuItem> _items = List.of(_defaultItems);
+  int _nextId = 1000;
+
+  // ── Read ──────────────────────────────────────────────────────────────────
+
+  List<String> get categories {
+    final present = _items.map((m) => m.category).toSet();
+    return [
+      ..._categoryOrder.where(present.contains),
+      ...present.where((c) => !_categoryOrder.contains(c)),
+    ];
+  }
 
   List<MenuItem> itemsForCategory(String category) =>
       _items.where((m) => m.category == category && m.available).toList();
 
   List<MenuItem> get allAvailable =>
       _items.where((m) => m.available).toList();
+
+  List<MenuItem> get allItems => List.unmodifiable(_items);
+
+  List<MenuItem> allItemsForCategory(String category) =>
+      _items.where((m) => m.category == category).toList();
+
+  // ── Write ─────────────────────────────────────────────────────────────────
+
+  MenuItem addItem({
+    required String name,
+    required String category,
+    required double price,
+    bool available = true,
+  }) {
+    final item = MenuItem(
+      id: 'u${_nextId++}',
+      name: name.trim(),
+      category: category.trim(),
+      price: price,
+      available: available,
+    );
+    _items.add(item);
+    return item;
+  }
+
+  void updateItem(MenuItem updated) {
+    final i = _items.indexWhere((m) => m.id == updated.id);
+    if (i >= 0) _items[i] = updated;
+  }
+
+  void deleteItem(String id) => _items.removeWhere((m) => m.id == id);
+
+  void toggleAvailability(String id) {
+    final i = _items.indexWhere((m) => m.id == id);
+    if (i < 0) return;
+    final m = _items[i];
+    _items[i] = MenuItem(
+      id: m.id,
+      name: m.name,
+      category: m.category,
+      price: m.price,
+      available: !m.available,
+    );
+  }
 }

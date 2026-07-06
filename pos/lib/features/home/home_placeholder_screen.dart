@@ -6,6 +6,7 @@ import '../cashier/models/order.dart';
 import '../cashier/order_history_screen.dart';
 import '../cashier/order_taking_screen.dart';
 import '../cashier/services/order_service.dart';
+import '../manager/menu_management_screen.dart';
 import '../welcome/welcome_screen.dart';
 
 const _kSidebarBg = Color(0xFF232315);
@@ -88,6 +89,12 @@ void _openNewOrder(BuildContext context) {
 void _openHistory(BuildContext context) {
   Navigator.of(context).push(
     MaterialPageRoute(builder: (_) => const OrderHistoryScreen()),
+  );
+}
+
+void _openMenuMgmt(BuildContext context) {
+  Navigator.of(context).push(
+    MaterialPageRoute(builder: (_) => const MenuManagementScreen()),
   );
 }
 
@@ -222,8 +229,7 @@ class _Sidebar extends StatelessWidget {
                   _SideNavItem(
                     icon: Icons.restaurant_menu_outlined,
                     label: 'Menu Mgmt',
-                    dim: true,
-                    onTap: () => _comingSoon(context, 'Menu Management'),
+                    onTap: () => _openMenuMgmt(context),
                   ),
                   _SideNavItem(
                     icon: Icons.soup_kitchen_outlined,
@@ -365,7 +371,7 @@ class _Mobile extends StatelessWidget {
         currentIndex: 0,
         onTap: (i) {
           if (i == 1) { _openHistory(context); return; }
-          if (i == 2) { _comingSoon(context, 'Menu'); return; }
+          if (i == 2) { _openMenuMgmt(context); return; }
           if (i == 3) { _comingSoon(context, 'Settings'); return; }
         },
         items: const [
