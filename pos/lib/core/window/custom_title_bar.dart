@@ -68,6 +68,7 @@ class _CustomTitleBarState extends State<CustomTitleBar> with WindowListener {
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         letterSpacing: 1,
+                        decoration: TextDecoration.none,
                       ),
                     ),
                   ],
