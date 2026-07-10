@@ -14,6 +14,7 @@ import '../lib/routes/kitchen_routes.dart';
 import '../lib/routes/menu_routes.dart';
 import '../lib/routes/order_routes.dart';
 import '../lib/routes/setup_routes.dart';
+import '../lib/routes/shop_routes.dart';
 import '../lib/routes/user_routes.dart';
 import '../lib/utils.dart';
 
@@ -30,6 +31,7 @@ Future<void> main() async {
   registerKitchenRoutes(router, db, config);
   registerCustomerDisplayRoutes(router, db, config);
   registerSetupRoutes(router, db, config);
+  registerShopRoutes(router, db, config);
 
   final handler = Pipeline()
       .addMiddleware(logRequests())

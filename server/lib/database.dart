@@ -349,6 +349,20 @@ class AppDb {
     );
   }
 
+  /// Wipes every row from every table — shop config, all accounts, menu,
+  /// orders — resetting the server to the same pristine state as before
+  /// POST /setup was ever called, so a new shop can be bootstrapped again.
+  /// Existing JWTs for the deleted owner stop working immediately since
+  /// [verifyToken] looks the user up by username on every request.
+  void wipeShop() {
+    _db.execute('DELETE FROM order_items');
+    _db.execute('DELETE FROM orders');
+    _db.execute('DELETE FROM menu_items');
+    _db.execute('DELETE FROM otp_tokens');
+    _db.execute('DELETE FROM users');
+    _db.execute('DELETE FROM shop_config');
+  }
+
   // ── User ───────────────────────────────────────────────────────────────────
 
   bool hasAnyUser() {
