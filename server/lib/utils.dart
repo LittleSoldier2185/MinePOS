@@ -73,6 +73,15 @@ DbUser? requireAuth(Request req, AppDb db, String jwtSecret, {String? role}) {
   return verifyToken(auth.substring(7), db, jwtSecret, role: role);
 }
 
+/// Same as [requireAuth], but accepts any of several roles instead of a
+/// single exact match (e.g. menu writes are allowed for owner *or* manager).
+DbUser? requireRoles(
+    Request req, AppDb db, String jwtSecret, Set<String> roles) {
+  final user = requireAuth(req, db, jwtSecret);
+  if (user == null || !roles.contains(user.role)) return null;
+  return user;
+}
+
 // ── CORS middleware ────────────────────────────────────────────────────────────
 
 Middleware cors() => createMiddleware(

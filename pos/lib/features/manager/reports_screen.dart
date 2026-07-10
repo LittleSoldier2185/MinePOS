@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/access_restricted.dart';
+import '../../l10n/app_localizations.dart';
 import '../cashier/models/order.dart';
 import 'services/csv_export.dart';
 import 'services/reports_service.dart';
@@ -108,13 +111,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
           'minepos-report-${_isoDate(range.start)}_to_${_isoDate(range.end.subtract(const Duration(days: 1)))}.csv';
       final path = await saveCsv(fileName, buffer.toString());
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(path == null ? 'Export cancelled' : 'Saved to $path')),
+        SnackBar(content: Text(path == null ? l10n.exportCancelledSnackbar : l10n.exportSuccessSnackbar(path))),
       );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Export failed: $e'), backgroundColor: AppColors.terracottaDark),
+          SnackBar(content: Text(AppLocalizations.of(context)!.exportFailedSnackbar('$e')), backgroundColor: AppColors.terracottaDark),
         );
       }
     } finally {
@@ -127,9 +131,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    if (!ServerClient.instance.canManageShop) {
+      return AccessRestrictedScreen(feature: l10n.reportsLabel);
+    }
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Reports'),
+        title: Text(l10n.reportsLabel),
         backgroundColor: Colors.white,
         foregroundColor: AppColors.ink,
         elevation: 0,
@@ -155,7 +163,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         textAlign: TextAlign.center,
                         style: const TextStyle(color: AppColors.muted)),
                     const SizedBox(height: 12),
-                    OutlinedButton(onPressed: _reload, child: const Text('Retry')),
+                    OutlinedButton(onPressed: _reload, child: Text(l10n.retry)),
                   ],
                 ),
               ),
@@ -187,28 +195,28 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     children: [
                       Row(
                         children: [
-                          _StatCard(label: 'Orders', value: '${orders.length}'),
+                          _StatCard(label: l10n.reportsOrdersLabel, value: '${orders.length}'),
                           const SizedBox(width: 10),
-                          _StatCard(label: 'Revenue', value: _baht(revenue)),
+                          _StatCard(label: l10n.revenueLabel, value: _baht(revenue)),
                           const SizedBox(width: 10),
                           _StatCard(
-                              label: 'Avg Order', value: orders.isEmpty ? '—' : _baht(avg)),
+                              label: l10n.avgOrderLabel, value: orders.isEmpty ? l10n.emDash : _baht(avg)),
                         ],
                       ),
                       const SizedBox(height: 10),
                       Row(
                         children: [
-                          _StatCard(label: 'Cash', value: '$cashCount'),
+                          _StatCard(label: l10n.cash, value: '$cashCount'),
                           const SizedBox(width: 10),
-                          _StatCard(label: 'PromptPay', value: '${orders.length - cashCount}'),
+                          _StatCard(label: l10n.promptpay, value: '${orders.length - cashCount}'),
                         ],
                       ),
                       const SizedBox(height: 16),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('ORDERS',
-                              style: TextStyle(
+                          Text(l10n.ordersColumnHeader,
+                              style: const TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                   letterSpacing: 0.3,
@@ -222,17 +230,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                     height: 14,
                                     child: CircularProgressIndicator(strokeWidth: 2))
                                 : const Icon(Icons.file_download_outlined, size: 15),
-                            label: const Text('Export CSV', style: TextStyle(fontSize: 12)),
+                            label: Text(l10n.exportCSVButton, style: const TextStyle(fontSize: 12)),
                           ),
                         ],
                       ),
                       const SizedBox(height: 4),
                       if (orders.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 24),
                           child: Center(
-                            child: Text('No orders in this range',
-                                style: TextStyle(color: AppColors.muted)),
+                            child: Text(l10n.reportsNoOrdersEmpty,
+                                style: const TextStyle(color: AppColors.muted)),
                           ),
                         )
                       else
@@ -247,7 +255,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               final isLast = e.key == orders.length - 1;
                               final o = e.value;
                               final method =
-                                  o.paymentMethod == PaymentMethod.cash ? 'Cash' : 'PromptPay';
+                                  o.paymentMethod == PaymentMethod.cash ? l10n.cash : l10n.promptpay;
                               return Container(
                                 padding:
                                     const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -311,26 +319,26 @@ class _RangeChips extends StatelessWidget {
   final _QuickRange selected;
   final ValueChanged<_QuickRange> onSelect;
 
-  static const _labels = {
-    _QuickRange.today: 'Today',
-    _QuickRange.yesterday: 'Yesterday',
-    _QuickRange.last7: 'Last 7 Days',
-    _QuickRange.last30: 'Last 30 Days',
-    _QuickRange.all: 'All Time',
-    _QuickRange.custom: 'Custom…',
-  };
-
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final labels = {
+      _QuickRange.today: l10n.todayRange,
+      _QuickRange.yesterday: l10n.yesterdayRange,
+      _QuickRange.last7: l10n.last7Range,
+      _QuickRange.last30: l10n.last30Range,
+      _QuickRange.all: l10n.allTimeRange,
+      _QuickRange.custom: l10n.customRange,
+    };
     return SizedBox(
       height: 52,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         scrollDirection: Axis.horizontal,
-        itemCount: _labels.length,
+        itemCount: labels.length,
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (_, i) {
-          final range = _labels.keys.elementAt(i);
+          final range = labels.keys.elementAt(i);
           final sel = range == selected;
           return GestureDetector(
             onTap: () => onSelect(range),
@@ -344,7 +352,7 @@ class _RangeChips extends StatelessWidget {
               ),
               child: Center(
                 child: Text(
-                  _labels[range]!,
+                  labels[range]!,
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,

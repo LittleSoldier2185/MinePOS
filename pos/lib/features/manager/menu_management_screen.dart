@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/access_restricted.dart';
+import '../../l10n/app_localizations.dart';
 import '../cashier/models/menu_item.dart';
 import '../cashier/services/menu_service.dart';
 
@@ -39,21 +42,21 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
   }
 
   Future<void> _confirmDelete(MenuItem item) async {
+    final l10n = AppLocalizations.of(context)!;
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Delete Item?'),
-        content: Text(
-            'Remove "${item.name}" from the menu? This cannot be undone.'),
+        title: Text(l10n.deleteItemTitle),
+        content: Text(l10n.deleteItemContent(item.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete',
-                style: TextStyle(color: AppColors.terracottaDark)),
+            child: Text(l10n.delete,
+                style: const TextStyle(color: AppColors.terracottaDark)),
           ),
         ],
       ),
@@ -61,17 +64,21 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
     if (ok == true && mounted) {
       setState(() => _svc.deleteItem(item.id));
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('"${item.name}" removed')),
+        SnackBar(content: Text(l10n.deleteItemSnackbar(item.name))),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    if (!ServerClient.instance.canManageShop) {
+      return AccessRestrictedScreen(feature: l10n.menuManagementTitle);
+    }
     final items = _displayedItems;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Menu Management'),
+        title: Text(l10n.menuManagementTitle),
         backgroundColor: Colors.white,
         foregroundColor: AppColors.ink,
         elevation: 0,
@@ -79,7 +86,7 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            tooltip: 'Add item',
+            tooltip: l10n.addItemTooltip,
             onPressed: () => _showItemForm(),
           ),
         ],
@@ -135,15 +142,15 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '${items.length} item${items.length == 1 ? '' : 's'}',
+                  l10n.itemsCount(items.length),
                   style:
                       const TextStyle(fontSize: 12, color: AppColors.muted),
                 ),
                 TextButton.icon(
                   onPressed: () => _showItemForm(),
                   icon: const Icon(Icons.add, size: 14),
-                  label: const Text('Add Item',
-                      style: TextStyle(fontSize: 12)),
+                  label: Text(l10n.addItemLabel,
+                      style: const TextStyle(fontSize: 12)),
                   style: TextButton.styleFrom(
                     foregroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(
@@ -158,10 +165,10 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
           // List
           Expanded(
             child: items.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
-                      'No items in this category.',
-                      style: TextStyle(color: AppColors.muted),
+                      l10n.noItemsEmpty,
+                      style: const TextStyle(color: AppColors.muted),
                     ),
                   )
                 : ListView.separated(
@@ -344,6 +351,7 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     return Container(
       margin: EdgeInsets.only(bottom: bottomInset),
@@ -370,34 +378,34 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
             ),
             const SizedBox(height: 16),
             Text(
-              _isEdit ? 'Edit Item' : 'Add Item',
+              _isEdit ? l10n.editItemFormTitle : l10n.addItemLabel,
               style: const TextStyle(
                   fontSize: 17, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 20),
             TextFormField(
               controller: _nameCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Item name',
-                hintText: 'e.g. Caramel Latte',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.itemNameLabel,
+                hintText: l10n.itemNameHint,
+                border: const OutlineInputBorder(),
               ),
               textCapitalization: TextCapitalization.words,
               validator: (v) => (v == null || v.trim().isEmpty)
-                  ? 'Name is required'
+                  ? l10n.itemNameRequired
                   : null,
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _categoryCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Category',
-                hintText: 'e.g. Coffee',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.categoryLabel,
+                hintText: l10n.categoryHint,
+                border: const OutlineInputBorder(),
               ),
               textCapitalization: TextCapitalization.words,
               validator: (v) => (v == null || v.trim().isEmpty)
-                  ? 'Category is required'
+                  ? l10n.categoryRequired
                   : null,
             ),
             if (widget.categories.isNotEmpty) ...[
@@ -425,10 +433,10 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
             const SizedBox(height: 16),
             TextFormField(
               controller: _priceCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Price',
-                hintText: '0',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.priceLabel,
+                hintText: l10n.priceHint,
+                border: const OutlineInputBorder(),
                 prefixText: '฿ ',
               ),
               keyboardType: const TextInputType.numberWithOptions(
@@ -438,10 +446,10 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
               ],
               validator: (v) {
                 if (v == null || v.trim().isEmpty) {
-                  return 'Price is required';
+                  return l10n.priceRequired;
                 }
                 final n = int.tryParse(v.trim());
-                if (n == null || n <= 0) return 'Enter a valid price';
+                if (n == null || n <= 0) return l10n.priceInvalid;
                 return null;
               },
             ),
@@ -449,8 +457,8 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Available on menu',
-                    style: TextStyle(
+                Text(l10n.availableLabel,
+                    style: const TextStyle(
                         fontSize: 14, color: AppColors.ink)),
                 Switch(
                   value: _available,
@@ -465,14 +473,14 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => Navigator.of(context).pop(false),
-                    child: const Text('Cancel'),
+                    child: Text(l10n.cancel),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
                     onPressed: _save,
-                    child: Text(_isEdit ? 'Save Changes' : 'Add Item'),
+                    child: Text(_isEdit ? l10n.saveChangesButton : l10n.addItemLabel),
                   ),
                 ),
               ],

@@ -4,13 +4,18 @@ import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../core/window/platform_window.dart';
+import '../../l10n/app_localizations.dart';
 import '../auth/login_screen.dart';
+import '../customer_display/customer_display_screen.dart';
+import 'models/device_purpose.dart';
 import 'models/discovered_host.dart';
 import 'services/connection_service.dart';
 import 'services/mdns_discovery_service.dart';
 
 class ConnectScreen extends StatefulWidget {
-  const ConnectScreen({super.key});
+  const ConnectScreen({super.key, this.purpose = DevicePurpose.staffHub});
+
+  final DevicePurpose purpose;
 
   @override
   State<ConnectScreen> createState() => _ConnectScreenState();
@@ -40,7 +45,7 @@ class _ConnectScreenState extends State<ConnectScreen> with SingleTickerProvider
 
   Future<void> _connect(String address) async {
     if (address.trim().isEmpty) {
-      setState(() => _connectError = 'Enter a server address');
+      setState(() => _connectError = AppLocalizations.of(context)!.connectEmptyAddressError);
       return;
     }
 
@@ -56,11 +61,22 @@ class _ConnectScreenState extends State<ConnectScreen> with SingleTickerProvider
 
     if (success) {
       ServerClient.instance.baseUrl = address.trim();
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => LoginScreen(serverAddress: address.trim())),
-      );
+      if (widget.purpose == DevicePurpose.customerDisplay) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const CustomerDisplayScreen()),
+        );
+      } else {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => LoginScreen(
+              serverAddress: address.trim(),
+              purpose: widget.purpose,
+            ),
+          ),
+        );
+      }
     } else {
-      setState(() => _connectError = "Couldn't connect. Check the address and try again.");
+      setState(() => _connectError = AppLocalizations.of(context)!.connectFailureError);
     }
   }
 
@@ -76,17 +92,20 @@ class _ConnectScreenState extends State<ConnectScreen> with SingleTickerProvider
 
     if (!supportsMdns) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Connect to Server')),
+        appBar: AppBar(title: Text(AppLocalizations.of(context)!.connectAppBarTitle)),
         body: manual,
       );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Connect to Server'),
+        title: Text(AppLocalizations.of(context)!.connectAppBarTitle),
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [Tab(text: 'ON THIS WI-FI'), Tab(text: 'MANUAL')],
+          tabs: [
+            Tab(text: AppLocalizations.of(context)!.connectTabWifi),
+            Tab(text: AppLocalizations.of(context)!.connectTabManual),
+          ],
         ),
       ),
       body: TabBarView(
@@ -125,11 +144,11 @@ class _ManualConnectSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Enter server address', style: Theme.of(context).textTheme.titleLarge),
+          Text(AppLocalizations.of(context)!.connectManualTitle, style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 4),
-          const Text(
-            'Ask your admin for the address of the MinePOS host.',
-            style: TextStyle(color: AppColors.muted, fontSize: 13),
+          Text(
+            AppLocalizations.of(context)!.connectManualInstructions,
+            style: const TextStyle(color: AppColors.muted, fontSize: 13),
           ),
           if (showMixedContentNote) ...[
             const SizedBox(height: 16),
@@ -139,17 +158,15 @@ class _ManualConnectSection extends StatelessWidget {
                 color: AppColors.terracottaLight.withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Row(
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.info_outline, size: 18, color: AppColors.terracottaDark),
-                  SizedBox(width: 8),
+                  const Icon(Icons.info_outline, size: 18, color: AppColors.terracottaDark),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Wi-Fi discovery isn\'t available in a web browser. If your host address '
-                      'uses http:// and this page is loaded over https://, your browser may block '
-                      'the connection as mixed content.',
-                      style: TextStyle(fontSize: 12, color: AppColors.terracottaDark),
+                      AppLocalizations.of(context)!.connectMixedContentWarning,
+                      style: const TextStyle(fontSize: 12, color: AppColors.terracottaDark),
                     ),
                   ),
                 ],
@@ -158,9 +175,9 @@ class _ManualConnectSection extends StatelessWidget {
           ],
           const SizedBox(height: 20),
           AppTextField(
-            label: 'Server Address',
+            label: AppLocalizations.of(context)!.connectServerAddressLabel,
             controller: addressController,
-            hintText: '192.168.1.10:8080',
+            hintText: AppLocalizations.of(context)!.connectServerAddressHint,
           ),
           if (error != null) ...[
             const SizedBox(height: 8),
@@ -177,7 +194,7 @@ class _ManualConnectSection extends StatelessWidget {
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent),
                     )
-                  : const Text('CONNECT'),
+                  : Text(AppLocalizations.of(context)!.connectButton),
             ),
           ),
         ],
@@ -222,11 +239,11 @@ class _WifiDiscoverySectionState extends State<_WifiDiscoverySection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Shops on this Wi-Fi', style: Theme.of(context).textTheme.titleLarge),
+          Text(AppLocalizations.of(context)!.connectWifiTitle, style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 4),
-          const Text(
-            'Make sure this device is on the same Wi-Fi as the MinePOS host.',
-            style: TextStyle(color: AppColors.muted, fontSize: 13),
+          Text(
+            AppLocalizations.of(context)!.connectWifiInstructions,
+            style: const TextStyle(color: AppColors.muted, fontSize: 13),
           ),
           const SizedBox(height: 20),
           if (!_scanning)
@@ -235,26 +252,26 @@ class _WifiDiscoverySectionState extends State<_WifiDiscoverySection> {
               child: OutlinedButton.icon(
                 onPressed: _scan,
                 icon: const Icon(Icons.wifi_find),
-                label: const Text('SCAN FOR SHOPS'),
+                label: Text(AppLocalizations.of(context)!.connectScanButton),
               ),
             )
           else ...[
-            const Row(
+            Row(
               children: [
-                SizedBox(
+                const SizedBox(
                   width: 16,
                   height: 16,
                   child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
                 ),
-                SizedBox(width: 12),
-                Text('Scanning...', style: TextStyle(color: AppColors.muted)),
+                const SizedBox(width: 12),
+                Text(AppLocalizations.of(context)!.connectScanningLabel, style: const TextStyle(color: AppColors.muted)),
               ],
             ),
             const SizedBox(height: 16),
             if (_hosts.isEmpty)
-              const Text(
-                'No shops found yet.',
-                style: TextStyle(color: AppColors.muted, fontStyle: FontStyle.italic),
+              Text(
+                AppLocalizations.of(context)!.connectNoShopsFound,
+                style: const TextStyle(color: AppColors.muted, fontStyle: FontStyle.italic),
               )
             else
               ..._hosts.map(

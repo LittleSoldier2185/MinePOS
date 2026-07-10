@@ -13,6 +13,10 @@ class ServerClient {
   bool get isConnected => baseUrl != null;
   bool get isOwner => role == 'owner';
 
+  /// Owner and manager can manage the menu and view reports; a plain
+  /// employee ("worker") can only take orders and use the kitchen board.
+  bool get canManageShop => role == 'owner' || role == 'manager';
+
   Map<String, String> get headers => {
         'Content-Type': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',

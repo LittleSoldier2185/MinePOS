@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../l10n/app_localizations.dart';
 import 'models/order.dart';
 import 'services/order_service.dart';
 
@@ -20,7 +21,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Order History'),
+        title: Text(AppLocalizations.of(context)!.orderHistoryAppBarTitle),
         backgroundColor: Colors.white,
         foregroundColor: AppColors.ink,
         elevation: 0,
@@ -34,9 +35,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                   Icon(Icons.receipt_long_outlined,
                       size: 56, color: AppColors.muted.withValues(alpha: 0.5)),
                   const SizedBox(height: 12),
-                  const Text(
-                    'No orders yet',
-                    style: TextStyle(color: AppColors.muted),
+                  Text(
+                    AppLocalizations.of(context)!.noOrdersMessage,
+                    style: const TextStyle(color: AppColors.muted),
                   ),
                 ],
               ),
@@ -69,8 +70,9 @@ class _OrderTileState extends State<_OrderTile> {
   @override
   Widget build(BuildContext context) {
     final o = widget.order;
-    final methodLabel =
-        o.paymentMethod == PaymentMethod.cash ? 'Cash' : 'PromptPay';
+    final methodLabel = o.paymentMethod == PaymentMethod.cash
+        ? AppLocalizations.of(context)!.cash
+        : AppLocalizations.of(context)!.promptpay;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,7 +98,8 @@ class _OrderTileState extends State<_OrderTile> {
             ),
           ),
           title: Text(
-            '${o.items.length} item${o.items.length == 1 ? '' : 's'}  •  $methodLabel',
+            AppLocalizations.of(context)!
+                .orderItemsSummary(o.items.length, methodLabel),
             style: const TextStyle(fontSize: 14),
           ),
           subtitle: Text(
@@ -159,8 +162,8 @@ class _OrderTileState extends State<_OrderTile> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Cash',
-                          style: TextStyle(
+                      Text(AppLocalizations.of(context)!.cash,
+                          style: const TextStyle(
                               fontSize: 12, color: AppColors.muted)),
                       Text(widget.baht(o.amountPaid ?? 0),
                           style: const TextStyle(fontSize: 12)),
@@ -169,8 +172,8 @@ class _OrderTileState extends State<_OrderTile> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Change',
-                          style: TextStyle(
+                      Text(AppLocalizations.of(context)!.change,
+                          style: const TextStyle(
                               fontSize: 12, color: AppColors.muted)),
                       Text(widget.baht(o.change),
                           style: const TextStyle(fontSize: 12)),

@@ -39,6 +39,16 @@ class KitchenHub {
     });
   }
 
+  void broadcastItemStatus(DbOrder order, int itemId) {
+    final item = order.items.firstWhere((i) => i.id == itemId);
+    _broadcast({
+      'type': 'item_status',
+      'orderId': order.id,
+      'itemId': itemId,
+      'status': item.status,
+    });
+  }
+
   void _broadcast(Map<String, dynamic> message) {
     final encoded = jsonEncode(message);
     for (final channel in _channels) {

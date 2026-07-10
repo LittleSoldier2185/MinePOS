@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/responsive/breakpoints.dart';
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
+import '../../l10n/app_localizations.dart';
 import '../cashier/models/order.dart';
 import '../cashier/order_history_screen.dart';
 import '../cashier/order_taking_screen.dart';
@@ -33,21 +35,17 @@ class HomePlaceholderScreen extends StatelessWidget {
 
 // ── Shared helpers ─────────────────────────────────────────────────────────
 
-String _greeting() {
+String _greeting(BuildContext context) {
   final h = DateTime.now().hour;
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
+  if (h < 12) return AppLocalizations.of(context)!.goodMorningGreeting;
+  if (h < 17) return AppLocalizations.of(context)!.goodAfternoonGreeting;
+  return AppLocalizations.of(context)!.goodEveningGreeting;
 }
 
-String _dateStr() {
+String _dateStr(BuildContext context) {
   final d = DateTime.now();
-  const wd = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const mo = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-  ];
-  return '${wd[d.weekday - 1]}, ${d.day} ${mo[d.month - 1]} ${d.year}';
+  return DateFormat('EEE, d MMM yyyy', Localizations.localeOf(context).toString())
+      .format(d);
 }
 
 String _baht(double v) => '฿${v.toStringAsFixed(0)}';
@@ -56,17 +54,17 @@ Future<void> _confirmLogout(BuildContext context) async {
   final ok = await showDialog<bool>(
     context: context,
     builder: (_) => AlertDialog(
-      title: const Text('Sign Out?'),
-      content: const Text('You will be returned to the welcome screen.'),
+      title: Text(AppLocalizations.of(context)!.signOutDialogTitle),
+      content: Text(AppLocalizations.of(context)!.signOutDialogContent),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text('Cancel'),
+          child: Text(AppLocalizations.of(context)!.cancel),
         ),
         TextButton(
           onPressed: () => Navigator.pop(context, true),
-          child: const Text('Sign Out',
-              style: TextStyle(color: AppColors.terracottaDark)),
+          child: Text(AppLocalizations.of(context)!.signOut,
+              style: const TextStyle(color: AppColors.terracottaDark)),
         ),
       ],
     ),
@@ -179,9 +177,9 @@ class _Sidebar extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 9),
-                    const Text(
-                      'MinePOS',
-                      style: TextStyle(
+                    Text(
+                      AppLocalizations.of(context)!.appName,
+                      style: const TextStyle(
                         color: _kSidebarText,
                         fontWeight: FontWeight.w700,
                         fontSize: 14,
@@ -190,11 +188,11 @@ class _Sidebar extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 3),
-                const Padding(
-                  padding: EdgeInsets.only(left: 35),
+                Padding(
+                  padding: const EdgeInsets.only(left: 35),
                   child: Text(
-                    'Coffee Shop POS',
-                    style: TextStyle(fontSize: 9, color: _kSidebarMuted),
+                    AppLocalizations.of(context)!.appTagline,
+                    style: const TextStyle(fontSize: 9, color: _kSidebarMuted),
                   ),
                 ),
               ],
@@ -212,14 +210,14 @@ class _Sidebar extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                child: const Column(
+                child: Column(
                   children: [
-                    Icon(Icons.add_circle_outline,
+                    const Icon(Icons.add_circle_outline,
                         color: AppColors.accent, size: 22),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
-                      'NEW ORDER',
-                      style: TextStyle(
+                      AppLocalizations.of(context)!.newOrderButton,
+                      style: const TextStyle(
                         color: AppColors.accent,
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
@@ -239,41 +237,43 @@ class _Sidebar extends StatelessWidget {
                 children: [
                   _SideNavItem(
                     icon: Icons.home_outlined,
-                    label: 'Dashboard',
+                    label: AppLocalizations.of(context)!.desktopDashboardNavLabel,
                     active: true,
                   ),
                   _SideNavItem(
                     icon: Icons.receipt_long_outlined,
-                    label: 'Order History',
+                    label: AppLocalizations.of(context)!.orderHistoryLabel,
                     onTap: () => _openHistory(context),
                   ),
                   const SizedBox(height: 6),
                   const Divider(color: Color(0xFF2A2A18), height: 1),
                   const SizedBox(height: 6),
-                  _SideNavItem(
-                    icon: Icons.restaurant_menu_outlined,
-                    label: 'Menu Mgmt',
-                    onTap: () => _openMenuMgmt(context),
-                  ),
+                  if (ServerClient.instance.canManageShop)
+                    _SideNavItem(
+                      icon: Icons.restaurant_menu_outlined,
+                      label: AppLocalizations.of(context)!.menuMgmtNavLabel,
+                      onTap: () => _openMenuMgmt(context),
+                    ),
                   _SideNavItem(
                     icon: Icons.soup_kitchen_outlined,
-                    label: 'Kitchen',
+                    label: AppLocalizations.of(context)!.kitchenNavLabel,
                     onTap: () => _openKitchen(context),
                   ),
-                  _SideNavItem(
-                    icon: Icons.bar_chart_outlined,
-                    label: 'Reports',
-                    onTap: () => _openReports(context),
-                  ),
+                  if (ServerClient.instance.canManageShop)
+                    _SideNavItem(
+                      icon: Icons.bar_chart_outlined,
+                      label: AppLocalizations.of(context)!.reportsLabel,
+                      onTap: () => _openReports(context),
+                    ),
                   if (ServerClient.instance.isOwner)
                     _SideNavItem(
                       icon: Icons.badge_outlined,
-                      label: 'Staff',
+                      label: AppLocalizations.of(context)!.staffLabel,
                       onTap: () => _openStaff(context),
                     ),
                   _SideNavItem(
                     icon: Icons.settings_outlined,
-                    label: 'Settings',
+                    label: AppLocalizations.of(context)!.settingsLabel,
                     onTap: () => _openSettings(context),
                   ),
                 ],
@@ -288,7 +288,8 @@ class _Sidebar extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  ServerClient.instance.username ?? 'Admin',
+                  ServerClient.instance.username ??
+                      AppLocalizations.of(context)!.defaultAdminUsername,
                   style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -365,11 +366,11 @@ class _Mobile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.local_cafe, color: AppColors.primary, size: 20),
-            SizedBox(width: 8),
-            Text('MinePOS'),
+            const Icon(Icons.local_cafe, color: AppColors.primary, size: 20),
+            const SizedBox(width: 8),
+            Text(AppLocalizations.of(context)!.appName),
           ],
         ),
         backgroundColor: Colors.white,
@@ -381,18 +382,19 @@ class _Mobile extends StatelessWidget {
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             itemBuilder: (context) => [
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'kitchen',
-                child: Text('Kitchen'),
+                child: Text(AppLocalizations.of(context)!.kitchenNavLabel),
               ),
-              const PopupMenuItem(
-                value: 'reports',
-                child: Text('Reports'),
-              ),
+              if (ServerClient.instance.canManageShop)
+                PopupMenuItem(
+                  value: 'reports',
+                  child: Text(AppLocalizations.of(context)!.reportsLabel),
+                ),
               if (ServerClient.instance.isOwner)
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'staff',
-                  child: Text('Staff'),
+                  child: Text(AppLocalizations.of(context)!.staffLabel),
                 ),
             ],
             onSelected: (value) {
@@ -408,38 +410,57 @@ class _Mobile extends StatelessWidget {
         ],
       ),
       body: _ContentPanel(title: title, desktop: false),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: AppColors.muted,
-        showUnselectedLabels: true,
-        currentIndex: 0,
-        onTap: (i) {
-          if (i == 1) { _openHistory(context); return; }
-          if (i == 2) { _openMenuMgmt(context); return; }
-          if (i == 3) { _openSettings(context); return; }
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_long_outlined),
-            activeIcon: Icon(Icons.receipt_long),
-            label: 'Orders',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.restaurant_menu_outlined),
-            label: 'Menu',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings_outlined),
-            label: 'Settings',
-          ),
-        ],
+      bottomNavigationBar: _buildBottomNav(context),
+    );
+  }
+
+  // Tab actions are filtered by role, so build (item, onTap) pairs together
+  // rather than hardcoding tab indices — hiding "Menu" for employees must
+  // not shift what the remaining tabs do.
+  Widget _buildBottomNav(BuildContext context) {
+    final canManage = ServerClient.instance.canManageShop;
+    final entries = <(BottomNavigationBarItem, VoidCallback?)>[
+      (
+        BottomNavigationBarItem(
+          icon: const Icon(Icons.home_outlined),
+          activeIcon: const Icon(Icons.home),
+          label: AppLocalizations.of(context)!.mobileBottomNavHome,
+        ),
+        null,
       ),
+      (
+        BottomNavigationBarItem(
+          icon: const Icon(Icons.receipt_long_outlined),
+          activeIcon: const Icon(Icons.receipt_long),
+          label: AppLocalizations.of(context)!.mobileBottomNavOrders,
+        ),
+        () => _openHistory(context),
+      ),
+      if (canManage)
+        (
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.restaurant_menu_outlined),
+            label: AppLocalizations.of(context)!.menuLabel,
+          ),
+          () => _openMenuMgmt(context),
+        ),
+      (
+        BottomNavigationBarItem(
+          icon: const Icon(Icons.settings_outlined),
+          label: AppLocalizations.of(context)!.settingsLabel,
+        ),
+        () => _openSettings(context),
+      ),
+    ];
+
+    return BottomNavigationBar(
+      type: BottomNavigationBarType.fixed,
+      selectedItemColor: AppColors.primary,
+      unselectedItemColor: AppColors.muted,
+      showUnselectedLabels: true,
+      currentIndex: 0,
+      onTap: (i) => entries[i].$2?.call(),
+      items: entries.map((e) => e.$1).toList(),
     );
   }
 }
@@ -478,20 +499,22 @@ class _ContentPanel extends StatelessWidget {
                   children: [
                     _StatCard(
                       icon: Icons.receipt_long_outlined,
-                      label: 'Orders Today',
+                      label: AppLocalizations.of(context)!.homeOrdersTodayStat,
                       value: '$count',
                     ),
                     const SizedBox(width: 12),
                     _StatCard(
                       icon: Icons.payments_outlined,
-                      label: 'Revenue',
+                      label: AppLocalizations.of(context)!.revenueLabel,
                       value: _baht(revenue),
                     ),
                     const SizedBox(width: 12),
                     _StatCard(
                       icon: Icons.bar_chart_outlined,
-                      label: 'Avg Order',
-                      value: count > 0 ? _baht(avg) : '—',
+                      label: AppLocalizations.of(context)!.avgOrderLabel,
+                      value: count > 0
+                          ? _baht(avg)
+                          : AppLocalizations.of(context)!.emDash,
                     ),
                   ],
                 ),
@@ -509,7 +532,7 @@ class _ContentPanel extends StatelessWidget {
                     height: 56,
                     child: ElevatedButton.icon(
                       icon: const Icon(Icons.add_circle_outline, size: 20),
-                      label: const Text('NEW ORDER'),
+                      label: Text(AppLocalizations.of(context)!.newOrderButton),
                       onPressed: () => _openNewOrder(context),
                     ),
                   ),
@@ -543,14 +566,15 @@ class _TopBar extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '${_greeting()}, Admin',
+                AppLocalizations.of(context)!
+                    .greetingWithName(_greeting(context)),
                 style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: AppColors.ink),
               ),
               Text(
-                _dateStr(),
+                _dateStr(context),
                 style: const TextStyle(
                     fontSize: 11, color: AppColors.muted),
               ),
@@ -560,7 +584,7 @@ class _TopBar extends StatelessWidget {
           TextButton.icon(
             onPressed: onLogout,
             icon: const Icon(Icons.logout, size: 15),
-            label: const Text('Sign Out'),
+            label: Text(AppLocalizations.of(context)!.signOut),
             style: TextButton.styleFrom(foregroundColor: AppColors.muted),
           ),
         ],
@@ -638,9 +662,9 @@ class _RecentOrders extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'RECENT ORDERS',
-              style: TextStyle(
+            Text(
+              AppLocalizations.of(context)!.recentOrdersHeader,
+              style: const TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.15,
@@ -654,8 +678,8 @@ class _RecentOrders extends StatelessWidget {
                   padding: EdgeInsets.zero,
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-              child: const Text('View all →',
-                  style: TextStyle(fontSize: 12)),
+              child: Text(AppLocalizations.of(context)!.viewAllOrdersLink,
+                  style: const TextStyle(fontSize: 12)),
             ),
           ],
         ),
@@ -669,15 +693,15 @@ class _RecentOrders extends StatelessWidget {
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: AppColors.terracottaLight),
                 ),
-                child: const Column(
+                child: Column(
                   children: [
-                    Icon(Icons.receipt_long_outlined,
+                    const Icon(Icons.receipt_long_outlined,
                         size: 32,
                         color: AppColors.muted),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(
-                      'No orders yet today',
-                      style: TextStyle(
+                      AppLocalizations.of(context)!.noOrdersTodayMessage,
+                      style: const TextStyle(
                           color: AppColors.muted, fontSize: 13),
                     ),
                   ],
@@ -698,8 +722,8 @@ class _RecentOrders extends StatelessWidget {
                         .map((item) => '${item.quantity}× ${item.menuItem.name}')
                         .join(', ');
                     final methodLabel = o.paymentMethod == PaymentMethod.cash
-                        ? 'Cash'
-                        : 'QR';
+                        ? AppLocalizations.of(context)!.cash
+                        : AppLocalizations.of(context)!.recentOrderQrLabel;
                     return Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 11),

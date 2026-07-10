@@ -6,11 +6,13 @@ list(APPEND FLUTTER_PLUGIN_LIST
   bonsoir_windows
   file_selector_windows
   screen_retriever_windows
+  unified_esc_pos_printer
   window_manager
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
   jni
+  libserialport_plus
 )
 
 set(PLUGIN_BUNDLED_LIBRARIES)

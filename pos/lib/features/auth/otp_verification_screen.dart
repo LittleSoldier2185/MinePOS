@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../l10n/app_localizations.dart';
 import 'reset_password_screen.dart';
 import 'services/password_reset_service.dart';
 
@@ -46,7 +47,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
   Future<void> _verify() async {
     if (_otp.length < _length) {
-      setState(() => _error = 'Please enter the complete 6-digit code.');
+      setState(() => _error = AppLocalizations.of(context)!.otpVerificationIncompleteError);
       return;
     }
 
@@ -66,7 +67,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             ResetPasswordScreen(username: widget.username, otp: _otp),
       ));
     } else {
-      setState(() => _error = 'Invalid or expired code. Please try again.');
+      setState(() => _error = AppLocalizations.of(context)!.otpVerificationInvalidError);
       for (final c in _controllers) {
         c.clear();
       }
@@ -87,7 +88,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     }
     _focusNodes[0].requestFocus();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('A new code has been sent.')),
+      SnackBar(content: Text(AppLocalizations.of(context)!.otpVerificationSuccessMessage)),
     );
   }
 
@@ -118,12 +119,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    'ENTER CODE',
+                    AppLocalizations.of(context)!.otpVerificationTitle,
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'A 6-digit code was sent to the email\nassociated with ${widget.username}.',
+                    AppLocalizations.of(context)!.otpVerificationInstructions(widget.username),
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: AppColors.muted, fontSize: 12),
                   ),
@@ -231,13 +232,13 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                         color: AppColors.accent,
                                       ),
                                     )
-                                  : const Text('VERIFY'),
+                                  : Text(AppLocalizations.of(context)!.otpVerificationVerifyButton),
                             ),
                           ),
                           const SizedBox(height: 4),
                           TextButton(
                             onPressed: _loading ? null : _resend,
-                            child: const Text('Resend Code'),
+                            child: Text(AppLocalizations.of(context)!.otpVerificationResendButton),
                           ),
                         ],
                       ),

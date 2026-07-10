@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../l10n/app_localizations.dart';
+import '../customer_display/services/customer_display_service.dart';
 import 'models/order.dart';
 import 'models/order_item.dart';
 import 'receipt_screen.dart';
@@ -56,6 +58,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
 
     if (!mounted) return;
+    CustomerDisplayService.instance
+        .publishThankYou(total: order.total, change: order.change);
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => ReceiptScreen(order: order)),
     );
@@ -71,7 +75,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Payment'),
+        title: Text(AppLocalizations.of(context)!.paymentAppBarTitle),
         backgroundColor: Colors.white,
         foregroundColor: AppColors.ink,
         elevation: 0,
@@ -144,9 +148,9 @@ class _OrderSummaryCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'ORDER SUMMARY',
-              style: TextStyle(
+            Text(
+              AppLocalizations.of(context)!.orderSummaryHeader,
+              style: const TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1,
@@ -175,8 +179,8 @@ class _OrderSummaryCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Total',
-                    style: TextStyle(
+                Text(AppLocalizations.of(context)!.total,
+                    style: const TextStyle(
                         fontSize: 16, fontWeight: FontWeight.bold)),
                 Text(baht(total),
                     style: const TextStyle(
@@ -205,14 +209,14 @@ class _PaymentMethodToggle extends StatelessWidget {
     return Row(
       children: [
         _MethodButton(
-          label: 'Cash',
+          label: AppLocalizations.of(context)!.cash,
           icon: Icons.payments_outlined,
           active: selected == PaymentMethod.cash,
           onTap: () => onChanged(PaymentMethod.cash),
         ),
         const SizedBox(width: 12),
         _MethodButton(
-          label: 'PromptPay',
+          label: AppLocalizations.of(context)!.promptpay,
           icon: Icons.qr_code,
           active: selected == PaymentMethod.promptpay,
           onTap: () => onChanged(PaymentMethod.promptpay),
@@ -299,9 +303,9 @@ class _CashPanel extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'AMOUNT RECEIVED',
-              style: TextStyle(
+            Text(
+              AppLocalizations.of(context)!.amountReceivedHeader,
+              style: const TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1,
@@ -339,7 +343,9 @@ class _CashPanel extends StatelessWidget {
                   borderSide:
                       const BorderSide(color: AppColors.primary, width: 2),
                 ),
-                errorText: insufficient ? 'Amount is less than total' : null,
+                errorText: insufficient
+                    ? AppLocalizations.of(context)!.amountLessThanTotalError
+                    : null,
               ),
             ),
             const SizedBox(height: 16),
@@ -370,8 +376,9 @@ class _CashPanel extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Change',
-                      style: TextStyle(fontSize: 15, color: AppColors.muted)),
+                  Text(AppLocalizations.of(context)!.change,
+                      style: const TextStyle(
+                          fontSize: 15, color: AppColors.muted)),
                   Text(
                     baht(change),
                     style: const TextStyle(
@@ -428,10 +435,11 @@ class _PromptPayPanel extends StatelessWidget {
                       size: 80,
                       color: AppColors.primary.withValues(alpha: 0.3)),
                   const SizedBox(height: 4),
-                  const Text(
-                    'Configure PromptPay ID\nin Settings to enable',
+                  Text(
+                    AppLocalizations.of(context)!.promptpayConfigMessage,
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 11, color: AppColors.muted),
+                    style:
+                        const TextStyle(fontSize: 11, color: AppColors.muted),
                   ),
                 ],
               ),
@@ -445,9 +453,9 @@ class _PromptPayPanel extends StatelessWidget {
                   color: AppColors.ink),
             ),
             const SizedBox(height: 4),
-            const Text(
-              'Scan QR to pay',
-              style: TextStyle(fontSize: 13, color: AppColors.muted),
+            Text(
+              AppLocalizations.of(context)!.scanQrToPayMessage,
+              style: const TextStyle(fontSize: 13, color: AppColors.muted),
             ),
           ],
         ),
@@ -488,7 +496,10 @@ class _ConfirmBar extends StatelessWidget {
                   child: CircularProgressIndicator(
                       strokeWidth: 2, color: AppColors.accent),
                 )
-              : Text('CONFIRM PAYMENT  •  ${baht(total)}'),
+              : Text(
+                  AppLocalizations.of(context)!.confirmPaymentButton(
+                      baht(total)),
+                ),
         ),
       ),
     );

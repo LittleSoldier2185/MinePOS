@@ -3,14 +3,22 @@ import 'package:flutter/material.dart';
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_text_field.dart';
+import '../../l10n/app_localizations.dart';
+import '../connect/models/device_purpose.dart';
 import '../home/home_placeholder_screen.dart';
+import '../kitchen/kitchen_display_screen.dart';
 import 'forgot_password_screen.dart';
 import 'services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key, required this.serverAddress});
+  const LoginScreen({
+    super.key,
+    required this.serverAddress,
+    this.purpose = DevicePurpose.staffHub,
+  });
 
   final String serverAddress;
+  final DevicePurpose purpose;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -52,12 +60,17 @@ class _LoginScreenState extends State<LoginScreen> {
     if (result.success) {
       ServerClient.instance.role = result.role;
       ServerClient.instance.username = result.username;
+      final welcomeMessage = AppLocalizations.of(context)!.loginWelcomeMessage;
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const HomePlaceholderScreen(title: 'Welcome back!')),
+        MaterialPageRoute(
+          builder: (_) => widget.purpose == DevicePurpose.kitchenOnly
+              ? const KitchenDisplayScreen(standalone: true)
+              : HomePlaceholderScreen(title: welcomeMessage),
+        ),
         (route) => false,
       );
     } else {
-      setState(() => _error = 'Invalid username or password.');
+      setState(() => _error = AppLocalizations.of(context)!.loginErrorMessage);
     }
   }
 
@@ -90,10 +103,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: const Icon(Icons.local_cafe, color: AppColors.accent, size: 34),
                     ),
                     const SizedBox(height: 20),
-                    Text('SIGN IN', style: Theme.of(context).textTheme.headlineMedium),
+                    Text(AppLocalizations.of(context)!.loginScreenTitle, style: Theme.of(context).textTheme.headlineMedium),
                     const SizedBox(height: 4),
                     Text(
-                      'Connected to ${widget.serverAddress}',
+                      AppLocalizations.of(context)!.loginConnectedTo(widget.serverAddress),
                       style: const TextStyle(color: AppColors.muted, fontSize: 12),
                     ),
                     const SizedBox(height: 32),
@@ -103,18 +116,18 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Column(
                           children: [
                             AppTextField(
-                              label: 'Username / Email',
+                              label: AppLocalizations.of(context)!.usernameOrEmailLabel,
                               controller: _usernameController,
                               validator: (v) =>
-                                  (v == null || v.trim().isEmpty) ? 'Username is required' : null,
+                                  (v == null || v.trim().isEmpty) ? AppLocalizations.of(context)!.usernameRequiredValidator : null,
                             ),
                             const SizedBox(height: 14),
                             AppTextField(
-                              label: 'Password',
+                              label: AppLocalizations.of(context)!.passwordLabel,
                               controller: _passwordController,
                               obscureText: _obscurePassword,
                               validator: (v) =>
-                                  (v == null || v.isEmpty) ? 'Password is required' : null,
+                                  (v == null || v.isEmpty) ? AppLocalizations.of(context)!.passwordRequiredValidator : null,
                               suffixIcon: IconButton(
                                 icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
                                 onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
@@ -126,7 +139,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 onPressed: () => Navigator.of(context).push(
                                   MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
                                 ),
-                                child: const Text('Forgot Password'),
+                                child: Text(AppLocalizations.of(context)!.loginForgotPasswordLink),
                               ),
                             ),
                             if (_error != null) ...[
@@ -153,7 +166,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                           color: AppColors.accent,
                                         ),
                                       )
-                                    : const Text('SIGN IN'),
+                                    : Text(AppLocalizations.of(context)!.loginSignInButton),
                               ),
                             ),
                           ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_text_field.dart';
+import '../../l10n/app_localizations.dart';
 import 'otp_verification_screen.dart';
 import 'services/password_reset_service.dart';
 
@@ -46,7 +47,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       ));
     } else {
       setState(
-        () => _error = 'No account found with that username or email.',
+        () => _error = AppLocalizations.of(context)!.forgotPasswordErrorMessage,
       );
     }
   }
@@ -80,14 +81,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      'FORGOT PASSWORD',
+                      AppLocalizations.of(context)!.forgotPasswordTitle,
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                     const SizedBox(height: 4),
-                    const Text(
-                      'Enter your username or email to receive a one-time code.',
+                    Text(
+                      AppLocalizations.of(context)!.forgotPasswordInstructions,
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.muted, fontSize: 12),
+                      style: const TextStyle(color: AppColors.muted, fontSize: 12),
                     ),
                     const SizedBox(height: 32),
                     Card(
@@ -96,10 +97,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         child: Column(
                           children: [
                             AppTextField(
-                              label: 'Username / Email',
+                              label: AppLocalizations.of(context)!.usernameOrEmailLabel,
                               controller: _usernameController,
                               validator: (v) => (v == null || v.trim().isEmpty)
-                                  ? 'This field is required'
+                                  ? AppLocalizations.of(context)!.forgotPasswordValidator
                                   : null,
                             ),
                             if (_error != null) ...[
@@ -129,13 +130,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                           color: AppColors.accent,
                                         ),
                                       )
-                                    : const Text('SEND CODE'),
+                                    : Text(AppLocalizations.of(context)!.forgotPasswordSendCodeButton),
                               ),
                             ),
                             const SizedBox(height: 4),
                             TextButton(
                               onPressed: () => Navigator.of(context).pop(),
-                              child: const Text('Back to Sign In'),
+                              child: Text(AppLocalizations.of(context)!.forgotPasswordBackLink),
                             ),
                           ],
                         ),

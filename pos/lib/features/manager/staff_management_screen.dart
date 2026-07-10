@@ -2,10 +2,27 @@ import 'package:flutter/material.dart';
 
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
+import '../../l10n/app_localizations.dart';
 import 'models/staff_member.dart';
 import 'services/staff_service.dart';
 
 const _roles = ['owner', 'manager', 'worker'];
+
+// "worker" is stored as-is in the DB/JWT, but reads as "Employee" everywhere
+// it's shown to a human.
+String _roleLabel(BuildContext context, String role) {
+  final l10n = AppLocalizations.of(context)!;
+  switch (role) {
+    case 'worker':
+      return l10n.employeeRoleDisplay;
+    case 'manager':
+      return l10n.managerRoleDisplay;
+    case 'owner':
+      return l10n.ownerRoleDisplay;
+    default:
+      return role;
+  }
+}
 
 class StaffManagementScreen extends StatefulWidget {
   const StaffManagementScreen({super.key});
@@ -57,7 +74,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
       await _svc.forceLogout(m.username);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('"${m.username}" signed out on all devices')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.signedOutSnackbar(m.username))),
         );
       }
     } catch (e) {
@@ -66,21 +83,21 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
   }
 
   Future<void> _confirmDelete(StaffMember m) async {
+    final l10n = AppLocalizations.of(context)!;
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Remove Staff?'),
-        content: Text(
-            'Permanently remove "${m.username}" from the system? This cannot be undone.'),
+        title: Text(l10n.removeStaffTitle),
+        content: Text(l10n.removeStaffContent(m.username)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Remove',
-                style: TextStyle(color: AppColors.terracottaDark)),
+            child: Text(l10n.remove,
+                style: const TextStyle(color: AppColors.terracottaDark)),
           ),
         ],
       ),
@@ -96,9 +113,10 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Staff Management'),
+        title: Text(l10n.staffManagementTitle),
         backgroundColor: Colors.white,
         foregroundColor: AppColors.ink,
         elevation: 0,
@@ -106,7 +124,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.person_add_alt_outlined),
-            tooltip: 'Add staff',
+            tooltip: l10n.addStaffTooltip,
             onPressed: _showAddStaffForm,
           ),
         ],
@@ -133,7 +151,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                         style: const TextStyle(color: AppColors.muted)),
                     const SizedBox(height: 12),
                     OutlinedButton(
-                        onPressed: _reload, child: const Text('Retry')),
+                        onPressed: _reload, child: Text(l10n.retry)),
                   ],
                 ),
               ),
@@ -226,8 +244,8 @@ class _StaffRow extends StatelessWidget {
                       ),
                       if (isSelf) ...[
                         const SizedBox(width: 6),
-                        const Text('(you)',
-                            style: TextStyle(
+                        Text(AppLocalizations.of(context)!.youLabel,
+                            style: const TextStyle(
                                 fontSize: 11, color: AppColors.muted)),
                       ],
                     ],
@@ -241,7 +259,7 @@ class _StaffRow extends StatelessWidget {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      member.role.toUpperCase(),
+                      _roleLabel(context, member.role).toUpperCase(),
                       style: TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w700,
@@ -255,7 +273,7 @@ class _StaffRow extends StatelessWidget {
             ),
             IconButton(
               icon: const Icon(Icons.logout, size: 18),
-              tooltip: 'Force sign-out',
+              tooltip: AppLocalizations.of(context)!.forceSignoutTooltip,
               onPressed: onForceLogout,
               visualDensity: VisualDensity.compact,
               color: AppColors.muted,
@@ -326,6 +344,7 @@ class _StaffFormSheetState extends State<_StaffFormSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     return Container(
       margin: EdgeInsets.only(bottom: bottomInset),
@@ -351,43 +370,43 @@ class _StaffFormSheetState extends State<_StaffFormSheet> {
               ),
             ),
             const SizedBox(height: 16),
-            const Text('Add Staff',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            Text(l10n.addStaffLabel,
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
             const SizedBox(height: 20),
             TextFormField(
               controller: _usernameCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Username',
-                hintText: 'e.g. jane',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.usernameLabel,
+                hintText: l10n.usernameHint,
+                border: const OutlineInputBorder(),
               ),
               validator: (v) => (v == null || v.trim().isEmpty)
-                  ? 'Username is required'
+                  ? l10n.usernameRequiredValidator
                   : null,
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _passwordCtrl,
               obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Temporary password',
-                hintText: 'At least 8 characters',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.staffPasswordLabel,
+                hintText: l10n.staffPasswordHint,
+                border: const OutlineInputBorder(),
               ),
               validator: (v) => (v == null || v.length < 8)
-                  ? 'Password must be at least 8 characters'
+                  ? l10n.staffPasswordTooShort
                   : null,
             ),
             const SizedBox(height: 14),
-            const Text('Role',
-                style: TextStyle(fontSize: 12, color: AppColors.muted)),
+            Text(l10n.roleLabel,
+                style: const TextStyle(fontSize: 12, color: AppColors.muted)),
             const SizedBox(height: 6),
             Wrap(
               spacing: 6,
               children: _roles.map((r) {
                 final sel = _role == r;
                 return ChoiceChip(
-                  label: Text(r, style: const TextStyle(fontSize: 12)),
+                  label: Text(_roleLabel(context, r), style: const TextStyle(fontSize: 12)),
                   selected: sel,
                   onSelected: (_) => setState(() => _role = r),
                   selectedColor: AppColors.primary,
@@ -410,7 +429,7 @@ class _StaffFormSheetState extends State<_StaffFormSheet> {
                     onPressed: _saving
                         ? null
                         : () => Navigator.of(context).pop(false),
-                    child: const Text('Cancel'),
+                    child: Text(l10n.cancel),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -424,7 +443,7 @@ class _StaffFormSheetState extends State<_StaffFormSheet> {
                             child: CircularProgressIndicator(
                                 strokeWidth: 2, color: AppColors.accent),
                           )
-                        : const Text('Add Staff'),
+                        : Text(l10n.addStaffLabel),
                   ),
                 ),
               ],

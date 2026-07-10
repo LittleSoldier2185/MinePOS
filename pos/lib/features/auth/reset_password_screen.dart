@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_text_field.dart';
+import '../../l10n/app_localizations.dart';
 import 'services/password_reset_service.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
@@ -54,16 +55,15 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     setState(() => _loading = false);
 
     if (ok) {
+      final message = AppLocalizations.of(context)!.resetPasswordSuccessMessage;
       Navigator.of(context).popUntil((route) => route.isFirst);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Password reset. Please sign in with your new password.',
-          ),
+        SnackBar(
+          content: Text(message),
         ),
       );
     } else {
-      setState(() => _error = 'Reset failed. Please try again.');
+      setState(() => _error = AppLocalizations.of(context)!.resetPasswordErrorMessage);
     }
   }
 
@@ -96,14 +96,14 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      'NEW PASSWORD',
+                      AppLocalizations.of(context)!.resetPasswordTitle,
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                     const SizedBox(height: 4),
-                    const Text(
-                      'Choose a strong password for your account.',
+                    Text(
+                      AppLocalizations.of(context)!.resetPasswordInstructions,
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.muted, fontSize: 12),
+                      style: const TextStyle(color: AppColors.muted, fontSize: 12),
                     ),
                     const SizedBox(height: 32),
                     Card(
@@ -112,15 +112,15 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                         child: Column(
                           children: [
                             AppTextField(
-                              label: 'New Password',
+                              label: AppLocalizations.of(context)!.resetPasswordNewPasswordLabel,
                               controller: _passwordController,
                               obscureText: _obscurePassword,
                               validator: (v) {
                                 if (v == null || v.isEmpty) {
-                                  return 'Password is required';
+                                  return AppLocalizations.of(context)!.passwordRequiredValidator;
                                 }
                                 if (v.length < 8) {
-                                  return 'Must be at least 8 characters';
+                                  return AppLocalizations.of(context)!.resetPasswordLengthValidator;
                                 }
                                 return null;
                               },
@@ -137,15 +137,15 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                             ),
                             const SizedBox(height: 14),
                             AppTextField(
-                              label: 'Confirm Password',
+                              label: AppLocalizations.of(context)!.confirmPasswordLabel,
                               controller: _confirmController,
                               obscureText: _obscureConfirm,
                               validator: (v) {
                                 if (v == null || v.isEmpty) {
-                                  return 'Please confirm your password';
+                                  return AppLocalizations.of(context)!.resetPasswordConfirmEmptyValidator;
                                 }
                                 if (v != _passwordController.text) {
-                                  return 'Passwords do not match';
+                                  return AppLocalizations.of(context)!.passwordMismatchValidator;
                                 }
                                 return null;
                               },
@@ -187,7 +187,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                                           color: AppColors.accent,
                                         ),
                                       )
-                                    : const Text('RESET PASSWORD'),
+                                    : Text(AppLocalizations.of(context)!.resetPasswordButton),
                               ),
                             ),
                           ],

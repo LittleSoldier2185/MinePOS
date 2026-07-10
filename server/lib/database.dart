@@ -91,33 +91,45 @@ class DbMenuItem {
 
 class DbOrderItem {
   DbOrderItem({
+    required this.id,
     required this.menuItemId,
     required this.menuItemName,
     required this.menuItemCategory,
     required this.price,
     required this.quantity,
+    required this.status,
   });
 
+  final int id;
   final String menuItemId;
   final String menuItemName;
   final String menuItemCategory;
   final double price;
   final int quantity;
 
+  /// Per-item kitchen prep state: one of [kOrderItemStatuses]. Unlike the
+  /// parent order's status, an item never reaches "completed" on its own —
+  /// serving the whole order is an order-level action.
+  final String status;
+
   factory DbOrderItem._fromRow(Row row) => DbOrderItem(
+        id: row['id'] as int,
         menuItemId: row['menu_item_id'] as String,
         menuItemName: row['menu_item_name'] as String,
         menuItemCategory: row['menu_item_category'] as String,
         price: (row['price'] as num).toDouble(),
         quantity: row['quantity'] as int,
+        status: row['status'] as String? ?? 'pending',
       );
 
   Map<String, dynamic> toJson() => {
+        'id': id,
         'menuItemId': menuItemId,
         'menuItemName': menuItemName,
         'menuItemCategory': menuItemCategory,
         'price': price,
         'quantity': quantity,
+        'status': status,
       };
 
   double get subtotal => price * quantity;
@@ -125,6 +137,10 @@ class DbOrderItem {
 
 /// Kitchen prep states an order moves through, oldest-first.
 const kOrderStatuses = ['pending', 'preparing', 'ready', 'completed'];
+
+/// Per-item prep states — a subset of [kOrderStatuses] with no "completed"
+/// (serving is order-level only).
+const kOrderItemStatuses = ['pending', 'preparing', 'ready'];
 
 class DbOrder {
   DbOrder({
@@ -177,8 +193,10 @@ class AppDb {
     instance._migrate();
     _instance = instance;
 
-    // Seed admin user if none exist.
-    if (!instance.hasAnyUser()) {
+    // Seed admin user from env vars only if explicitly configured for
+    // headless/scripted deployment — otherwise wait for POST /setup (the
+    // Create Shop wizard) to bootstrap the first owner account for real.
+    if (config.autoSeedAdmin && !instance.hasAnyUser()) {
       final pass = config.adminPass;
       instance.createUser(
         username: config.adminUser,
@@ -270,9 +288,65 @@ class AppDb {
         menu_item_name TEXT NOT NULL,
         menu_item_category TEXT NOT NULL,
         price REAL NOT NULL,
-        quantity INTEGER NOT NULL
+        quantity INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending'
       )
     ''');
+    // Backfill for databases created before item-level tracking existed.
+    // Historical rows belong to orders that are already 'completed' (see
+    // above), so 'pending' is just a harmless default — nothing reads item
+    // status on a completed order.
+    final itemCols = _db
+        .select("PRAGMA table_info(order_items)")
+        .map((r) => r['name'])
+        .toSet();
+    if (!itemCols.contains('status')) {
+      _db.execute(
+          "ALTER TABLE order_items ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'");
+    }
+
+    // Singleton row (id always 1) holding the shop's own details, set once
+    // via POST /setup.
+    _db.execute('''
+      CREATE TABLE IF NOT EXISTS shop_config (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        shop_name TEXT NOT NULL,
+        address TEXT,
+        tax_id TEXT,
+        email TEXT,
+        receipt_footer TEXT
+      )
+    ''');
+  }
+
+  // ── Shop config ──────────────────────────────────────────────────────────────
+
+  Map<String, dynamic>? getShopConfig() {
+    final rows = _db.select('SELECT * FROM shop_config WHERE id = 1');
+    if (rows.isEmpty) return null;
+    final row = rows.first;
+    return {
+      'shopName': row['shop_name'],
+      'address': row['address'],
+      'taxId': row['tax_id'],
+      'email': row['email'],
+      'receiptFooter': row['receipt_footer'],
+    };
+  }
+
+  void setShopConfig({
+    required String shopName,
+    String? address,
+    String? taxId,
+    String? email,
+    String? receiptFooter,
+  }) {
+    _db.execute(
+      'INSERT OR REPLACE INTO shop_config '
+      '(id, shop_name, address, tax_id, email, receipt_footer) '
+      'VALUES (1, ?, ?, ?, ?, ?)',
+      [shopName, address, taxId, email, receiptFooter],
+    );
   }
 
   // ── User ───────────────────────────────────────────────────────────────────
@@ -552,6 +626,34 @@ class AppDb {
     _db.execute('UPDATE orders SET status = ? WHERE id = ?', [status, id]);
     if (_db.updatedRows == 0) return null;
     return getOrderById(id);
+  }
+
+  /// Updates one item's prep status, then re-derives and persists the
+  /// parent order's own status from all its items: 'pending' if every item
+  /// is still pending, 'ready' once every item is ready, 'preparing'
+  /// otherwise. 'completed' is never derived here — that's an explicit,
+  /// order-level-only action via [updateOrderStatus].
+  DbOrder? updateOrderItemStatus(int orderId, int itemId, String status) {
+    _db.execute(
+      'UPDATE order_items SET status = ? WHERE id = ? AND order_id = ?',
+      [status, itemId, orderId],
+    );
+    if (_db.updatedRows == 0) return null;
+
+    final order = getOrderById(orderId);
+    if (order == null) return null;
+    if (order.status == 'completed') return order;
+
+    final itemStatuses = order.items.map((i) => i.status).toSet();
+    final derived = itemStatuses.every((s) => s == 'pending')
+        ? 'pending'
+        : itemStatuses.every((s) => s == 'ready')
+            ? 'ready'
+            : 'preparing';
+    if (derived == order.status) return order;
+
+    _db.execute('UPDATE orders SET status = ? WHERE id = ?', [derived, orderId]);
+    return getOrderById(orderId);
   }
 
   Map<String, dynamic> getOrderStats({String? date}) {

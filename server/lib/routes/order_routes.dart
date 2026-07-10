@@ -12,6 +12,9 @@ void registerOrderRoutes(Router router, AppDb db, ServerConfig config) {
   router.post('/orders', (Request req) => _createOrder(req, db, config));
   router.patch('/orders/<id>/status',
       (Request req, String id) => _updateStatus(req, id, db, config));
+  router.patch('/orders/<id>/items/<itemId>/status',
+      (Request req, String id, String itemId) =>
+          _updateItemStatus(req, id, itemId, db, config));
 }
 
 // GET /orders?date=YYYY-MM-DD
@@ -87,6 +90,30 @@ Future<Response> _updateStatus(
 
   final updated = db.updateOrderStatus(orderId, status);
   if (updated == null) return notFound('Order not found');
+  KitchenHub.instance.broadcastOrderStatus(updated);
+  return jsonOk(updated.toJson());
+}
+
+// PATCH /orders/:id/items/:itemId/status  { status: "pending"|"preparing"|"ready" }
+Future<Response> _updateItemStatus(Request req, String id, String itemId,
+    AppDb db, ServerConfig config) async {
+  if (requireAuth(req, db, config.jwtSecret) == null) return unauthorized();
+
+  final orderId = int.tryParse(id);
+  final orderItemId = int.tryParse(itemId);
+  if (orderId == null || orderItemId == null) {
+    return jsonError('Invalid order or item id');
+  }
+
+  final body = await parseJsonBody(req);
+  final status = body?['status'] as String?;
+  if (status == null || !kOrderItemStatuses.contains(status)) {
+    return jsonError('status must be one of $kOrderItemStatuses');
+  }
+
+  final updated = db.updateOrderItemStatus(orderId, orderItemId, status);
+  if (updated == null) return notFound('Order or item not found');
+  KitchenHub.instance.broadcastItemStatus(updated, orderItemId);
   KitchenHub.instance.broadcastOrderStatus(updated);
   return jsonOk(updated.toJson());
 }

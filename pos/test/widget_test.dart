@@ -14,12 +14,17 @@ void main() {
     expect(find.text('CREATE SHOP'), findsOneWidget);
   });
 
-  testWidgets('Connect to Server navigates to the Connect screen', (
+  testWidgets('Connect to Server navigates to the Role Selection screen', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const MinePosApp());
 
     await tester.tap(find.text('CONNECT TO SERVER'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cashier / Manager'), findsOneWidget);
+
+    await tester.tap(find.text('Cashier / Manager'));
     await tester.pumpAndSettle();
 
     expect(find.text('Connect to Server'), findsOneWidget);
@@ -98,10 +103,14 @@ void main() {
   });
 }
 
-/// Walks Welcome -> Connect to Server -> Manual tab -> Connect, landing on
-/// the Login screen. Shared by tests that need to start from Login.
+/// Walks Welcome -> Connect to Server -> Role Selection (Cashier/Manager) ->
+/// Manual tab -> Connect, landing on the Login screen. Shared by tests that
+/// need to start from Login.
 Future<void> _connectToServer(WidgetTester tester) async {
   await tester.tap(find.text('CONNECT TO SERVER'));
+  await tester.pumpAndSettle();
+
+  await tester.tap(find.text('Cashier / Manager'));
   await tester.pumpAndSettle();
 
   // Manual tab avoids touching the Wi-Fi discovery tab, which would hit real

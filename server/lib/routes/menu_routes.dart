@@ -20,10 +20,14 @@ Response _getMenu(Request req, AppDb db, ServerConfig config) {
   return jsonOk(items.map((i) => i.toJson()).toList());
 }
 
+const _kMenuManagers = {'owner', 'manager'};
+
 // POST /menu  { name, category, price, available? }
 Future<Response> _createItem(
     Request req, AppDb db, ServerConfig config) async {
-  if (requireAuth(req, db, config.jwtSecret) == null) return unauthorized();
+  if (requireRoles(req, db, config.jwtSecret, _kMenuManagers) == null) {
+    return unauthorized();
+  }
 
   final body = await parseJsonBody(req);
   final name = (body?['name'] as String?)?.trim();
@@ -49,7 +53,9 @@ Future<Response> _createItem(
 // PUT /menu/:id  { name, category, price, available }
 Future<Response> _updateItem(
     Request req, String id, AppDb db, ServerConfig config) async {
-  if (requireAuth(req, db, config.jwtSecret) == null) return unauthorized();
+  if (requireRoles(req, db, config.jwtSecret, _kMenuManagers) == null) {
+    return unauthorized();
+  }
 
   final body = await parseJsonBody(req);
   final name = (body?['name'] as String?)?.trim();
@@ -75,7 +81,9 @@ Future<Response> _updateItem(
 // DELETE /menu/:id
 Response _deleteItem(
     Request req, String id, AppDb db, ServerConfig config) {
-  if (requireAuth(req, db, config.jwtSecret) == null) return unauthorized();
+  if (requireRoles(req, db, config.jwtSecret, _kMenuManagers) == null) {
+    return unauthorized();
+  }
   final deleted = db.deleteMenuItem(id);
   if (!deleted) return notFound('Menu item not found');
   return Response(204);
@@ -84,7 +92,9 @@ Response _deleteItem(
 // PATCH /menu/:id/toggle
 Response _toggleItem(
     Request req, String id, AppDb db, ServerConfig config) {
-  if (requireAuth(req, db, config.jwtSecret) == null) return unauthorized();
+  if (requireRoles(req, db, config.jwtSecret, _kMenuManagers) == null) {
+    return unauthorized();
+  }
   final item = db.toggleMenuItem(id);
   if (item == null) return notFound('Menu item not found');
   return jsonOk(item.toJson());

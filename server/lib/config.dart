@@ -12,6 +12,7 @@ class ServerConfig {
     required this.adminUser,
     required this.adminPass,
     required this.shopName,
+    required this.autoSeedAdmin,
   });
 
   final int port;
@@ -21,10 +22,18 @@ class ServerConfig {
   final String adminPass;
   final String shopName;
 
+  /// True only when both MINEPOS_ADMIN_USER and MINEPOS_ADMIN_PASS are
+  /// explicitly set — an opt-in for headless/scripted deployment. Otherwise
+  /// the server starts with no users at all and waits for a client to
+  /// bootstrap it via POST /setup (the Create Shop wizard).
+  final bool autoSeedAdmin;
+
   static Future<ServerConfig> load() async {
     final port = int.tryParse(Platform.environment['MINEPOS_PORT'] ?? '') ?? 8080;
     final dataDir = Platform.environment['MINEPOS_DATA_DIR'] ?? 'data';
     final shopName = Platform.environment['MINEPOS_SHOP_NAME'] ?? 'MinePOS';
+    final autoSeedAdmin = Platform.environment.containsKey('MINEPOS_ADMIN_USER') &&
+        Platform.environment.containsKey('MINEPOS_ADMIN_PASS');
     final adminUser = Platform.environment['MINEPOS_ADMIN_USER'] ?? 'admin';
     final adminPass = Platform.environment['MINEPOS_ADMIN_PASS'] ?? '';
 
@@ -45,11 +54,11 @@ class ServerConfig {
       }
     }
 
-    if (adminPass.isEmpty) {
+    if (!autoSeedAdmin) {
       print(
-        'ℹ  MINEPOS_ADMIN_PASS not set. '
-        'If no users exist, admin will be created with a random password — '
-        'check the startup log for it.',
+        'ℹ  MINEPOS_ADMIN_USER/MINEPOS_ADMIN_PASS not set. '
+        'No admin account will be auto-created — bootstrap the shop via '
+        'POST /setup (the Create Shop wizard) instead.',
       );
     }
 
@@ -60,6 +69,7 @@ class ServerConfig {
       adminUser: adminUser,
       adminPass: adminPass.isEmpty ? _randomString(12) : adminPass,
       shopName: shopName,
+      autoSeedAdmin: autoSeedAdmin,
     );
   }
 

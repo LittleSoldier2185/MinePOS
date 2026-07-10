@@ -7,6 +7,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../../../core/services/server_client.dart';
 import '../../cashier/models/order.dart';
+import '../../cashier/models/order_item.dart';
 
 enum KitchenConnectionState { disconnected, connecting, connected, error }
 
@@ -90,6 +91,32 @@ class KitchenService extends ChangeNotifier {
                   : o)
               .toList();
         }
+      case 'item_status':
+        final orderId = msg['orderId'] as int;
+        final itemId = msg['itemId'] as int;
+        final newItemStatus = msg['status'] as String;
+        _orders = _orders.map((o) {
+          if (o.id != orderId) return o;
+          final newItems = o.items
+              .map((i) => i.id == itemId
+                  ? OrderItem(
+                      menuItem: i.menuItem,
+                      quantity: i.quantity,
+                      id: i.id,
+                      status: newItemStatus,
+                    )
+                  : i)
+              .toList();
+          return Order(
+            id: o.id,
+            orderNumber: o.orderNumber,
+            items: newItems,
+            createdAt: o.createdAt,
+            paymentMethod: o.paymentMethod,
+            amountPaid: o.amountPaid,
+            kitchenStatus: o.kitchenStatus,
+          );
+        }).toList();
     }
     notifyListeners();
   }
@@ -120,6 +147,17 @@ class KitchenService extends ChangeNotifier {
         .timeout(const Duration(seconds: 10));
     // The server echoes the change back over the socket, which updates
     // _orders — no need to optimistically mutate local state here.
+  }
+
+  Future<void> updateItemStatus(int orderId, int itemId, String status) async {
+    final client = ServerClient.instance;
+    await http
+        .patch(
+          client.uri('/orders/$orderId/items/$itemId/status'),
+          headers: client.headers,
+          body: jsonEncode({'status': status}),
+        )
+        .timeout(const Duration(seconds: 10));
   }
 
   void disconnect() {

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/responsive/breakpoints.dart';
 import '../../core/theme/app_colors.dart';
+import '../../l10n/app_localizations.dart';
+import '../customer_display/services/customer_display_service.dart';
 import 'models/menu_item.dart';
 import 'models/order_item.dart';
 import 'order_history_screen.dart';
@@ -29,7 +31,23 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
 
   String _baht(double v) => '฿${v.toStringAsFixed(0)}';
 
+  @override
+  void initState() {
+    super.initState();
+    CustomerDisplayService.instance.connect();
+  }
+
   // ── Cart helpers ──────────────────────────────────────────────────────────
+
+  void _syncDisplay() {
+    final nextNum =
+        OrderService.instance.nextOrderNumber.toString().padLeft(3, '0');
+    CustomerDisplayService.instance.publishCart(
+      items: _cart,
+      total: _cartTotal,
+      orderNumber: nextNum,
+    );
+  }
 
   void _addItem(MenuItem item) {
     setState(() {
@@ -41,9 +59,13 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
         _cart.add(OrderItem(menuItem: item));
       }
     });
+    _syncDisplay();
   }
 
-  void _increment(int index) => setState(() => _cart[index].quantity++);
+  void _increment(int index) {
+    setState(() => _cart[index].quantity++);
+    _syncDisplay();
+  }
 
   void _decrement(int index) {
     setState(() {
@@ -53,31 +75,39 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
         _cart.removeAt(index);
       }
     });
+    _syncDisplay();
   }
 
-  void _remove(int index) => setState(() => _cart.removeAt(index));
+  void _remove(int index) {
+    setState(() => _cart.removeAt(index));
+    _syncDisplay();
+  }
 
   Future<void> _clearCart() async {
     if (_cart.isEmpty) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Clear Order?'),
-        content: const Text('Remove all items from the current order?'),
+        title: Text(AppLocalizations.of(context)!.clearOrderDialogTitle),
+        content:
+            Text(AppLocalizations.of(context)!.clearOrderDialogContent),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context)!.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Clear',
-                style: TextStyle(color: AppColors.terracottaDark)),
+            child: Text(AppLocalizations.of(context)!.clearButton,
+                style: const TextStyle(color: AppColors.terracottaDark)),
           ),
         ],
       ),
     );
-    if (confirmed == true) setState(() => _cart.clear());
+    if (confirmed == true) {
+      setState(() => _cart.clear());
+      _syncDisplay();
+    }
   }
 
   void _proceedToPayment() {
@@ -121,12 +151,12 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
           unselectedLabelColor: AppColors.muted,
           indicatorColor: AppColors.primary,
           tabs: [
-            const Tab(text: 'Menu'),
+            Tab(text: AppLocalizations.of(context)!.menuLabel),
             Tab(
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('Cart'),
+                  Text(AppLocalizations.of(context)!.cartTabLabel),
                   if (_cartCount > 0) ...[
                     const SizedBox(width: 6),
                     Container(
@@ -160,11 +190,11 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
 
   AppBar _buildAppBar({PreferredSizeWidget? bottom}) {
     return AppBar(
-      title: const Row(
+      title: Row(
         children: [
-          Icon(Icons.local_cafe, color: AppColors.primary, size: 20),
-          SizedBox(width: 8),
-          Text('New Order'),
+          const Icon(Icons.local_cafe, color: AppColors.primary, size: 20),
+          const SizedBox(width: 8),
+          Text(AppLocalizations.of(context)!.newOrderAppBarTitle),
         ],
       ),
       backgroundColor: Colors.white,
@@ -175,12 +205,12 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
         if (_cart.isNotEmpty)
           IconButton(
             icon: const Icon(Icons.delete_sweep_outlined),
-            tooltip: 'Clear order',
+            tooltip: AppLocalizations.of(context)!.clearOrderTooltip,
             onPressed: _clearCart,
           ),
         IconButton(
           icon: const Icon(Icons.history),
-          tooltip: 'Order history',
+          tooltip: AppLocalizations.of(context)!.orderHistoryTooltip,
           onPressed: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const OrderHistoryScreen()),
           ),
@@ -292,12 +322,12 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Order  #$nextNum',
+                AppLocalizations.of(context)!.orderNumberLabel(nextNum),
                 style: const TextStyle(
                     fontWeight: FontWeight.bold, fontSize: 14),
               ),
               Text(
-                '$_cartCount item${_cartCount == 1 ? '' : 's'}',
+                AppLocalizations.of(context)!.itemsCount(_cartCount),
                 style: const TextStyle(
                     color: AppColors.muted, fontSize: 12),
               ),
@@ -306,11 +336,12 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
         ),
         Expanded(
           child: _cart.isEmpty
-              ? const Center(
+              ? Center(
                   child: Text(
-                    'Tap items\nto add to order',
+                    AppLocalizations.of(context)!.emptyCartMessage,
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: AppColors.muted, height: 1.6),
+                    style: const TextStyle(
+                        color: AppColors.muted, height: 1.6),
                   ),
                 )
               : ListView.builder(
@@ -337,8 +368,8 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Total',
-                      style: TextStyle(
+                  Text(AppLocalizations.of(context)!.total,
+                      style: const TextStyle(
                           fontWeight: FontWeight.bold, fontSize: 15)),
                   Text(
                     _baht(_cartTotal),
@@ -356,7 +387,8 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
                 child: ElevatedButton(
                   onPressed:
                       _cart.isNotEmpty ? _proceedToPayment : null,
-                  child: const Text('PROCEED TO PAY'),
+                  child:
+                      Text(AppLocalizations.of(context)!.proceedToPayButton),
                 ),
               ),
             ],

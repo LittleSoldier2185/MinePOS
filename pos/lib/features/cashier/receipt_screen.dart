@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../l10n/app_localizations.dart';
 import 'models/order.dart';
 import 'order_taking_screen.dart';
+import 'services/printer_service.dart';
 
 class ReceiptScreen extends StatelessWidget {
   const ReceiptScreen({super.key, required this.order});
@@ -15,7 +17,8 @@ class ReceiptScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Receipt ${order.formattedNumber}'),
+        title: Text(AppLocalizations.of(context)!
+            .receiptAppBarTitle(order.formattedNumber)),
         backgroundColor: Colors.white,
         foregroundColor: AppColors.ink,
         elevation: 0,
@@ -60,29 +63,31 @@ class _ReceiptPaper extends StatelessWidget {
             const Icon(Icons.local_cafe, color: AppColors.primary, size: 32),
             const SizedBox(height: 6),
             Text(
-              'MinePOS Coffee',
+              AppLocalizations.of(context)!.businessName,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: AppColors.ink,
                   ),
             ),
             const SizedBox(height: 2),
-            const Text(
-              'Thank you for your order!',
-              style: TextStyle(fontSize: 12, color: AppColors.muted),
+            Text(
+              AppLocalizations.of(context)!.receiptThankYouMessage,
+              style: const TextStyle(fontSize: 12, color: AppColors.muted),
             ),
             const SizedBox(height: 16),
             const Divider(),
             const SizedBox(height: 8),
             // Order info
-            _InfoRow('Order', order.formattedNumber),
+            _InfoRow(AppLocalizations.of(context)!.receiptOrderLabel,
+                order.formattedNumber),
             const SizedBox(height: 4),
-            _InfoRow('Date', order.formattedDate),
+            _InfoRow(AppLocalizations.of(context)!.receiptDateLabel,
+                order.formattedDate),
             _InfoRow(
-              'Payment',
+              AppLocalizations.of(context)!.receiptPaymentLabel,
               order.paymentMethod == PaymentMethod.cash
-                  ? 'Cash'
-                  : 'PromptPay',
+                  ? AppLocalizations.of(context)!.cash
+                  : AppLocalizations.of(context)!.promptpay,
             ),
             const SizedBox(height: 8),
             const Divider(),
@@ -115,17 +120,20 @@ class _ReceiptPaper extends StatelessWidget {
             const Divider(),
             const SizedBox(height: 8),
             // Totals
-            _TotalRow('Total', baht(order.total), bold: true),
+            _TotalRow(AppLocalizations.of(context)!.total, baht(order.total),
+                bold: true),
             if (order.paymentMethod == PaymentMethod.cash) ...[
               const SizedBox(height: 4),
-              _TotalRow('Cash', baht(order.amountPaid ?? 0)),
-              _TotalRow('Change', baht(order.change),
+              _TotalRow(AppLocalizations.of(context)!.cash,
+                  baht(order.amountPaid ?? 0)),
+              _TotalRow(AppLocalizations.of(context)!.change,
+                  baht(order.change),
                   color: AppColors.primary),
             ],
             const SizedBox(height: 16),
-            const Text(
-              '— See you again! —',
-              style: TextStyle(
+            Text(
+              AppLocalizations.of(context)!.receiptClosingMessage,
+              style: const TextStyle(
                   fontSize: 12,
                   color: AppColors.muted,
                   fontStyle: FontStyle.italic),
@@ -180,9 +188,33 @@ class _TotalRow extends StatelessWidget {
   }
 }
 
-class _BottomActions extends StatelessWidget {
+class _BottomActions extends StatefulWidget {
   const _BottomActions({required this.order});
   final Order order;
+
+  @override
+  State<_BottomActions> createState() => _BottomActionsState();
+}
+
+class _BottomActionsState extends State<_BottomActions> {
+  final _printerService = PrinterService();
+  bool _printing = false;
+
+  Future<void> _print() async {
+    setState(() => _printing = true);
+    final l10n = AppLocalizations.of(context)!;
+    final result = await _printerService.printReceipt(widget.order);
+    if (!mounted) return;
+    setState(() => _printing = false);
+
+    final message = switch (result.outcome) {
+      PrintOutcome.skipped => l10n.printSkippedMessage,
+      PrintOutcome.success => l10n.printSuccessMessage,
+      PrintOutcome.noPrinterFound => l10n.printNoPrinterMessage,
+      PrintOutcome.failed => l10n.printFailedMessage(result.errorDetail ?? ''),
+    };
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -192,15 +224,15 @@ class _BottomActions extends StatelessWidget {
       child: Row(
         children: [
           OutlinedButton.icon(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Printing — real integration coming soon.'),
-                ),
-              );
-            },
-            icon: const Icon(Icons.print_outlined, size: 18),
-            label: const Text('PRINT'),
+            onPressed: _printing ? null : _print,
+            icon: _printing
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.print_outlined, size: 18),
+            label: Text(AppLocalizations.of(context)!.printButtonLabel),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -212,7 +244,7 @@ class _BottomActions extends StatelessWidget {
                   (route) => route.isFirst,
                 );
               },
-              child: const Text('NEW ORDER'),
+              child: Text(AppLocalizations.of(context)!.newOrderButton),
             ),
           ),
         ],
