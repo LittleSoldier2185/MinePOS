@@ -18,6 +18,7 @@ class ShopSetupData {
   String adminPassword = '';
 
   ConnectionMode connectionMode = ConnectionMode.cloud;
+  String cloudServerAddress = '';
 
   PrinterChoice printerChoice = PrinterChoice.skip;
 }

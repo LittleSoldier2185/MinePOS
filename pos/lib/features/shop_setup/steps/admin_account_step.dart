@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_text_field.dart';
+import '../../../l10n/app_localizations.dart';
 import '../models/shop_setup_data.dart';
 
 class AdminAccountStep extends StatefulWidget {
@@ -31,6 +32,7 @@ class _AdminAccountStepState extends State<AdminAccountStep> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Form(
       key: widget.formKey,
       child: SingleChildScrollView(
@@ -38,28 +40,28 @@ class _AdminAccountStepState extends State<AdminAccountStep> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('First admin account', style: Theme.of(context).textTheme.titleLarge),
+            Text(l10n.adminAccountStepTitle, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 4),
-            const Text(
-              'This account has full access to MinePOS.',
-              style: TextStyle(color: AppColors.muted, fontSize: 13),
+            Text(
+              l10n.adminAccountStepSubtitle,
+              style: const TextStyle(color: AppColors.muted, fontSize: 13),
             ),
             const SizedBox(height: 20),
             AppTextField(
-              label: 'Username',
+              label: l10n.usernameLabel,
               controller: _usernameController,
               onChanged: (v) => widget.data.adminUsername = v,
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Username is required' : null,
+              validator: (v) => (v == null || v.trim().isEmpty) ? l10n.usernameRequiredValidator : null,
             ),
             const SizedBox(height: 14),
             AppTextField(
-              label: 'Password',
+              label: l10n.passwordLabel,
               controller: _passwordController,
               obscureText: _obscurePassword,
               onChanged: (v) => widget.data.adminPassword = v,
               validator: (v) {
-                if (v == null || v.isEmpty) return 'Password is required';
-                if (v.length < 6) return 'At least 6 characters';
+                if (v == null || v.isEmpty) return l10n.passwordRequiredValidator;
+                if (v.length < 6) return l10n.passwordMinLengthValidatorError;
                 return null;
               },
               suffixIcon: IconButton(
@@ -69,11 +71,11 @@ class _AdminAccountStepState extends State<AdminAccountStep> {
             ),
             const SizedBox(height: 14),
             AppTextField(
-              label: 'Confirm Password',
+              label: l10n.confirmPasswordLabel,
               controller: _confirmController,
               obscureText: _obscureConfirm,
               validator: (v) {
-                if (v != _passwordController.text) return 'Passwords do not match';
+                if (v != _passwordController.text) return l10n.passwordMismatchValidator;
                 return null;
               },
               suffixIcon: IconButton(

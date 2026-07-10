@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../l10n/app_localizations.dart';
 import '../models/shop_setup_data.dart';
 
 class PrinterSetupStep extends StatefulWidget {
@@ -19,45 +20,46 @@ class _PrinterSetupStepState extends State<PrinterSetupStep> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Printer setup', style: Theme.of(context).textTheme.titleLarge),
+          Text(l10n.printerSetupStepTitle, style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 4),
-          const Text(
-            'Choose how receipts will print. You can change this later.',
-            style: TextStyle(color: AppColors.muted, fontSize: 13),
+          Text(
+            l10n.printerSetupStepSubtitle,
+            style: const TextStyle(color: AppColors.muted, fontSize: 13),
           ),
           const SizedBox(height: 20),
           _PrinterOption(
             icon: Icons.bluetooth,
-            title: 'Bluetooth',
-            subtitle: 'Pair a Bluetooth thermal printer',
+            title: l10n.bluetooth,
+            subtitle: l10n.bluetoothPrinterOptionSubtitle,
             selected: widget.data.printerChoice == PrinterChoice.bluetooth,
             onTap: () => _select(PrinterChoice.bluetooth),
           ),
           const SizedBox(height: 12),
           _PrinterOption(
             icon: Icons.usb,
-            title: 'USB',
-            subtitle: 'Connect a USB thermal printer',
+            title: l10n.usb,
+            subtitle: l10n.usbPrinterOptionSubtitle,
             selected: widget.data.printerChoice == PrinterChoice.usb,
             onTap: () => _select(PrinterChoice.usb),
           ),
           const SizedBox(height: 12),
           _PrinterOption(
             icon: Icons.skip_next,
-            title: 'Skip for now',
-            subtitle: 'Set up a printer later from Settings',
+            title: l10n.skipPrinterOptionTitle,
+            subtitle: l10n.skipPrinterOptionSubtitle,
             selected: widget.data.printerChoice == PrinterChoice.skip,
             onTap: () => _select(PrinterChoice.skip),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Printer discovery is coming soon — this just records your preference for now.',
-            style: TextStyle(color: AppColors.muted, fontSize: 12, fontStyle: FontStyle.italic),
+          Text(
+            l10n.printerDiscoveryNote,
+            style: const TextStyle(color: AppColors.muted, fontSize: 12, fontStyle: FontStyle.italic),
           ),
         ],
       ),

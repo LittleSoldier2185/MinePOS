@@ -1,13 +1,23 @@
 import 'package:flutter/material.dart';
 
+import '../../core/services/local_server_launcher.dart';
+import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
+import '../../l10n/app_localizations.dart';
+import '../auth/services/auth_service.dart';
 import '../home/home_placeholder_screen.dart';
 import 'models/shop_setup_data.dart';
+import 'services/shop_setup_service.dart';
 import 'steps/admin_account_step.dart';
 import 'steps/connection_mode_step.dart';
 import 'steps/printer_setup_step.dart';
 import 'steps/setup_summary_step.dart';
 import 'steps/shop_details_step.dart';
+
+// "Local (this device)" always means the Dart server started via
+// `dart run bin/server.dart` on localhost — the Flutter app has no way to
+// launch that process itself, so the wizard assumes it's already running.
+const _localSetupAddress = '127.0.0.1:8080';
 
 const _stepCount = 5;
 
@@ -23,8 +33,10 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
   final _pageController = PageController();
   final _detailsFormKey = GlobalKey<FormState>();
   final _adminFormKey = GlobalKey<FormState>();
+  final _connectionFormKey = GlobalKey<FormState>();
 
   int _currentStep = 0;
+  bool _submitting = false;
 
   GlobalKey<FormState>? get _currentFormKey {
     switch (_currentStep) {
@@ -32,12 +44,15 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
         return _detailsFormKey;
       case 1:
         return _adminFormKey;
+      case 2:
+        return _connectionFormKey;
       default:
         return null;
     }
   }
 
   void _next() {
+    if (_submitting) return;
     final formKey = _currentFormKey;
     if (formKey != null && !(formKey.currentState?.validate() ?? true)) return;
 
@@ -64,11 +79,45 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
     );
   }
 
-  void _finish() {
+  Future<void> _finish() async {
+    final l10n = AppLocalizations.of(context)!;
+
+    final targetAddress = _data.connectionMode == ConnectionMode.local
+        ? _localSetupAddress
+        : _data.cloudServerAddress.trim();
+
+    setState(() => _submitting = true);
+    try {
+      if (_data.connectionMode == ConnectionMode.local) {
+        await LocalServerLauncher.instance.ensureRunning();
+      }
+      await ShopSetupService().createShop(_data, targetAddress);
+
+      ServerClient.instance.baseUrl = targetAddress;
+      final result =
+          await AuthService().login(_data.adminUsername, _data.adminPassword);
+      if (!result.success) {
+        throw Exception(
+            'Shop was created but automatic sign-in failed — sign in manually.');
+      }
+      ServerClient.instance.role = result.role;
+      ServerClient.instance.username = result.username;
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.shopSetupFailedMessage('$e'))),
+      );
+      return;
+    }
+
+    if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
         builder: (_) => HomePlaceholderScreen(
-          title: _data.shopName.isEmpty ? 'Shop created!' : '${_data.shopName} is ready!',
+          title: _data.shopName.isEmpty
+              ? l10n.shopCreatedDefaultTitle
+              : l10n.shopReadyTitle(_data.shopName),
         ),
       ),
       (route) => false,
@@ -83,8 +132,9 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Shop')),
+      appBar: AppBar(title: Text(l10n.createShopAppBarTitle)),
       body: Column(
         children: [
           Padding(
@@ -92,7 +142,7 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
             child: Row(
               children: [
                 Text(
-                  'Step ${_currentStep + 1} of $_stepCount',
+                  l10n.stepIndicator(_currentStep + 1, _stepCount),
                   style: const TextStyle(
                     color: AppColors.muted,
                     fontSize: 12,
@@ -121,7 +171,7 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
               children: [
                 ShopDetailsStep(formKey: _detailsFormKey, data: _data),
                 AdminAccountStep(formKey: _adminFormKey, data: _data),
-                ConnectionModeStep(data: _data),
+                ConnectionModeStep(formKey: _connectionFormKey, data: _data),
                 PrinterSetupStep(data: _data),
                 SetupSummaryStep(data: _data),
               ],
@@ -136,16 +186,23 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
                   if (_currentStep > 0)
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: _back,
-                        child: const Text('BACK'),
+                        onPressed: _submitting ? null : _back,
+                        child: Text(l10n.back),
                       ),
                     ),
                   if (_currentStep > 0) const SizedBox(width: 12),
                   Expanded(
                     flex: 2,
                     child: ElevatedButton(
-                      onPressed: _next,
-                      child: Text(_currentStep == _stepCount - 1 ? 'FINISH SETUP' : 'NEXT'),
+                      onPressed: _submitting ? null : _next,
+                      child: _submitting
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: AppColors.accent),
+                            )
+                          : Text(_currentStep == _stepCount - 1 ? l10n.finishSetupButton : l10n.next),
                     ),
                   ),
                 ],

@@ -13,6 +13,7 @@ import '../lib/routes/health_route.dart';
 import '../lib/routes/kitchen_routes.dart';
 import '../lib/routes/menu_routes.dart';
 import '../lib/routes/order_routes.dart';
+import '../lib/routes/setup_routes.dart';
 import '../lib/routes/user_routes.dart';
 import '../lib/utils.dart';
 
@@ -28,6 +29,7 @@ Future<void> main() async {
   registerUserRoutes(router, db, config);
   registerKitchenRoutes(router, db, config);
   registerCustomerDisplayRoutes(router, db, config);
+  registerSetupRoutes(router, db, config);
 
   final handler = Pipeline()
       .addMiddleware(logRequests())

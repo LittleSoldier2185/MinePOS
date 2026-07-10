@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_text_field.dart';
+import '../../../l10n/app_localizations.dart';
 import '../models/shop_setup_data.dart';
 
 class ShopDetailsStep extends StatefulWidget {
@@ -43,6 +44,7 @@ class _ShopDetailsStepState extends State<ShopDetailsStep> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Form(
       key: widget.formKey,
       child: SingleChildScrollView(
@@ -50,11 +52,11 @@ class _ShopDetailsStepState extends State<ShopDetailsStep> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Shop details', style: Theme.of(context).textTheme.titleLarge),
+            Text(l10n.shopDetailsStepTitle, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 4),
-            const Text(
-              'Tell us about your shop.',
-              style: TextStyle(color: AppColors.muted, fontSize: 13),
+            Text(
+              l10n.shopDetailsStepSubtitle,
+              style: const TextStyle(color: AppColors.muted, fontSize: 13),
             ),
             const SizedBox(height: 20),
             Center(
@@ -72,49 +74,49 @@ class _ShopDetailsStepState extends State<ShopDetailsStep> {
               ),
             ),
             const SizedBox(height: 8),
-            const Center(
-              child: Text('Tap to add a logo', style: TextStyle(color: AppColors.muted, fontSize: 12)),
+            Center(
+              child: Text(l10n.shopLogoTapInstruction, style: const TextStyle(color: AppColors.muted, fontSize: 12)),
             ),
             const SizedBox(height: 20),
             AppTextField(
-              label: 'Shop Name',
+              label: l10n.shopNameFieldLabel,
               controller: _shopNameController,
-              hintText: 'Cozy Cafe',
+              hintText: l10n.shopNameFieldHint,
               onChanged: (v) => widget.data.shopName = v,
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Shop name is required' : null,
+              validator: (v) => (v == null || v.trim().isEmpty) ? l10n.shopNameValidatorError : null,
             ),
             const SizedBox(height: 14),
             AppTextField(
-              label: 'Email',
+              label: l10n.emailFieldLabel,
               controller: _emailController,
-              hintText: 'shop@example.com',
+              hintText: l10n.emailFieldHint,
               keyboardType: TextInputType.emailAddress,
               onChanged: (v) => widget.data.email = v,
               validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Email is required';
-                if (!v.contains('@') || !v.contains('.')) return 'Enter a valid email';
+                if (v == null || v.trim().isEmpty) return l10n.emailRequiredValidatorError;
+                if (!v.contains('@') || !v.contains('.')) return l10n.emailInvalidValidatorError;
                 return null;
               },
             ),
             const SizedBox(height: 14),
             AppTextField(
-              label: 'Address',
+              label: l10n.addressFieldLabel,
               controller: _addressController,
-              hintText: 'Optional',
+              hintText: l10n.optionalHint,
               onChanged: (v) => widget.data.address = v,
             ),
             const SizedBox(height: 14),
             AppTextField(
-              label: 'Tax ID',
+              label: l10n.taxIdFieldLabel,
               controller: _taxIdController,
-              hintText: 'Optional',
+              hintText: l10n.optionalHint,
               onChanged: (v) => widget.data.taxId = v,
             ),
             const SizedBox(height: 14),
             AppTextField(
-              label: 'Receipt Footer',
+              label: l10n.receiptFooterFieldLabel,
               controller: _receiptFooterController,
-              hintText: 'Optional, e.g. "Thank you!"',
+              hintText: l10n.receiptFooterFieldHint,
               onChanged: (v) => widget.data.receiptFooter = v,
             ),
           ],

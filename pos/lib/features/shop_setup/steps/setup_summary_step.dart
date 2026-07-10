@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../l10n/app_localizations.dart';
 import '../models/shop_setup_data.dart';
 
 class SetupSummaryStep extends StatelessWidget {
@@ -8,32 +9,34 @@ class SetupSummaryStep extends StatelessWidget {
 
   final ShopSetupData data;
 
-  String _connectionLabel() =>
-      data.connectionMode == ConnectionMode.local ? 'Local (this device)' : 'Cloud';
+  String _connectionLabel(AppLocalizations l10n) => data.connectionMode == ConnectionMode.local
+      ? l10n.connectionModeLocalLabel
+      : l10n.connectionModeCloudLabel;
 
-  String _printerLabel() {
+  String _printerLabel(AppLocalizations l10n) {
     switch (data.printerChoice) {
       case PrinterChoice.bluetooth:
-        return 'Bluetooth';
+        return l10n.bluetooth;
       case PrinterChoice.usb:
-        return 'USB';
+        return l10n.usb;
       case PrinterChoice.skip:
-        return 'Skipped for now';
+        return l10n.summaryPrinterSkippedLabel;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Review & finish', style: Theme.of(context).textTheme.titleLarge),
+          Text(l10n.setupSummaryStepTitle, style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 4),
-          const Text(
-            'Check everything looks right before creating your shop.',
-            style: TextStyle(color: AppColors.muted, fontSize: 13),
+          Text(
+            l10n.setupSummaryStepSubtitle,
+            style: const TextStyle(color: AppColors.muted, fontSize: 13),
           ),
           const SizedBox(height: 20),
           if (data.logoBytes != null)
@@ -41,17 +44,19 @@ class SetupSummaryStep extends StatelessWidget {
               child: CircleAvatar(radius: 40, backgroundImage: MemoryImage(data.logoBytes!)),
             ),
           const SizedBox(height: 12),
-          _SummaryRow(label: 'Shop Name', value: data.shopName),
-          _SummaryRow(label: 'Email', value: data.email),
-          if (data.address.isNotEmpty) _SummaryRow(label: 'Address', value: data.address),
-          if (data.taxId.isNotEmpty) _SummaryRow(label: 'Tax ID', value: data.taxId),
+          _SummaryRow(label: l10n.shopNameFieldLabel, value: data.shopName),
+          _SummaryRow(label: l10n.emailFieldLabel, value: data.email),
+          if (data.address.isNotEmpty) _SummaryRow(label: l10n.addressFieldLabel, value: data.address),
+          if (data.taxId.isNotEmpty) _SummaryRow(label: l10n.taxIdFieldLabel, value: data.taxId),
           if (data.receiptFooter.isNotEmpty)
-            _SummaryRow(label: 'Receipt Footer', value: data.receiptFooter),
+            _SummaryRow(label: l10n.receiptFooterFieldLabel, value: data.receiptFooter),
           const Divider(height: 32),
-          _SummaryRow(label: 'Admin Username', value: data.adminUsername),
+          _SummaryRow(label: l10n.summaryRowLabelAdminUsername, value: data.adminUsername),
           const Divider(height: 32),
-          _SummaryRow(label: 'Connection Mode', value: _connectionLabel()),
-          _SummaryRow(label: 'Printer', value: _printerLabel()),
+          _SummaryRow(label: l10n.summaryRowLabelConnectionMode, value: _connectionLabel(l10n)),
+          if (data.connectionMode == ConnectionMode.cloud && data.cloudServerAddress.isNotEmpty)
+            _SummaryRow(label: l10n.connectServerAddressLabel, value: data.cloudServerAddress),
+          _SummaryRow(label: l10n.summaryRowLabelPrinter, value: _printerLabel(l10n)),
         ],
       ),
     );
