@@ -4,7 +4,14 @@ import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 abstract final class AppTheme {
-  static ThemeData get light {
+  /// Noto Sans Thai covers Latin + Latin Extended as well as Thai, so it's
+  /// used everywhere — not just for the Thai locale — instead of switching
+  /// families by language. Keeps English and Thai screens visually
+  /// consistent instead of Quicksand/Montserrat English UI meeting a
+  /// different font the moment the language switches.
+  static ThemeData light(Locale locale) {
+    final isThai = locale.languageCode == 'th';
+
     final base = ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
@@ -14,15 +21,19 @@ abstract final class AppTheme {
         surface: AppColors.background,
       ),
       scaffoldBackgroundColor: AppColors.background,
-      textTheme: GoogleFonts.quicksandTextTheme(),
+      textTheme: GoogleFonts.notoSansThaiTextTheme(),
     );
 
     return base.copyWith(
       textTheme: base.textTheme.copyWith(
-        headlineMedium: GoogleFonts.montserrat(
+        headlineMedium: GoogleFonts.notoSansThai(
           fontSize: 28,
           fontWeight: FontWeight.w600,
-          letterSpacing: 4,
+          // Wide Latin-style tracking distorts Thai vowel/tone-mark shaping;
+          // this style is also used for translated Thai screen titles, not
+          // just the untranslated "MINEPOS" brand text, so it stays
+          // locale-dependent even though the font family no longer is.
+          letterSpacing: isThai ? 0 : 4,
           color: AppColors.ink,
         ),
       ),
@@ -34,7 +45,7 @@ abstract final class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          textStyle: GoogleFonts.quicksand(
+          textStyle: GoogleFonts.notoSansThai(
             fontWeight: FontWeight.w700,
             fontSize: 15,
           ),
@@ -48,7 +59,7 @@ abstract final class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          textStyle: GoogleFonts.quicksand(
+          textStyle: GoogleFonts.notoSansThai(
             fontWeight: FontWeight.w700,
             fontSize: 15,
           ),
