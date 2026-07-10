@@ -31,12 +31,15 @@ Future<Response> _login(
   if (user == null || !BCrypt.checkpw(password, user.passwordHash)) {
     return unauthorized('Invalid username or password');
   }
+  if (!user.active) {
+    return unauthorized('This account has been deactivated');
+  }
 
   final ttl = user.role == 'owner'
       ? const Duration(days: 30)
       : const Duration(hours: 8);
   final token = JWT(
-    {'sub': user.username, 'role': user.role},
+    {'sub': user.username, 'role': user.role, 'ver': user.tokenVersion},
   ).sign(SecretKey(config.jwtSecret), expiresIn: ttl);
 
   return jsonOk({'token': token, 'role': user.role, 'username': user.username});

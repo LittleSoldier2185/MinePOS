@@ -6,19 +6,27 @@ enum PaymentMethod { cash, promptpay }
 
 class Order {
   Order({
+    this.id,
     required this.orderNumber,
     required this.items,
     required this.createdAt,
     required this.paymentMethod,
     this.amountPaid,
+    this.kitchenStatus = 'pending',
   }) : status = OrderStatus.paid;
 
+  /// Server-assigned primary key — null until synced (used for kitchen
+  /// status updates; distinct from [orderNumber], the shop-facing counter).
+  final int? id;
   final int orderNumber;
   final List<OrderItem> items;
   final DateTime createdAt;
   final OrderStatus status;
   final PaymentMethod paymentMethod;
   final double? amountPaid;
+
+  /// Kitchen prep state: "pending" | "preparing" | "ready" | "completed".
+  final String kitchenStatus;
 
   double get total => items.fold(0.0, (s, i) => s + i.subtotal);
 
@@ -40,6 +48,7 @@ class Order {
   }
 
   factory Order.fromJson(Map<String, dynamic> json) => Order(
+        id: json['id'] as int?,
         orderNumber: json['orderNumber'] as int,
         items: (json['items'] as List)
             .map((i) => OrderItem.fromJson(i as Map<String, dynamic>))
@@ -49,5 +58,6 @@ class Order {
             ? PaymentMethod.promptpay
             : PaymentMethod.cash,
         amountPaid: (json['amountPaid'] as num?)?.toDouble(),
+        kitchenStatus: json['status'] as String? ?? 'pending',
       );
 }

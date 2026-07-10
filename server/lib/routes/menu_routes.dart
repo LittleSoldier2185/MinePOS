@@ -15,7 +15,7 @@ void registerMenuRoutes(Router router, AppDb db, ServerConfig config) {
 
 // GET /menu
 Response _getMenu(Request req, AppDb db, ServerConfig config) {
-  if (extractClaims(req, config.jwtSecret) == null) return unauthorized();
+  if (requireAuth(req, db, config.jwtSecret) == null) return unauthorized();
   final items = db.getMenuItems();
   return jsonOk(items.map((i) => i.toJson()).toList());
 }
@@ -23,7 +23,7 @@ Response _getMenu(Request req, AppDb db, ServerConfig config) {
 // POST /menu  { name, category, price, available? }
 Future<Response> _createItem(
     Request req, AppDb db, ServerConfig config) async {
-  if (extractClaims(req, config.jwtSecret) == null) return unauthorized();
+  if (requireAuth(req, db, config.jwtSecret) == null) return unauthorized();
 
   final body = await parseJsonBody(req);
   final name = (body?['name'] as String?)?.trim();
@@ -49,7 +49,7 @@ Future<Response> _createItem(
 // PUT /menu/:id  { name, category, price, available }
 Future<Response> _updateItem(
     Request req, String id, AppDb db, ServerConfig config) async {
-  if (extractClaims(req, config.jwtSecret) == null) return unauthorized();
+  if (requireAuth(req, db, config.jwtSecret) == null) return unauthorized();
 
   final body = await parseJsonBody(req);
   final name = (body?['name'] as String?)?.trim();
@@ -75,7 +75,7 @@ Future<Response> _updateItem(
 // DELETE /menu/:id
 Response _deleteItem(
     Request req, String id, AppDb db, ServerConfig config) {
-  if (extractClaims(req, config.jwtSecret) == null) return unauthorized();
+  if (requireAuth(req, db, config.jwtSecret) == null) return unauthorized();
   final deleted = db.deleteMenuItem(id);
   if (!deleted) return notFound('Menu item not found');
   return Response(204);
@@ -84,7 +84,7 @@ Response _deleteItem(
 // PATCH /menu/:id/toggle
 Response _toggleItem(
     Request req, String id, AppDb db, ServerConfig config) {
-  if (extractClaims(req, config.jwtSecret) == null) return unauthorized();
+  if (requireAuth(req, db, config.jwtSecret) == null) return unauthorized();
   final item = db.toggleMenuItem(id);
   if (item == null) return notFound('Menu item not found');
   return jsonOk(item.toJson());

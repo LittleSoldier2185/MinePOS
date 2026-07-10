@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:shelf/shelf.dart';
 
+import 'database.dart';
+
 // ── JSON responses ─────────────────────────────────────────────────────────────
 
 Response jsonOk(Object data, {int status = 200}) => Response(
@@ -40,20 +42,35 @@ Future<Map<String, dynamic>?> parseJsonBody(Request req) async {
 
 // ── JWT helpers ───────────────────────────────────────────────────────────────
 
-Map<String, dynamic>? extractClaims(Request req, String jwtSecret) {
-  final auth = req.headers['authorization'];
-  if (auth == null || !auth.startsWith('Bearer ')) return null;
-  final token = auth.substring(7);
+/// Verifies a raw JWT's signature *and* cross-checks it against the current
+/// DB state, so a deactivated user or a forced logout takes effect
+/// immediately instead of waiting for the JWT to expire.
+DbUser? verifyToken(String token, AppDb db, String jwtSecret, {String? role}) {
+  Map<String, dynamic> claims;
   try {
     final jwt = JWT.verify(token, SecretKey(jwtSecret));
     final payload = jwt.payload;
-    if (payload is Map) {
-      return Map<String, dynamic>.from(payload);
-    }
-    return null;
+    if (payload is! Map) return null;
+    claims = Map<String, dynamic>.from(payload);
   } catch (_) {
     return null;
   }
+
+  final username = claims['sub'] as String?;
+  final ver = claims['ver'] as int?;
+  if (username == null || ver == null) return null;
+
+  final user = db.getUserByUsername(username);
+  if (user == null || !user.active || user.tokenVersion != ver) return null;
+  if (role != null && user.role != role) return null;
+  return user;
+}
+
+/// Same as [verifyToken], reading the token from the request's bearer header.
+DbUser? requireAuth(Request req, AppDb db, String jwtSecret, {String? role}) {
+  final auth = req.headers['authorization'];
+  if (auth == null || !auth.startsWith('Bearer ')) return null;
+  return verifyToken(auth.substring(7), db, jwtSecret, role: role);
 }
 
 // ── CORS middleware ────────────────────────────────────────────────────────────

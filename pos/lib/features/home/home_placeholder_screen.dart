@@ -7,7 +7,11 @@ import '../cashier/models/order.dart';
 import '../cashier/order_history_screen.dart';
 import '../cashier/order_taking_screen.dart';
 import '../cashier/services/order_service.dart';
+import '../kitchen/kitchen_display_screen.dart';
 import '../manager/menu_management_screen.dart';
+import '../manager/reports_screen.dart';
+import '../manager/settings_screen.dart';
+import '../manager/staff_management_screen.dart';
 import '../welcome/welcome_screen.dart';
 
 const _kSidebarBg = Color(0xFF232315);
@@ -76,12 +80,6 @@ Future<void> _confirmLogout(BuildContext context) async {
   }
 }
 
-void _comingSoon(BuildContext context, String label) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text('$label — coming soon')),
-  );
-}
-
 void _openNewOrder(BuildContext context) {
   Navigator.of(context).push(
     MaterialPageRoute(builder: (_) => const OrderTakingScreen()),
@@ -97,6 +95,30 @@ void _openHistory(BuildContext context) {
 void _openMenuMgmt(BuildContext context) {
   Navigator.of(context).push(
     MaterialPageRoute(builder: (_) => const MenuManagementScreen()),
+  );
+}
+
+void _openReports(BuildContext context) {
+  Navigator.of(context).push(
+    MaterialPageRoute(builder: (_) => const ReportsScreen()),
+  );
+}
+
+void _openSettings(BuildContext context) {
+  Navigator.of(context).push(
+    MaterialPageRoute(builder: (_) => const SettingsScreen()),
+  );
+}
+
+void _openStaff(BuildContext context) {
+  Navigator.of(context).push(
+    MaterialPageRoute(builder: (_) => const StaffManagementScreen()),
+  );
+}
+
+void _openKitchen(BuildContext context) {
+  Navigator.of(context).push(
+    MaterialPageRoute(builder: (_) => const KitchenDisplayScreen()),
   );
 }
 
@@ -236,20 +258,23 @@ class _Sidebar extends StatelessWidget {
                   _SideNavItem(
                     icon: Icons.soup_kitchen_outlined,
                     label: 'Kitchen',
-                    dim: true,
-                    onTap: () => _comingSoon(context, 'Kitchen Display'),
+                    onTap: () => _openKitchen(context),
                   ),
                   _SideNavItem(
                     icon: Icons.bar_chart_outlined,
                     label: 'Reports',
-                    dim: true,
-                    onTap: () => _comingSoon(context, 'Reports'),
+                    onTap: () => _openReports(context),
                   ),
+                  if (ServerClient.instance.isOwner)
+                    _SideNavItem(
+                      icon: Icons.badge_outlined,
+                      label: 'Staff',
+                      onTap: () => _openStaff(context),
+                    ),
                   _SideNavItem(
                     icon: Icons.settings_outlined,
                     label: 'Settings',
-                    dim: true,
-                    onTap: () => _comingSoon(context, 'Settings'),
+                    onTap: () => _openSettings(context),
                   ),
                 ],
               ),
@@ -262,9 +287,9 @@ class _Sidebar extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Admin',
-                  style: TextStyle(
+                Text(
+                  ServerClient.instance.username ?? 'Admin',
+                  style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: _kSidebarText),
@@ -288,45 +313,40 @@ class _SideNavItem extends StatelessWidget {
     required this.icon,
     required this.label,
     this.active = false,
-    this.dim = false,
     this.onTap,
   });
   final IconData icon;
   final String label;
   final bool active;
-  final bool dim;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Opacity(
-      opacity: dim ? 0.3 : 1.0,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 1),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-          decoration: BoxDecoration(
-            color: active ? _kSidebarHighlight : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              Icon(icon,
-                  size: 16,
-                  color: active ? _kSidebarText : _kSidebarMuted),
-              const SizedBox(width: 10),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight:
-                      active ? FontWeight.w600 : FontWeight.w500,
-                  color: active ? _kSidebarText : _kSidebarMuted,
-                ),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 1),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+        decoration: BoxDecoration(
+          color: active ? _kSidebarHighlight : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(icon,
+                size: 16,
+                color: active ? _kSidebarText : _kSidebarMuted),
+            const SizedBox(width: 10),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight:
+                    active ? FontWeight.w600 : FontWeight.w500,
+                color: active ? _kSidebarText : _kSidebarMuted,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -358,6 +378,29 @@ class _Mobile extends StatelessWidget {
         surfaceTintColor: Colors.transparent,
         automaticallyImplyLeading: false,
         actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'kitchen',
+                child: Text('Kitchen'),
+              ),
+              const PopupMenuItem(
+                value: 'reports',
+                child: Text('Reports'),
+              ),
+              if (ServerClient.instance.isOwner)
+                const PopupMenuItem(
+                  value: 'staff',
+                  child: Text('Staff'),
+                ),
+            ],
+            onSelected: (value) {
+              if (value == 'kitchen') _openKitchen(context);
+              if (value == 'reports') _openReports(context);
+              if (value == 'staff') _openStaff(context);
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () => _confirmLogout(context),
@@ -374,7 +417,7 @@ class _Mobile extends StatelessWidget {
         onTap: (i) {
           if (i == 1) { _openHistory(context); return; }
           if (i == 2) { _openMenuMgmt(context); return; }
-          if (i == 3) { _comingSoon(context, 'Settings'); return; }
+          if (i == 3) { _openSettings(context); return; }
         },
         items: const [
           BottomNavigationBarItem(

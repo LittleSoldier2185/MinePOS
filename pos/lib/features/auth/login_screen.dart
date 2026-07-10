@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../home/home_placeholder_screen.dart';
@@ -49,6 +50,8 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _signingIn = false);
 
     if (result.success) {
+      ServerClient.instance.role = result.role;
+      ServerClient.instance.username = result.username;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const HomePlaceholderScreen(title: 'Welcome back!')),
         (route) => false,

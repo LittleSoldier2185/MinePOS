@@ -17,17 +17,33 @@ class DbUser {
     required this.username,
     required this.passwordHash,
     required this.role,
+    required this.active,
+    required this.tokenVersion,
+    required this.createdAt,
   });
 
   final String username;
   final String passwordHash;
   final String role;
+  final bool active;
+  final int tokenVersion;
+  final DateTime createdAt;
 
   factory DbUser._fromRow(Row row) => DbUser(
         username: row['username'] as String,
         passwordHash: row['password_hash'] as String,
         role: row['role'] as String,
+        active: (row['active'] as int) == 1,
+        tokenVersion: row['token_version'] as int,
+        createdAt: DateTime.parse(row['created_at'] as String),
       );
+
+  Map<String, dynamic> toJson() => {
+        'username': username,
+        'role': role,
+        'active': active,
+        'createdAt': createdAt.toIso8601String(),
+      };
 }
 
 class DbOtp {
@@ -107,6 +123,9 @@ class DbOrderItem {
   double get subtotal => price * quantity;
 }
 
+/// Kitchen prep states an order moves through, oldest-first.
+const kOrderStatuses = ['pending', 'preparing', 'ready', 'completed'];
+
 class DbOrder {
   DbOrder({
     required this.id,
@@ -115,6 +134,7 @@ class DbOrder {
     required this.paymentMethod,
     required this.total,
     required this.items,
+    required this.status,
     this.amountPaid,
   });
 
@@ -124,6 +144,7 @@ class DbOrder {
   final String paymentMethod;
   final double total;
   final double? amountPaid;
+  final String status;
   final List<DbOrderItem> items;
 
   Map<String, dynamic> toJson() => {
@@ -131,6 +152,7 @@ class DbOrder {
         'orderNumber': orderNumber,
         'createdAt': createdAt.toIso8601String(),
         'paymentMethod': paymentMethod,
+        'status': status,
         'total': total,
         'amountPaid': amountPaid,
         'items': items.map((i) => i.toJson()).toList(),
@@ -181,9 +203,22 @@ class AppDb {
         username TEXT PRIMARY KEY,
         password_hash TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'worker',
+        active INTEGER NOT NULL DEFAULT 1,
+        token_version INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       )
     ''');
+    // Backfill columns for databases created before these fields existed.
+    final userCols =
+        _db.select("PRAGMA table_info(users)").map((r) => r['name']).toSet();
+    if (!userCols.contains('active')) {
+      _db.execute(
+          'ALTER TABLE users ADD COLUMN active INTEGER NOT NULL DEFAULT 1');
+    }
+    if (!userCols.contains('token_version')) {
+      _db.execute(
+          'ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0');
+    }
 
     _db.execute('''
       CREATE TABLE IF NOT EXISTS otp_tokens (
@@ -211,9 +246,21 @@ class AppDb {
         created_at TEXT NOT NULL,
         payment_method TEXT NOT NULL,
         amount_paid REAL,
-        total REAL NOT NULL
+        total REAL NOT NULL,
+        status TEXT NOT NULL DEFAULT 'completed'
       )
     ''');
+    // Backfill for databases created before kitchen status tracking existed —
+    // those orders already happened, so 'completed' is the correct default.
+    // New orders always set status explicitly to 'pending' on insert.
+    final orderCols = _db
+        .select("PRAGMA table_info(orders)")
+        .map((r) => r['name'])
+        .toSet();
+    if (!orderCols.contains('status')) {
+      _db.execute(
+          "ALTER TABLE orders ADD COLUMN status TEXT NOT NULL DEFAULT 'completed'");
+    }
 
     _db.execute('''
       CREATE TABLE IF NOT EXISTS order_items (
@@ -261,6 +308,38 @@ class AppDb {
       'UPDATE users SET password_hash = ? WHERE username = ?',
       [newPasswordHash, username.toLowerCase()],
     );
+  }
+
+  List<DbUser> getAllUsers() {
+    final rows = _db.select('SELECT * FROM users ORDER BY created_at');
+    return rows.map(DbUser._fromRow).toList();
+  }
+
+  /// Sets [active] and — when deactivating — bumps the token version so any
+  /// outstanding JWTs for this user immediately fail auth checks.
+  DbUser? setUserActive(String username, bool active) {
+    _db.execute(
+      'UPDATE users SET active = ?, '
+      'token_version = token_version + CASE WHEN ? THEN 0 ELSE 1 END '
+      'WHERE username = ?',
+      [active ? 1 : 0, active ? 1 : 0, username.toLowerCase()],
+    );
+    return getUserByUsername(username);
+  }
+
+  /// Invalidates all outstanding JWTs for [username] without changing role
+  /// or active state — used for a manual "force logout".
+  DbUser? bumpTokenVersion(String username) {
+    _db.execute(
+      'UPDATE users SET token_version = token_version + 1 WHERE username = ?',
+      [username.toLowerCase()],
+    );
+    return getUserByUsername(username);
+  }
+
+  bool deleteUser(String username) {
+    _db.execute('DELETE FROM users WHERE username = ?', [username.toLowerCase()]);
+    return _db.updatedRows > 0;
   }
 
   // ── OTP ────────────────────────────────────────────────────────────────────
@@ -373,8 +452,8 @@ class AppDb {
     );
 
     _db.execute(
-      'INSERT INTO orders (order_number, created_at, payment_method, amount_paid, total) '
-      'VALUES (?, ?, ?, ?, ?)',
+      'INSERT INTO orders (order_number, created_at, payment_method, amount_paid, total, status) '
+      "VALUES (?, ?, ?, ?, ?, 'pending')",
       [orderNumber, now, paymentMethod, amountPaid, total],
     );
     final orderId = _db.lastInsertRowId;
@@ -395,7 +474,7 @@ class AppDb {
       );
     }
 
-    return _buildOrder(orderId, orderNumber, now, paymentMethod, amountPaid, total);
+    return _buildOrder(orderId, orderNumber, now, paymentMethod, amountPaid, total, 'pending');
   }
 
   DbOrder _buildOrder(
@@ -405,6 +484,7 @@ class AppDb {
     String paymentMethod,
     double? amountPaid,
     double total,
+    String status,
   ) {
     final itemRows = _db.select(
       'SELECT * FROM order_items WHERE order_id = ?',
@@ -417,14 +497,25 @@ class AppDb {
       paymentMethod: paymentMethod,
       total: total,
       amountPaid: amountPaid,
+      status: status,
       items: itemRows.map(DbOrderItem._fromRow).toList(),
     );
   }
 
+  DbOrder _rowToOrder(Row row) => _buildOrder(
+        row['id'] as int,
+        row['order_number'] as int,
+        row['created_at'] as String,
+        row['payment_method'] as String,
+        row['amount_paid'] as double?,
+        (row['total'] as num).toDouble(),
+        row['status'] as String,
+      );
+
   List<DbOrder> getOrders({String? date}) {
     final buffer = StringBuffer(
       'SELECT o.id, o.order_number, o.created_at, o.payment_method, '
-      'o.amount_paid, o.total FROM orders o',
+      'o.amount_paid, o.total, o.status FROM orders o',
     );
     final args = <Object?>[];
 
@@ -435,17 +526,32 @@ class AppDb {
     buffer.write(' ORDER BY o.id DESC');
 
     final orderRows = _db.select(buffer.toString(), args);
-    return orderRows.map((row) {
-      final id = row['id'] as int;
-      return _buildOrder(
-        id,
-        row['order_number'] as int,
-        row['created_at'] as String,
-        row['payment_method'] as String,
-        row['amount_paid'] as double?,
-        (row['total'] as num).toDouble(),
-      );
-    }).toList();
+    return orderRows.map(_rowToOrder).toList();
+  }
+
+  /// Orders still in the kitchen pipeline (not yet completed), oldest first.
+  List<DbOrder> getActiveOrders() {
+    final rows = _db.select(
+      "SELECT id, order_number, created_at, payment_method, amount_paid, total, status "
+      "FROM orders WHERE status != 'completed' ORDER BY id ASC",
+    );
+    return rows.map(_rowToOrder).toList();
+  }
+
+  DbOrder? getOrderById(int id) {
+    final rows = _db.select(
+      'SELECT id, order_number, created_at, payment_method, amount_paid, total, status '
+      'FROM orders WHERE id = ?',
+      [id],
+    );
+    if (rows.isEmpty) return null;
+    return _rowToOrder(rows.first);
+  }
+
+  DbOrder? updateOrderStatus(int id, String status) {
+    _db.execute('UPDATE orders SET status = ? WHERE id = ?', [status, id]);
+    if (_db.updatedRows == 0) return null;
+    return getOrderById(id);
   }
 
   Map<String, dynamic> getOrderStats({String? date}) {

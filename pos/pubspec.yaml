@@ -45,6 +45,9 @@ dependencies:
   bonsoir: ^5.1.9
   # HTTP client for real API calls to the MinePOS backend.
   http: ^1.2.2
+  file_picker: ^11.0.2
+  shared_preferences: ^2.5.5
+  web_socket_channel: ^3.0.3
 
 dev_dependencies:
   flutter_test:
