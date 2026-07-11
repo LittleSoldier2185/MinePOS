@@ -55,6 +55,19 @@ class StaffService {
     return StaffMember.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
+  /// [password] omitted or empty leaves the current password unchanged.
+  Future<StaffMember> update(String username, {required String role, String? password}) async {
+    final res = await _send(() => http.patch(
+          ServerClient.instance.uri('/users/$username'),
+          headers: ServerClient.instance.headers,
+          body: jsonEncode({
+            'role': role,
+            if (password != null && password.isNotEmpty) 'password': password,
+          }),
+        ));
+    return StaffMember.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
   Future<void> forceLogout(String username) => _send(() => http.post(
         ServerClient.instance.uri('/users/$username/logout'),
         headers: ServerClient.instance.headers,

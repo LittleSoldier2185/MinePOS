@@ -356,6 +356,18 @@ abstract class AppLocalizations {
   /// **'Couldn\'t start the local server. Use \"Connect to Server\" instead, or make sure MinePOS is fully installed.'**
   String get welcomeOpenRegisterFailedMessage;
 
+  /// No description provided for @localServerLaunchFailedError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not start the local server.'**
+  String get localServerLaunchFailedError;
+
+  /// No description provided for @welcomeOpenRegisterUnavailableNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Not available on this platform. Use \"Connect to Server\" instead.'**
+  String get welcomeOpenRegisterUnavailableNote;
+
   /// No description provided for @welcomeOrDivider.
   ///
   /// In en, this message translates to:
@@ -853,6 +865,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Only available on the Windows desktop app.'**
   String get localConnectionModeSubtitleOther;
+
+  /// No description provided for @localConnectionModeSubtitleMobile.
+  ///
+  /// In en, this message translates to:
+  /// **'Self-host on this device — single device only, other devices can\'t connect.'**
+  String get localConnectionModeSubtitleMobile;
 
   /// No description provided for @cloudConnectionModeSubtitle.
   ///
@@ -1562,6 +1580,30 @@ abstract class AppLocalizations {
   /// **'Password must be at least 8 characters'**
   String get staffPasswordTooShort;
 
+  /// No description provided for @editStaffTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get editStaffTooltip;
+
+  /// No description provided for @editStaffLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Staff'**
+  String get editStaffLabel;
+
+  /// No description provided for @staffPasswordEditHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave blank to keep current password'**
+  String get staffPasswordEditHint;
+
+  /// No description provided for @saveChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Changes'**
+  String get saveChanges;
+
   /// No description provided for @settingsAccountSectionLabel.
   ///
   /// In en, this message translates to:
@@ -1615,6 +1657,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'None'**
   String get noPrinterOption;
+
+  /// No description provided for @selectedPrinterLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Device'**
+  String get selectedPrinterLabel;
+
+  /// No description provided for @printerNotSelectedValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto (first found)'**
+  String get printerNotSelectedValue;
+
+  /// No description provided for @selectPrinterButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Printer'**
+  String get selectPrinterButton;
+
+  /// No description provided for @changePrinterButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get changePrinterButton;
+
+  /// No description provided for @selectPrinterDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Printer'**
+  String get selectPrinterDialogTitle;
+
+  /// No description provided for @noPrintersFoundMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'No printers found. Make sure it\'s on and in range.'**
+  String get noPrintersFoundMessage;
+
+  /// No description provided for @scanningForPrintersLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanning for printers…'**
+  String get scanningForPrintersLabel;
+
+  /// No description provided for @paperSizeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Paper Size'**
+  String get paperSizeLabel;
+
+  /// No description provided for @paperSize58.
+  ///
+  /// In en, this message translates to:
+  /// **'58mm'**
+  String get paperSize58;
+
+  /// No description provided for @paperSize80.
+  ///
+  /// In en, this message translates to:
+  /// **'80mm'**
+  String get paperSize80;
 
   /// No description provided for @languageSectionLabel.
   ///

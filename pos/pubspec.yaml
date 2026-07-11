@@ -53,6 +53,47 @@ dependencies:
   web_socket_channel: ^3.0.3
   intl: ^0.20.2
   unified_esc_pos_printer: ^3.3.3
+  # Shared backend (routes/db/auth) reused in-process for mobile self-host —
+  # see core/services/mobile_server_launcher.dart.
+  minepos_server:
+    path: ../server
+  # Pinned to the last version that actually bundles native sqlite3 binaries
+  # for Android/iOS — 0.6.0+ is a no-op stub that only works with sqlite3
+  # 3.x (which needs Dart build hooks + has breaking API changes we don't
+  # want to force onto the already-verified Windows server path). Revisit
+  # once the server package is deliberately upgraded to sqlite3 3.x.
+  sqlite3_flutter_libs: ^0.5.42
+  path_provider: ^2.1.6
+  path: ^1.9.1
+
+# usb_serial 0.5.2 (pulled in transitively by unified_esc_pos_printer for
+# Android USB printer support) calls the long-dead jcenter() repository in
+# its own android/build.gradle — a hard failure on modern Gradle. No newer
+# version of unified_esc_pos_printer drops it, so this points at a vendored
+# copy (vendor/usb_serial) with jcenter() replaced by mavenCentral() — same
+# Dart API, same version, only the Android Gradle file is patched.
+# file_picker 11.0.2's android/build.gradle skips applying the Kotlin plugin
+# on AGP >= 9, assuming AGP's built-in Kotlin support will compile its .kt
+# files instead — but this project has android.builtInKotlin=false (Flutter
+# template default, and needed for app/build.gradle.kts's own explicit
+# Kotlin setup), so nothing ever compiled FilePickerPlugin.kt. Vendored copy
+# always applies the Kotlin plugin, matching pre-AGP9-aware behavior.
+# bonsoir_android 5.1.6 hardcodes compileSdkVersion 33, but its own AndroidX
+# dependencies (fragment/window/lifecycle/core, pulled in at versions from
+# elsewhere in the graph) require compiling against API 34+. Vendored copy
+# uses flutter.compileSdkVersion instead, matching the app's own resolved SDK.
+# unified_esc_pos_printer 3.3.3 itself hardcodes compileSdk = 34, but its own
+# dependencies (network_info_plus needs 36, libserialport_plus needs 35)
+# require more. Vendored copy uses flutter.compileSdkVersion instead.
+dependency_overrides:
+  usb_serial:
+    path: vendor/usb_serial
+  file_picker:
+    path: vendor/file_picker
+  bonsoir_android:
+    path: vendor/bonsoir_android
+  unified_esc_pos_printer:
+    path: vendor/unified_esc_pos_printer
 
 dev_dependencies:
   flutter_test:

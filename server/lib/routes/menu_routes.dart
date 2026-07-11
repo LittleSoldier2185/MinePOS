@@ -41,11 +41,13 @@ Future<Response> _createItem(
   }
 
   final available = body?['available'] as bool? ?? true;
+  final imageBase64 = body?['imageBase64'] as String?;
   final item = db.createMenuItem(
     name: name,
     category: category,
     price: price,
     available: available,
+    imageBase64: imageBase64,
   );
   return jsonOk(item.toJson(), status: 201);
 }
@@ -67,12 +69,14 @@ Future<Response> _updateItem(
     return jsonError('name, category, price and available are required');
   }
 
+  final imageBase64 = body?['imageBase64'] as String?;
   final updated = db.updateMenuItem(
     id: id,
     name: name,
     category: category,
     price: price,
     available: available,
+    imageBase64: imageBase64,
   );
   if (updated == null) return notFound('Menu item not found');
   return jsonOk(updated.toJson());

@@ -11,36 +11,80 @@ class PrintResult {
   final String? errorDetail;
 }
 
+/// Stable identifier for a discovered device, built from its transport +
+/// address — used to remember "this exact printer" across scans, since scans
+/// don't return the same Dart object twice.
+String printerDeviceKey(PrinterDevice d) => switch (d) {
+      BluetoothPrinterDevice() => 'bluetooth:${d.address}',
+      BlePrinterDevice() => 'ble:${d.deviceId}',
+      UsbPrinterDevice() => 'usb:${d.identifier}',
+      NetworkPrinterDevice() => 'network:${d.host}:${d.port}',
+      _ => 'unknown:${d.name}',
+    };
+
+Set<PrinterConnectionType> _typesFor(PrinterChoice choice) =>
+    choice == PrinterChoice.bluetooth
+        ? const {PrinterConnectionType.bluetooth, PrinterConnectionType.ble}
+        : const {PrinterConnectionType.usb};
+
+PaperSize _paperSizeFor(ReceiptPaperSize size) =>
+    size == ReceiptPaperSize.mm58 ? PaperSize.mm58 : PaperSize.mm80;
+
 /// Prints a receipt to whatever printer is set in Settings (Bluetooth/USB),
 /// via the real ESC/POS transport in `package:unified_esc_pos_printer`.
 ///
-/// This is best-effort: it scans for a matching printer, connects to the
-/// first one found, prints, and disconnects — there's no "paired device"
-/// picker/memory yet, so it re-scans on every print.
+/// If the user has picked a specific device in Settings, every print scans
+/// then connects to that remembered device by key; otherwise (or if that
+/// device isn't found this time) it falls back to the first match, same as
+/// before a device was ever picked.
 class PrinterService {
+  /// Scans for devices matching [choice]'s transport — used by the Settings
+  /// screen's "select printer" picker.
+  Future<List<PrinterDevice>> scanAvailable(PrinterChoice choice) async {
+    final manager = PrinterManager();
+    try {
+      return await manager.scanPrinters(
+        timeout: const Duration(seconds: 5),
+        types: _typesFor(choice),
+      );
+    } finally {
+      await manager.dispose();
+    }
+  }
+
   Future<PrintResult> printReceipt(Order order) async {
-    final choice = await AppSettingsService.instance.getPrinterChoice();
+    final settings = AppSettingsService.instance;
+    final choice = await settings.getPrinterChoice();
     if (choice == PrinterChoice.skip) {
       return const PrintResult(PrintOutcome.skipped);
     }
-
-    final types = choice == PrinterChoice.bluetooth
-        ? const {PrinterConnectionType.bluetooth, PrinterConnectionType.ble}
-        : const {PrinterConnectionType.usb};
 
     final manager = PrinterManager();
     try {
       final devices = await manager.scanPrinters(
         timeout: const Duration(seconds: 5),
-        types: types,
+        types: _typesFor(choice),
       );
       if (devices.isEmpty) {
         return const PrintResult(PrintOutcome.noPrinterFound);
       }
 
-      await manager.connect(devices.first);
-      final ticket = await Ticket.create(PaperSize.mm80);
-      _buildReceipt(ticket, order);
+      final selectedId = await settings.getSelectedPrinterId();
+      PrinterDevice? matched;
+      if (selectedId != null) {
+        for (final d in devices) {
+          if (printerDeviceKey(d) == selectedId) {
+            matched = d;
+            break;
+          }
+        }
+      }
+      final target = matched ?? devices.first;
+
+      final paperSize = _paperSizeFor(await settings.getPaperSize());
+      await manager.connect(target);
+      final ticket = await Ticket.create(paperSize);
+      await _buildReceipt(ticket, order);
       await manager.printTicket(ticket);
       return const PrintResult(PrintOutcome.success);
     } on PrinterException catch (e) {
@@ -52,14 +96,19 @@ class PrinterService {
     }
   }
 
-  // The printed ticket's own copy is kept in plain English rather than
-  // pulled from AppLocalizations: this runs with no BuildContext, and Thai
-  // text needs the async textRaster() path (rendered via Flutter's text
-  // engine) rather than the plain Latin-1 text() used here — not worth the
-  // extra complexity for content that's currently unverifiable against real
-  // hardware anyway.
-  void _buildReceipt(Ticket ticket, Order order) {
-    String baht(double v) => '฿${v.toStringAsFixed(0)}';
+  // Fixed labels (headers, "Order"/"Date"/"Total"/etc.) are plain English —
+  // pulled straight from here rather than AppLocalizations, since this runs
+  // with no BuildContext — and printed via the cheap Latin-1 text()/row()
+  // path, which is fine since they're always ASCII. Item names are
+  // user-entered and may be Thai, so those go through rowRaster() instead:
+  // it renders the text as a bitmap via Flutter's text engine, so it prints
+  // correctly regardless of the printer's active codepage.
+  Future<void> _buildReceipt(Ticket ticket, Order order) async {
+    // "THB" not "฿": the ticket's default codec is Latin-1, which can't
+    // represent the Baht sign — encoding falls back to UTF-8 for the whole
+    // string, and a single-byte-codepage printer prints those raw UTF-8
+    // bytes as garbage instead of the symbol.
+    String baht(double v) => 'THB ${v.toStringAsFixed(0)}';
 
     ticket.text(
       'MinePOS Coffee',
@@ -87,9 +136,9 @@ class PrinterService {
     ticket.separator();
 
     for (final item in order.items) {
-      ticket.row([
-        PrintColumn(text: '${item.quantity}x ${item.menuItem.name}', flex: 3),
-        PrintColumn(text: baht(item.subtotal), flex: 1, align: PrintAlign.right),
+      await ticket.rowRaster([
+        PrintRasterColumn(text: '${item.quantity}x ${item.menuItem.name}', flex: 3),
+        PrintRasterColumn(text: baht(item.subtotal), flex: 1, align: PrintAlign.right),
       ]);
     }
     ticket.separator();

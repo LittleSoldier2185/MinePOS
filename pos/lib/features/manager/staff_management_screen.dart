@@ -41,7 +41,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
     _future = _svc.fetchAll();
   }
 
-  void _reload() => setState(() => _future = _svc.fetchAll());
+  void _reload() => setState(() { _future = _svc.fetchAll(); });
 
   void _showError(Object e) {
     if (!mounted) return;
@@ -58,6 +58,16 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
       builder: (_) => const _StaffFormSheet(),
     );
     if (created == true) _reload();
+  }
+
+  Future<void> _showEditStaffForm(StaffMember m) async {
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _StaffFormSheet(existing: m),
+    );
+    if (saved == true) _reload();
   }
 
   Future<void> _toggleActive(StaffMember m) async {
@@ -167,6 +177,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
               itemBuilder: (_, i) => _StaffRow(
                 member: staff[i],
                 isSelf: staff[i].username == ServerClient.instance.username,
+                onEdit: () => _showEditStaffForm(staff[i]),
                 onToggleActive: () => _toggleActive(staff[i]),
                 onForceLogout: () => _forceLogout(staff[i]),
                 onDelete: () => _confirmDelete(staff[i]),
@@ -185,12 +196,14 @@ class _StaffRow extends StatelessWidget {
   const _StaffRow({
     required this.member,
     required this.isSelf,
+    required this.onEdit,
     required this.onToggleActive,
     required this.onForceLogout,
     required this.onDelete,
   });
   final StaffMember member;
   final bool isSelf;
+  final VoidCallback onEdit;
   final VoidCallback onToggleActive;
   final VoidCallback onForceLogout;
   final VoidCallback onDelete;
@@ -272,6 +285,13 @@ class _StaffRow extends StatelessWidget {
               ),
             ),
             IconButton(
+              icon: const Icon(Icons.edit_outlined, size: 18),
+              tooltip: AppLocalizations.of(context)!.editStaffTooltip,
+              onPressed: onEdit,
+              visualDensity: VisualDensity.compact,
+              color: AppColors.muted,
+            ),
+            IconButton(
               icon: const Icon(Icons.logout, size: 18),
               tooltip: AppLocalizations.of(context)!.forceSignoutTooltip,
               onPressed: onForceLogout,
@@ -300,19 +320,31 @@ class _StaffRow extends StatelessWidget {
 // ── Add staff bottom sheet ──────────────────────────────────────────────────
 
 class _StaffFormSheet extends StatefulWidget {
-  const _StaffFormSheet();
+  const _StaffFormSheet({this.existing});
+
+  /// Null means "add staff"; non-null means "edit" (username fixed, password optional).
+  final StaffMember? existing;
 
   @override
   State<_StaffFormSheet> createState() => _StaffFormSheetState();
 }
 
 class _StaffFormSheetState extends State<_StaffFormSheet> {
+  bool get _isEdit => widget.existing != null;
+  bool get _isSelfEdit => _isEdit && widget.existing!.username == ServerClient.instance.username;
+
   final _formKey = GlobalKey<FormState>();
   final _usernameCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
-  String _role = 'worker';
+  late String _role = widget.existing?.role ?? 'worker';
   bool _saving = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _usernameCtrl.text = widget.existing?.username ?? '';
+  }
 
   @override
   void dispose() {
@@ -328,11 +360,19 @@ class _StaffFormSheetState extends State<_StaffFormSheet> {
       _error = null;
     });
     try {
-      await StaffService.instance.create(
-        username: _usernameCtrl.text.trim(),
-        password: _passwordCtrl.text,
-        role: _role,
-      );
+      if (_isEdit) {
+        await StaffService.instance.update(
+          widget.existing!.username,
+          role: _role,
+          password: _passwordCtrl.text,
+        );
+      } else {
+        await StaffService.instance.create(
+          username: _usernameCtrl.text.trim(),
+          password: _passwordCtrl.text,
+          role: _role,
+        );
+      }
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       setState(() {
@@ -370,11 +410,12 @@ class _StaffFormSheetState extends State<_StaffFormSheet> {
               ),
             ),
             const SizedBox(height: 16),
-            Text(l10n.addStaffLabel,
+            Text(_isEdit ? l10n.editStaffLabel : l10n.addStaffLabel,
                 style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
             const SizedBox(height: 20),
             TextFormField(
               controller: _usernameCtrl,
+              enabled: !_isEdit,
               decoration: InputDecoration(
                 labelText: l10n.usernameLabel,
                 hintText: l10n.usernameHint,
@@ -390,12 +431,14 @@ class _StaffFormSheetState extends State<_StaffFormSheet> {
               obscureText: true,
               decoration: InputDecoration(
                 labelText: l10n.staffPasswordLabel,
-                hintText: l10n.staffPasswordHint,
+                hintText: _isEdit ? l10n.staffPasswordEditHint : l10n.staffPasswordHint,
                 border: const OutlineInputBorder(),
               ),
-              validator: (v) => (v == null || v.length < 8)
-                  ? l10n.staffPasswordTooShort
-                  : null,
+              validator: (v) => (_isEdit && (v == null || v.isEmpty))
+                  ? null
+                  : (v == null || v.length < 8)
+                      ? l10n.staffPasswordTooShort
+                      : null,
             ),
             const SizedBox(height: 14),
             Text(l10n.roleLabel,
@@ -408,7 +451,7 @@ class _StaffFormSheetState extends State<_StaffFormSheet> {
                 return ChoiceChip(
                   label: Text(_roleLabel(context, r), style: const TextStyle(fontSize: 12)),
                   selected: sel,
-                  onSelected: (_) => setState(() => _role = r),
+                  onSelected: _isSelfEdit ? null : (_) => setState(() => _role = r),
                   selectedColor: AppColors.primary,
                   labelStyle:
                       TextStyle(color: sel ? AppColors.accent : AppColors.ink),
@@ -443,7 +486,7 @@ class _StaffFormSheetState extends State<_StaffFormSheet> {
                             child: CircularProgressIndicator(
                                 strokeWidth: 2, color: AppColors.accent),
                           )
-                        : Text(l10n.addStaffLabel),
+                        : Text(_isEdit ? l10n.saveChanges : l10n.addStaffLabel),
                   ),
                 ),
               ],

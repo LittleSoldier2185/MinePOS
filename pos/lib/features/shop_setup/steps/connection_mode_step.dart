@@ -27,8 +27,9 @@ class _ConnectionModeStepState extends State<ConnectionModeStep> {
   @override
   void initState() {
     super.initState();
-    // Self-hosting requires a Windows desktop host; force Cloud everywhere else.
-    if (!isWindowsDesktop) {
+    // Self-hosting works on Windows (host for other devices) and mobile
+    // (standalone single-device only); force Cloud everywhere else.
+    if (!isWindowsDesktop && !isMobile) {
       widget.data.connectionMode = ConnectionMode.cloud;
     }
   }
@@ -74,21 +75,24 @@ class _ConnectionModeStepState extends State<ConnectionModeStep> {
             const SizedBox(height: 20),
             // RadioListTile's groupValue/onChanged (vs. wrapping in a RadioGroup)
             // is deprecated but still functional; kept because RadioGroup has no
-            // clean way to disable a single item, which "Local" needs on non-Windows.
+            // clean way to disable a single item, which "Local" needs on
+            // platforms that can't self-host at all.
             // ignore: deprecated_member_use
             RadioListTile<ConnectionMode>(
               value: ConnectionMode.local,
               // ignore: deprecated_member_use
               groupValue: widget.data.connectionMode,
               // ignore: deprecated_member_use
-              onChanged: isWindowsDesktop
+              onChanged: (isWindowsDesktop || isMobile)
                   ? (value) => setState(() => widget.data.connectionMode = value!)
                   : null,
               title: Text(l10n.connectionModeLocalLabel),
               subtitle: Text(
                 isWindowsDesktop
                     ? l10n.localConnectionModeSubtitleWindows
-                    : l10n.localConnectionModeSubtitleOther,
+                    : isMobile
+                        ? l10n.localConnectionModeSubtitleMobile
+                        : l10n.localConnectionModeSubtitleOther,
               ),
               activeColor: AppColors.primary,
             ),

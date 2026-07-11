@@ -28,17 +28,21 @@ class ServerConfig {
   /// bootstrap it via POST /setup (the Create Shop wizard).
   final bool autoSeedAdmin;
 
-  static Future<ServerConfig> load() async {
-    final port = int.tryParse(Platform.environment['MINEPOS_PORT'] ?? '') ?? 8080;
-    final dataDir = Platform.environment['MINEPOS_DATA_DIR'] ?? 'data';
-    final shopName = Platform.environment['MINEPOS_SHOP_NAME'] ?? 'MinePOS';
+  /// [port]/[dataDir]/[shopName] override the matching env var when set —
+  /// used by in-process callers (e.g. mobile self-host) that can't set
+  /// process env vars for themselves. CLI callers pass nothing and get the
+  /// original env-var-driven behavior unchanged.
+  static Future<ServerConfig> load({int? port, String? dataDir, String? shopName}) async {
+    final resolvedPort = port ?? int.tryParse(Platform.environment['MINEPOS_PORT'] ?? '') ?? 8080;
+    final resolvedDataDir = dataDir ?? Platform.environment['MINEPOS_DATA_DIR'] ?? 'data';
+    final resolvedShopName = shopName ?? Platform.environment['MINEPOS_SHOP_NAME'] ?? 'MinePOS';
     final autoSeedAdmin = Platform.environment.containsKey('MINEPOS_ADMIN_USER') &&
         Platform.environment.containsKey('MINEPOS_ADMIN_PASS');
     final adminUser = Platform.environment['MINEPOS_ADMIN_USER'] ?? 'admin';
     final adminPass = Platform.environment['MINEPOS_ADMIN_PASS'] ?? '';
 
     // Persist JWT secret so tokens survive restarts.
-    final secretFile = File(p.join(dataDir, 'server.json'));
+    final secretFile = File(p.join(resolvedDataDir, 'server.json'));
     String jwtSecret = Platform.environment['MINEPOS_JWT_SECRET'] ?? '';
 
     if (jwtSecret.isEmpty) {
@@ -48,7 +52,7 @@ class ServerConfig {
       }
       if (jwtSecret.isEmpty) {
         jwtSecret = _randomString(48);
-        await Directory(dataDir).create(recursive: true);
+        await Directory(resolvedDataDir).create(recursive: true);
         await secretFile.writeAsString(jsonEncode({'jwtSecret': jwtSecret}));
         print('Generated new JWT secret and saved to ${secretFile.path}');
       }
@@ -63,12 +67,12 @@ class ServerConfig {
     }
 
     return ServerConfig._(
-      port: port,
+      port: resolvedPort,
       jwtSecret: jwtSecret,
-      dataDir: dataDir,
+      dataDir: resolvedDataDir,
       adminUser: adminUser,
       adminPass: adminPass.isEmpty ? _randomString(12) : adminPass,
-      shopName: shopName,
+      shopName: resolvedShopName,
       autoSeedAdmin: autoSeedAdmin,
     );
   }

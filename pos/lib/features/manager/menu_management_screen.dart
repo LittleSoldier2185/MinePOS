@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
@@ -226,6 +229,24 @@ class _ItemRow extends StatelessWidget {
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
             const SizedBox(width: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: item.imageBase64 != null
+                  ? Image.memory(
+                      base64Decode(item.imageBase64!),
+                      width: 36,
+                      height: 36,
+                      fit: BoxFit.cover,
+                    )
+                  : Container(
+                      width: 36,
+                      height: 36,
+                      color: AppColors.background,
+                      child: const Icon(Icons.fastfood_outlined,
+                          size: 18, color: AppColors.muted),
+                    ),
+            ),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -304,6 +325,7 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
   late final TextEditingController _categoryCtrl;
   late final TextEditingController _priceCtrl;
   late bool _available;
+  String? _imageBase64;
 
   bool get _isEdit => widget.existing != null;
 
@@ -316,6 +338,19 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
     _priceCtrl = TextEditingController(
         text: e != null ? e.price.toStringAsFixed(0) : '');
     _available = e?.available ?? true;
+    _imageBase64 = e?.imageBase64;
+  }
+
+  Future<void> _pickImage() async {
+    final file = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 300,
+      maxHeight: 300,
+      imageQuality: 70,
+    );
+    if (file == null) return;
+    final bytes = await file.readAsBytes();
+    setState(() => _imageBase64 = base64Encode(bytes));
   }
 
   @override
@@ -337,6 +372,7 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
         category: _categoryCtrl.text.trim(),
         price: price,
         available: _available,
+        imageBase64: _imageBase64,
       ));
     } else {
       svc.addItem(
@@ -344,6 +380,7 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
         category: _categoryCtrl.text.trim(),
         price: price,
         available: _available,
+        imageBase64: _imageBase64,
       );
     }
     Navigator.of(context).pop(true);
@@ -381,6 +418,29 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
               _isEdit ? l10n.editItemFormTitle : l10n.addItemLabel,
               style: const TextStyle(
                   fontSize: 17, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            Center(
+              child: GestureDetector(
+                onTap: _pickImage,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: _imageBase64 != null
+                      ? Image.memory(
+                          base64Decode(_imageBase64!),
+                          width: 80,
+                          height: 80,
+                          fit: BoxFit.cover,
+                        )
+                      : Container(
+                          width: 80,
+                          height: 80,
+                          color: AppColors.background,
+                          child: const Icon(Icons.add_a_photo_outlined,
+                              color: AppColors.muted),
+                        ),
+                ),
+              ),
             ),
             const SizedBox(height: 20),
             TextFormField(

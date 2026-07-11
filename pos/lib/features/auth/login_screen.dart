@@ -74,6 +74,151 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // Desktop gets a split branding/form layout; mobile keeps a single centered card.
+  static const _desktopBreakpoint = 900.0;
+
+  Widget _formFields(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Column(
+      children: [
+        AppTextField(
+          label: l10n.usernameOrEmailLabel,
+          controller: _usernameController,
+          validator: (v) => (v == null || v.trim().isEmpty) ? l10n.usernameRequiredValidator : null,
+        ),
+        const SizedBox(height: 14),
+        AppTextField(
+          label: l10n.passwordLabel,
+          controller: _passwordController,
+          obscureText: _obscurePassword,
+          validator: (v) => (v == null || v.isEmpty) ? l10n.passwordRequiredValidator : null,
+          suffixIcon: IconButton(
+            icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+          ),
+        ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+            ),
+            child: Text(l10n.loginForgotPasswordLink),
+          ),
+        ),
+        if (_error != null) ...[
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(_error!, style: const TextStyle(color: AppColors.terracottaDark, fontSize: 12)),
+          ),
+          const SizedBox(height: 8),
+        ],
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: _signingIn ? null : _signIn,
+            child: _signingIn
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent),
+                  )
+                : Text(l10n.loginSignInButton),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _mobileLayout(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                  child: const Icon(Icons.local_cafe, color: AppColors.accent, size: 34),
+                ),
+                const SizedBox(height: 20),
+                Text(l10n.loginScreenTitle, style: Theme.of(context).textTheme.headlineMedium),
+                const SizedBox(height: 4),
+                Text(
+                  l10n.loginConnectedTo(widget.serverAddress),
+                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                ),
+                const SizedBox(height: 32),
+                Card(
+                  child: Padding(padding: const EdgeInsets.all(24), child: _formFields(context)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _desktopLayout(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Row(
+      children: [
+        Expanded(
+          flex: 5,
+          child: Container(
+            color: AppColors.primary,
+            padding: const EdgeInsets.all(48),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle),
+                    child: const Icon(Icons.local_cafe, color: AppColors.primary, size: 34),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    l10n.loginScreenTitle,
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: AppColors.accent),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    l10n.loginConnectedTo(widget.serverAddress),
+                    style: const TextStyle(color: AppColors.primaryLight, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          flex: 4,
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(32),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 360),
+                child: Form(key: _formKey, child: _formFields(context)),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -83,101 +228,10 @@ class _LoginScreenState extends State<LoginScreen> {
         leading: BackButton(color: AppColors.muted),
       ),
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 72,
-                      height: 72,
-                      decoration: const BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.local_cafe, color: AppColors.accent, size: 34),
-                    ),
-                    const SizedBox(height: 20),
-                    Text(AppLocalizations.of(context)!.loginScreenTitle, style: Theme.of(context).textTheme.headlineMedium),
-                    const SizedBox(height: 4),
-                    Text(
-                      AppLocalizations.of(context)!.loginConnectedTo(widget.serverAddress),
-                      style: const TextStyle(color: AppColors.muted, fontSize: 12),
-                    ),
-                    const SizedBox(height: 32),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          children: [
-                            AppTextField(
-                              label: AppLocalizations.of(context)!.usernameOrEmailLabel,
-                              controller: _usernameController,
-                              validator: (v) =>
-                                  (v == null || v.trim().isEmpty) ? AppLocalizations.of(context)!.usernameRequiredValidator : null,
-                            ),
-                            const SizedBox(height: 14),
-                            AppTextField(
-                              label: AppLocalizations.of(context)!.passwordLabel,
-                              controller: _passwordController,
-                              obscureText: _obscurePassword,
-                              validator: (v) =>
-                                  (v == null || v.isEmpty) ? AppLocalizations.of(context)!.passwordRequiredValidator : null,
-                              suffixIcon: IconButton(
-                                icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-                                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                              ),
-                            ),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: TextButton(
-                                onPressed: () => Navigator.of(context).push(
-                                  MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
-                                ),
-                                child: Text(AppLocalizations.of(context)!.loginForgotPasswordLink),
-                              ),
-                            ),
-                            if (_error != null) ...[
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  _error!,
-                                  style: const TextStyle(color: AppColors.terracottaDark, fontSize: 12),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                            ],
-                            const SizedBox(height: 8),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: _signingIn ? null : _signIn,
-                                child: _signingIn
-                                    ? const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: AppColors.accent,
-                                        ),
-                                      )
-                                    : Text(AppLocalizations.of(context)!.loginSignInButton),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+        child: LayoutBuilder(
+          builder: (context, constraints) => constraints.maxWidth >= _desktopBreakpoint
+              ? _desktopLayout(context)
+              : _mobileLayout(context),
         ),
       ),
     );

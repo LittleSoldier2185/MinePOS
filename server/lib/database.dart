@@ -64,6 +64,7 @@ class DbMenuItem {
     required this.category,
     required this.price,
     required this.available,
+    this.imageBase64,
   });
 
   final String id;
@@ -71,6 +72,7 @@ class DbMenuItem {
   final String category;
   final double price;
   final bool available;
+  final String? imageBase64;
 
   factory DbMenuItem._fromRow(Row row) => DbMenuItem(
         id: row['id'] as String,
@@ -78,6 +80,7 @@ class DbMenuItem {
         category: row['category'] as String,
         price: (row['price'] as num).toDouble(),
         available: (row['available'] as int) == 1,
+        imageBase64: row['image_base64'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -86,6 +89,7 @@ class DbMenuItem {
         'category': category,
         'price': price,
         'available': available,
+        'imageBase64': imageBase64,
       };
 }
 
@@ -253,9 +257,17 @@ class AppDb {
         category TEXT NOT NULL,
         price REAL NOT NULL,
         available INTEGER NOT NULL DEFAULT 1,
-        sort_order INTEGER NOT NULL DEFAULT 0
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        image_base64 TEXT
       )
     ''');
+    final menuCols = _db
+        .select("PRAGMA table_info(menu_items)")
+        .map((r) => r['name'])
+        .toSet();
+    if (!menuCols.contains('image_base64')) {
+      _db.execute('ALTER TABLE menu_items ADD COLUMN image_base64 TEXT');
+    }
 
     _db.execute('''
       CREATE TABLE IF NOT EXISTS orders (
@@ -415,6 +427,14 @@ class AppDb {
     return getUserByUsername(username);
   }
 
+  DbUser? setUserRole(String username, String role) {
+    _db.execute(
+      'UPDATE users SET role = ? WHERE username = ?',
+      [role, username.toLowerCase()],
+    );
+    return getUserByUsername(username);
+  }
+
   /// Invalidates all outstanding JWTs for [username] without changing role
   /// or active state — used for a manual "force logout".
   DbUser? bumpTokenVersion(String username) {
@@ -478,15 +498,16 @@ class AppDb {
     required String category,
     required double price,
     bool available = true,
+    String? imageBase64,
   }) {
     final id = 'u${_uuid.v4().substring(0, 8)}';
     final sortOrder = _db
         .select('SELECT COUNT(*) AS c FROM menu_items')
         .first['c'] as int;
     _db.execute(
-      'INSERT INTO menu_items (id, name, category, price, available, sort_order) '
-      'VALUES (?, ?, ?, ?, ?, ?)',
-      [id, name.trim(), category.trim(), price, available ? 1 : 0, sortOrder],
+      'INSERT INTO menu_items (id, name, category, price, available, sort_order, image_base64) '
+      'VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [id, name.trim(), category.trim(), price, available ? 1 : 0, sortOrder, imageBase64],
     );
     return getMenuItem(id)!;
   }
@@ -497,11 +518,12 @@ class AppDb {
     required String category,
     required double price,
     required bool available,
+    String? imageBase64,
   }) {
     _db.execute(
-      'UPDATE menu_items SET name = ?, category = ?, price = ?, available = ? '
+      'UPDATE menu_items SET name = ?, category = ?, price = ?, available = ?, image_base64 = ? '
       'WHERE id = ?',
-      [name.trim(), category.trim(), price, available ? 1 : 0, id],
+      [name.trim(), category.trim(), price, available ? 1 : 0, imageBase64, id],
     );
     return getMenuItem(id);
   }

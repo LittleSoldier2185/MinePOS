@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../core/services/local_server_launcher.dart';
+import '../../core/services/mobile_server_launcher.dart';
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/window/platform_window.dart';
 import '../../l10n/app_localizations.dart';
 import '../auth/services/auth_service.dart';
 import '../home/home_placeholder_screen.dart';
@@ -14,9 +16,11 @@ import 'steps/printer_setup_step.dart';
 import 'steps/setup_summary_step.dart';
 import 'steps/shop_details_step.dart';
 
-// "Local (this device)" always means the Dart server started via
-// `dart run bin/server.dart` on localhost — the Flutter app has no way to
-// launch that process itself, so the wizard assumes it's already running.
+// "Local (this device)" always means 127.0.0.1:8080 — on Windows the app
+// launches a detached server exe (LocalServerLauncher); on mobile it spawns
+// an in-process background isolate bound to loopback only
+// (MobileServerLauncher). Either way, the wizard triggers the launch itself
+// before calling /setup.
 const _localSetupAddress = '127.0.0.1:8080';
 
 const _stepCount = 5;
@@ -89,7 +93,12 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
     setState(() => _submitting = true);
     try {
       if (_data.connectionMode == ConnectionMode.local) {
-        await LocalServerLauncher.instance.ensureRunning();
+        final launched = isWindowsDesktop
+            ? await LocalServerLauncher.instance.ensureRunning()
+            : await MobileServerLauncher.instance.ensureRunning();
+        if (!launched) {
+          throw Exception(l10n.localServerLaunchFailedError);
+        }
       }
       await ShopSetupService().createShop(_data, targetAddress);
 

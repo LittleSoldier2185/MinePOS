@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -9,6 +11,7 @@ import '../cashier/models/order.dart';
 import '../cashier/order_history_screen.dart';
 import '../cashier/order_taking_screen.dart';
 import '../cashier/services/order_service.dart';
+import '../connect/services/connection_service.dart';
 import '../kitchen/kitchen_display_screen.dart';
 import '../manager/menu_management_screen.dart';
 import '../manager/reports_screen.dart';
@@ -283,7 +286,11 @@ class _Sidebar extends StatelessWidget {
           // Footer
           const Divider(color: Color(0xFF2E2E1A), height: 1),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+            padding: const EdgeInsets.fromLTRB(18, 11, 18, 0),
+            child: _ConnectionStatus(mutedColor: _kSidebarMuted),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 6, 18, 13),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -303,6 +310,69 @@ class _Sidebar extends StatelessWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Connection status ─────────────────────────────────────────────────────
+
+/// Polls `/health` on the connected server periodically and shows a
+/// Live/Offline dot — same visual language as the kitchen display's
+/// WebSocket badge, but for the plain HTTP connection this screen relies on.
+class _ConnectionStatus extends StatefulWidget {
+  const _ConnectionStatus({this.mutedColor = AppColors.muted});
+  final Color mutedColor;
+
+  @override
+  State<_ConnectionStatus> createState() => _ConnectionStatusState();
+}
+
+class _ConnectionStatusState extends State<_ConnectionStatus> {
+  final _svc = ConnectionService();
+  bool? _connected;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _check();
+    _timer = Timer.periodic(const Duration(seconds: 15), (_) => _check());
+  }
+
+  Future<void> _check() async {
+    final address = ServerClient.instance.baseUrl;
+    final ok = address != null && await _svc.testConnection(address);
+    if (mounted) setState(() => _connected = ok);
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final (color, label) = switch (_connected) {
+      true => (Colors.green.shade700, l10n.liveConnectionLabel),
+      false => (AppColors.terracottaDark, l10n.offlineLabel),
+      null => (widget.mutedColor, l10n.connectingLabel),
+    };
+    return Tooltip(
+      message: ServerClient.instance.baseUrl ?? '',
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -379,6 +449,10 @@ class _Mobile extends StatelessWidget {
         surfaceTintColor: Colors.transparent,
         automaticallyImplyLeading: false,
         actions: [
+          const Padding(
+            padding: EdgeInsets.only(right: 4),
+            child: Center(child: _ConnectionStatus()),
+          ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             itemBuilder: (context) => [

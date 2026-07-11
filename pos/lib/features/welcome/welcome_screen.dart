@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/services/local_server_launcher.dart';
+import '../../core/services/mobile_server_launcher.dart';
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/window/platform_window.dart';
@@ -19,20 +20,27 @@ class WelcomeScreen extends StatefulWidget {
 class _WelcomeScreenState extends State<WelcomeScreen> {
   bool _openingRegister = false;
 
+  // Self-hosting means launching a local server: a detached exe on Windows
+  // (can also serve other devices on the LAN), or an in-process loopback-only
+  // isolate on mobile (this device only, see MobileServerLauncher). Neither
+  // is wired up on other platforms (macOS/Linux desktop, Web) — the button is
+  // disabled there, since no server exists to point ServerClient.baseUrl at.
   Future<void> _openRegister() async {
-    if (isWindowsDesktop) {
-      setState(() => _openingRegister = true);
-      final ready = await LocalServerLauncher.instance.ensureRunning();
-      if (!mounted) return;
-      setState(() => _openingRegister = false);
-      if (!ready) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context)!.welcomeOpenRegisterFailedMessage)),
-        );
-        return;
-      }
-      ServerClient.instance.baseUrl = '127.0.0.1:8080';
+    if (!isWindowsDesktop && !isMobile) return;
+
+    setState(() => _openingRegister = true);
+    final ready = isWindowsDesktop
+        ? await LocalServerLauncher.instance.ensureRunning()
+        : await MobileServerLauncher.instance.ensureRunning();
+    if (!mounted) return;
+    setState(() => _openingRegister = false);
+    if (!ready) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context)!.welcomeOpenRegisterFailedMessage)),
+      );
+      return;
     }
+    ServerClient.instance.baseUrl = '127.0.0.1:8080';
 
     if (!mounted) return;
     final description = AppLocalizations.of(context)!.welcomeOpenRegisterDescription;
@@ -93,9 +101,17 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                                       child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent),
                                     )
                                   : Text(AppLocalizations.of(context)!.welcomeOpenRegisterButton),
-                              onPressed: _openingRegister ? null : _openRegister,
+                              onPressed: (_openingRegister || (!isWindowsDesktop && !isMobile)) ? null : _openRegister,
                             ),
                           ),
+                          if (!isWindowsDesktop && !isMobile) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              AppLocalizations.of(context)!.welcomeOpenRegisterUnavailableNote,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: AppColors.muted, fontSize: 11),
+                            ),
+                          ],
                           const SizedBox(height: 8),
                           Row(
                             children: [

@@ -146,6 +146,14 @@ class AppLocalizationsTh extends AppLocalizations {
       'ไม่สามารถเริ่มเซิร์ฟเวอร์ภายในเครื่องได้ กรุณาใช้ \"เชื่อมต่อเซิร์ฟเวอร์\" แทน หรือตรวจสอบว่าติดตั้ง MinePOS ครบถ้วนแล้ว';
 
   @override
+  String get localServerLaunchFailedError =>
+      'ไม่สามารถเริ่มเซิร์ฟเวอร์ภายในเครื่องได้';
+
+  @override
+  String get welcomeOpenRegisterUnavailableNote =>
+      'ใช้ได้เฉพาะบางแพลตฟอร์มเท่านั้น กรุณาใช้ \"เชื่อมต่อเซิร์ฟเวอร์\" แทน';
+
+  @override
   String get welcomeOrDivider => 'หรือ';
 
   @override
@@ -419,6 +427,10 @@ class AppLocalizationsTh extends AppLocalizations {
   @override
   String get localConnectionModeSubtitleOther =>
       'ใช้ได้เฉพาะแอปเดสก์ท็อป Windows เท่านั้น';
+
+  @override
+  String get localConnectionModeSubtitleMobile =>
+      'โฮสต์เองบนอุปกรณ์นี้ — ใช้ได้เครื่องเดียวเท่านั้น อุปกรณ์อื่นเชื่อมต่อไม่ได้';
 
   @override
   String get cloudConnectionModeSubtitle =>
@@ -819,6 +831,18 @@ class AppLocalizationsTh extends AppLocalizations {
   String get staffPasswordTooShort => 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร';
 
   @override
+  String get editStaffTooltip => 'แก้ไข';
+
+  @override
+  String get editStaffLabel => 'แก้ไขพนักงาน';
+
+  @override
+  String get staffPasswordEditHint => 'เว้นว่างไว้เพื่อใช้รหัสผ่านเดิม';
+
+  @override
+  String get saveChanges => 'บันทึกการเปลี่ยนแปลง';
+
+  @override
   String get settingsAccountSectionLabel => 'บัญชี';
 
   @override
@@ -844,6 +868,37 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get noPrinterOption => 'ไม่ใช้';
+
+  @override
+  String get selectedPrinterLabel => 'อุปกรณ์';
+
+  @override
+  String get printerNotSelectedValue => 'อัตโนมัติ (เครื่องแรกที่พบ)';
+
+  @override
+  String get selectPrinterButton => 'เลือกเครื่องพิมพ์';
+
+  @override
+  String get changePrinterButton => 'เปลี่ยน';
+
+  @override
+  String get selectPrinterDialogTitle => 'เลือกเครื่องพิมพ์';
+
+  @override
+  String get noPrintersFoundMessage =>
+      'ไม่พบเครื่องพิมพ์ ตรวจสอบว่าเปิดเครื่องและอยู่ในระยะ';
+
+  @override
+  String get scanningForPrintersLabel => 'กำลังค้นหาเครื่องพิมพ์…';
+
+  @override
+  String get paperSizeLabel => 'ขนาดกระดาษ';
+
+  @override
+  String get paperSize58 => '58มม.';
+
+  @override
+  String get paperSize80 => '80มม.';
 
   @override
   String get languageSectionLabel => 'ภาษา';

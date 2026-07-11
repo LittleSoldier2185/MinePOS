@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 import '../../core/responsive/breakpoints.dart';
@@ -442,6 +444,24 @@ class _MenuItemCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: item.imageBase64 != null
+                      ? Image.memory(
+                          base64Decode(item.imageBase64!),
+                          height: 40,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        )
+                      : Container(
+                          height: 40,
+                          width: double.infinity,
+                          color: AppColors.background,
+                          child: const Icon(Icons.fastfood_outlined,
+                              size: 18, color: AppColors.muted),
+                        ),
+                ),
+                const SizedBox(height: 6),
                 Text(
                   item.name,
                   style: TextStyle(

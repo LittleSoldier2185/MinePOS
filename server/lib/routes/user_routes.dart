@@ -1,3 +1,4 @@
+import 'package:bcrypt/bcrypt.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
@@ -55,25 +56,48 @@ Future<Response> _createUser(
   return jsonOk(db.getUserByUsername(username)!.toJson(), status: 201);
 }
 
-// PATCH /users/:username  { active }  (owner only)
+// PATCH /users/:username  { active?, role?, password? }  (owner only)
 Future<Response> _updateUser(
     Request req, String username, AppDb db, ServerConfig config) async {
   final actor = requireAuth(req, db, config.jwtSecret, role: 'owner');
   if (actor == null) return unauthorized();
 
-  final body = await parseJsonBody(req);
-  final active = body?['active'] as bool?;
-  if (active == null) return jsonError('active is required');
-
-  if (username.toLowerCase() == actor.username && !active) {
-    return jsonError('You cannot deactivate your own account');
-  }
-
   final target = db.getUserByUsername(username);
   if (target == null) return notFound('User not found');
 
-  final updated = db.setUserActive(username, active);
-  return jsonOk(updated!.toJson());
+  final body = await parseJsonBody(req);
+  final active = body?['active'] as bool?;
+  final role = (body?['role'] as String?)?.trim().toLowerCase();
+  final password = body?['password'] as String?;
+  final isSelf = username.toLowerCase() == actor.username;
+
+  if (active == null && role == null && password == null) {
+    return jsonError('active, role, or password is required');
+  }
+
+  if (active != null) {
+    if (isSelf && !active) {
+      return jsonError('You cannot deactivate your own account');
+    }
+    db.setUserActive(username, active);
+  }
+  if (role != null) {
+    if (!_validRoles.contains(role)) {
+      return jsonError('role must be one of $_validRoles');
+    }
+    if (isSelf && role != 'owner') {
+      return jsonError('You cannot change your own role');
+    }
+    db.setUserRole(username, role);
+  }
+  if (password != null) {
+    if (password.length < 8) {
+      return jsonError('password must be at least 8 characters');
+    }
+    db.updatePasswordHash(username, BCrypt.hashpw(password, BCrypt.gensalt()));
+  }
+
+  return jsonOk(db.getUserByUsername(username)!.toJson());
 }
 
 // POST /users/:username/logout  (owner only) — invalidates outstanding JWTs

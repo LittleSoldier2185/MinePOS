@@ -93,6 +93,7 @@ class MenuService {
     required String category,
     required double price,
     bool available = true,
+    String? imageBase64,
   }) {
     final item = MenuItem(
       id: 'u${_nextId++}',
@@ -100,6 +101,7 @@ class MenuService {
       category: category.trim(),
       price: price,
       available: available,
+      imageBase64: imageBase64,
     );
     _items.add(item);
     _serverCreate(item);
@@ -127,6 +129,7 @@ class MenuService {
       category: m.category,
       price: m.price,
       available: !m.available,
+      imageBase64: m.imageBase64,
     );
     _serverToggle(id);
   }

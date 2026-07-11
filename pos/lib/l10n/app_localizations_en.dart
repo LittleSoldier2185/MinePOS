@@ -147,6 +147,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t start the local server. Use \"Connect to Server\" instead, or make sure MinePOS is fully installed.';
 
   @override
+  String get localServerLaunchFailedError =>
+      'Could not start the local server.';
+
+  @override
+  String get welcomeOpenRegisterUnavailableNote =>
+      'Not available on this platform. Use \"Connect to Server\" instead.';
+
+  @override
   String get welcomeOrDivider => 'or';
 
   @override
@@ -422,6 +430,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get localConnectionModeSubtitleOther =>
       'Only available on the Windows desktop app.';
+
+  @override
+  String get localConnectionModeSubtitleMobile =>
+      'Self-host on this device — single device only, other devices can\'t connect.';
 
   @override
   String get cloudConnectionModeSubtitle =>
@@ -826,6 +838,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get staffPasswordTooShort => 'Password must be at least 8 characters';
 
   @override
+  String get editStaffTooltip => 'Edit';
+
+  @override
+  String get editStaffLabel => 'Edit Staff';
+
+  @override
+  String get staffPasswordEditHint => 'Leave blank to keep current password';
+
+  @override
+  String get saveChanges => 'Save Changes';
+
+  @override
   String get settingsAccountSectionLabel => 'ACCOUNT';
 
   @override
@@ -852,6 +876,37 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noPrinterOption => 'None';
+
+  @override
+  String get selectedPrinterLabel => 'Device';
+
+  @override
+  String get printerNotSelectedValue => 'Auto (first found)';
+
+  @override
+  String get selectPrinterButton => 'Select Printer';
+
+  @override
+  String get changePrinterButton => 'Change';
+
+  @override
+  String get selectPrinterDialogTitle => 'Select Printer';
+
+  @override
+  String get noPrintersFoundMessage =>
+      'No printers found. Make sure it\'s on and in range.';
+
+  @override
+  String get scanningForPrintersLabel => 'Scanning for printers…';
+
+  @override
+  String get paperSizeLabel => 'Paper Size';
+
+  @override
+  String get paperSize58 => '58mm';
+
+  @override
+  String get paperSize80 => '80mm';
 
   @override
   String get languageSectionLabel => 'LANGUAGE';

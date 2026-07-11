@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:unified_esc_pos_printer/unified_esc_pos_printer.dart';
 
 import '../../core/services/app_settings_service.dart';
 import '../../core/services/locale_controller.dart';
@@ -6,6 +7,7 @@ import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../l10n/app_localizations.dart';
+import '../cashier/services/printer_service.dart';
 import '../welcome/welcome_screen.dart';
 import 'services/shop_service.dart';
 
@@ -20,6 +22,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _svc = AppSettingsService.instance;
   PrinterChoice? _printer;
   AppLanguage? _language;
+  String? _printerDeviceName;
+  ReceiptPaperSize? _paperSize;
 
   @override
   void initState() {
@@ -30,16 +34,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _load() async {
     final printer = await _svc.getPrinterChoice();
     final language = await _svc.getLanguage();
+    final deviceName = await _svc.getSelectedPrinterName();
+    final paperSize = await _svc.getPaperSize();
     if (!mounted) return;
     setState(() {
       _printer = printer;
       _language = language;
+      _printerDeviceName = deviceName;
+      _paperSize = paperSize;
     });
   }
 
   Future<void> _setPrinter(PrinterChoice choice) async {
     setState(() => _printer = choice);
     await _svc.setPrinterChoice(choice);
+    if (choice == PrinterChoice.skip) {
+      await _svc.clearSelectedPrinter();
+      if (mounted) setState(() => _printerDeviceName = null);
+    }
+  }
+
+  Future<void> _setPaperSize(ReceiptPaperSize size) async {
+    setState(() => _paperSize = size);
+    await _svc.setPaperSize(size);
+  }
+
+  Future<void> _selectPrinterDevice() async {
+    final chosen = await showDialog<PrinterDevice>(
+      context: context,
+      builder: (_) => _PrinterPickerDialog(choice: _printer!),
+    );
+    if (chosen == null) return;
+    await _svc.setSelectedPrinter(id: printerDeviceKey(chosen), name: chosen.name);
+    if (mounted) setState(() => _printerDeviceName = chosen.name);
   }
 
   Future<void> _setLanguage(AppLanguage language) async {
@@ -106,7 +133,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         surfaceTintColor: Colors.transparent,
       ),
       backgroundColor: AppColors.background,
-      body: (_printer == null || _language == null)
+      body: (_printer == null || _language == null || _paperSize == null)
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               padding: const EdgeInsets.all(16),
@@ -176,6 +203,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         selected: _printer == PrinterChoice.skip,
                         onTap: () => _setPrinter(PrinterChoice.skip),
                       ),
+                      if (_printer != PrinterChoice.skip) ...[
+                        const Divider(height: 24),
+                        _InfoRow(
+                          label: l10n.selectedPrinterLabel,
+                          value: _printerDeviceName ?? l10n.printerNotSelectedValue,
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: _selectPrinterDevice,
+                            icon: const Icon(Icons.search, size: 16),
+                            label: Text(_printerDeviceName == null
+                                ? l10n.selectPrinterButton
+                                : l10n.changePrinterButton),
+                          ),
+                        ),
+                        const Divider(height: 24),
+                        Text(l10n.paperSizeLabel,
+                            style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _ChoiceRow(
+                                icon: Icons.receipt_long,
+                                label: l10n.paperSize58,
+                                selected: _paperSize == ReceiptPaperSize.mm58,
+                                onTap: () => _setPaperSize(ReceiptPaperSize.mm58),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _ChoiceRow(
+                                icon: Icons.receipt_long,
+                                label: l10n.paperSize80,
+                                selected: _paperSize == ReceiptPaperSize.mm80,
+                                onTap: () => _setPaperSize(ReceiptPaperSize.mm80),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 10),
                       Text(
                         l10n.printerDiscoveryNote,
@@ -475,6 +545,83 @@ class _ChoiceRow extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _PrinterPickerDialog extends StatefulWidget {
+  const _PrinterPickerDialog({required this.choice});
+  final PrinterChoice choice;
+
+  @override
+  State<_PrinterPickerDialog> createState() => _PrinterPickerDialogState();
+}
+
+class _PrinterPickerDialogState extends State<_PrinterPickerDialog> {
+  late Future<List<PrinterDevice>> _future = PrinterService().scanAvailable(widget.choice);
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return AlertDialog(
+      title: Text(l10n.selectPrinterDialogTitle),
+      content: SizedBox(
+        width: 320,
+        child: FutureBuilder<List<PrinterDevice>>(
+          future: _future,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(l10n.scanningForPrintersLabel, style: const TextStyle(color: AppColors.muted)),
+                  ],
+                ),
+              );
+            }
+            final devices = snapshot.data ?? const [];
+            if (devices.isEmpty) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Text(
+                  l10n.noPrintersFoundMessage,
+                  style: const TextStyle(color: AppColors.muted),
+                ),
+              );
+            }
+            return SizedBox(
+              width: double.maxFinite,
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: devices.length,
+                itemBuilder: (_, i) => ListTile(
+                  leading: const Icon(Icons.print_outlined, color: AppColors.primary),
+                  title: Text(devices[i].name),
+                  onTap: () => Navigator.of(context).pop(devices[i]),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => setState(() => _future = PrinterService().scanAvailable(widget.choice)),
+          child: Text(l10n.retry),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.cancel),
+        ),
+      ],
     );
   }
 }

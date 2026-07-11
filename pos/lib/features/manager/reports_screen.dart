@@ -29,7 +29,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     _future = ReportsService.instance.fetchAllOrders();
   }
 
-  void _reload() => setState(() => _future = ReportsService.instance.fetchAllOrders());
+  void _reload() => setState(() { _future = ReportsService.instance.fetchAllOrders(); });
 
   DateTimeRange _resolveRange() {
     final now = DateTime.now();

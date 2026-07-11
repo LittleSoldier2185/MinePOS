@@ -6,6 +6,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   bonsoir_windows
   file_selector_windows
   screen_retriever_windows
+  sqlite3_flutter_libs
   unified_esc_pos_printer
   window_manager
 )
