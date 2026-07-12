@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../l10n/app_localizations.dart';
+import '../manager/services/shop_config_service.dart';
 import 'models/order.dart';
+import 'models/order_item.dart';
 import 'order_taking_screen.dart';
 import 'services/printer_service.dart';
 
@@ -17,8 +19,11 @@ class ReceiptScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!
-            .receiptAppBarTitle(order.formattedNumber)),
+        title: Text(
+          AppLocalizations.of(
+            context,
+          )!.receiptAppBarTitle(order.formattedNumber),
+        ),
         backgroundColor: Colors.white,
         foregroundColor: AppColors.ink,
         elevation: 0,
@@ -52,8 +57,15 @@ class _ReceiptPaper extends StatelessWidget {
   final Order order;
   final String Function(double) baht;
 
+  String _itemLabel(BuildContext context, OrderItem item) {
+    final name = item.menuItem.displayName(Localizations.localeOf(context));
+    if (item.sweetness == null) return name;
+    return '$name (${item.sweetness!.label(AppLocalizations.of(context)!)})';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final shop = ShopConfigService.instance;
     return Card(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
@@ -63,12 +75,27 @@ class _ReceiptPaper extends StatelessWidget {
             const Icon(Icons.local_cafe, color: AppColors.primary, size: 32),
             const SizedBox(height: 6),
             Text(
-              AppLocalizations.of(context)!.businessName,
+              shop.shopName,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.ink,
-                  ),
+                fontWeight: FontWeight.bold,
+                color: AppColors.ink,
+              ),
             ),
+            if (shop.address != null && shop.address!.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(
+                shop.address!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 11, color: AppColors.muted),
+              ),
+            ],
+            if (shop.taxId != null && shop.taxId!.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(
+                '${AppLocalizations.of(context)!.taxIdFieldLabel}: ${shop.taxId}',
+                style: const TextStyle(fontSize: 11, color: AppColors.muted),
+              ),
+            ],
             const SizedBox(height: 2),
             Text(
               AppLocalizations.of(context)!.receiptThankYouMessage,
@@ -78,11 +105,15 @@ class _ReceiptPaper extends StatelessWidget {
             const Divider(),
             const SizedBox(height: 8),
             // Order info
-            _InfoRow(AppLocalizations.of(context)!.receiptOrderLabel,
-                order.formattedNumber),
+            _InfoRow(
+              AppLocalizations.of(context)!.receiptOrderLabel,
+              order.formattedNumber,
+            ),
             const SizedBox(height: 4),
-            _InfoRow(AppLocalizations.of(context)!.receiptDateLabel,
-                order.formattedDate),
+            _InfoRow(
+              AppLocalizations.of(context)!.receiptDateLabel,
+              order.formattedDate,
+            ),
             _InfoRow(
               AppLocalizations.of(context)!.receiptPaymentLabel,
               order.paymentMethod == PaymentMethod.cash
@@ -101,12 +132,16 @@ class _ReceiptPaper extends StatelessWidget {
                     Text(
                       '${item.quantity}×',
                       style: const TextStyle(
-                          color: AppColors.muted, fontSize: 13),
+                        color: AppColors.muted,
+                        fontSize: 13,
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(item.menuItem.name,
-                          style: const TextStyle(fontSize: 13)),
+                      child: Text(
+                        _itemLabel(context, item),
+                        style: const TextStyle(fontSize: 13),
+                      ),
                     ),
                     Text(
                       baht(item.subtotal),
@@ -120,23 +155,39 @@ class _ReceiptPaper extends StatelessWidget {
             const Divider(),
             const SizedBox(height: 8),
             // Totals
-            _TotalRow(AppLocalizations.of(context)!.total, baht(order.total),
-                bold: true),
+            _TotalRow(
+              AppLocalizations.of(context)!.total,
+              baht(order.total),
+              bold: true,
+            ),
             if (order.paymentMethod == PaymentMethod.cash) ...[
               const SizedBox(height: 4),
-              _TotalRow(AppLocalizations.of(context)!.cash,
-                  baht(order.amountPaid ?? 0)),
-              _TotalRow(AppLocalizations.of(context)!.change,
-                  baht(order.change),
-                  color: AppColors.primary),
+              _TotalRow(
+                AppLocalizations.of(context)!.cash,
+                baht(order.amountPaid ?? 0),
+              ),
+              _TotalRow(
+                AppLocalizations.of(context)!.change,
+                baht(order.change),
+                color: AppColors.primary,
+              ),
             ],
             const SizedBox(height: 16),
+            if (shop.receiptFooter != null && shop.receiptFooter!.isNotEmpty) ...[
+              Text(
+                shop.receiptFooter!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 12, color: AppColors.muted),
+              ),
+              const SizedBox(height: 8),
+            ],
             Text(
               AppLocalizations.of(context)!.receiptClosingMessage,
               style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.muted,
-                  fontStyle: FontStyle.italic),
+                fontSize: 12,
+                color: AppColors.muted,
+                fontStyle: FontStyle.italic,
+              ),
             ),
           ],
         ),
@@ -155,8 +206,10 @@ class _InfoRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label,
-            style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: AppColors.muted),
+        ),
         Text(value, style: const TextStyle(fontSize: 12)),
       ],
     );
@@ -164,8 +217,12 @@ class _InfoRow extends StatelessWidget {
 }
 
 class _TotalRow extends StatelessWidget {
-  const _TotalRow(this.label, this.value,
-      {this.bold = false, this.color = AppColors.ink});
+  const _TotalRow(
+    this.label,
+    this.value, {
+    this.bold = false,
+    this.color = AppColors.ink,
+  });
   final String label;
   final String value;
   final bool bold;
@@ -213,7 +270,9 @@ class _BottomActionsState extends State<_BottomActions> {
       PrintOutcome.noPrinterFound => l10n.printNoPrinterMessage,
       PrintOutcome.failed => l10n.printFailedMessage(result.errorDetail ?? ''),
     };
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -225,6 +284,9 @@ class _BottomActionsState extends State<_BottomActions> {
         children: [
           OutlinedButton.icon(
             onPressed: _printing ? null : _print,
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+            ),
             icon: _printing
                 ? const SizedBox(
                     width: 16,
@@ -239,12 +301,23 @@ class _BottomActionsState extends State<_BottomActions> {
             child: ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(
-                      builder: (_) => const OrderTakingScreen()),
+                  MaterialPageRoute(builder: (_) => const OrderTakingScreen()),
                   (route) => route.isFirst,
                 );
               },
               child: Text(AppLocalizations.of(context)!.newOrderButton),
+            ),
+          ),
+          const SizedBox(width: 12),
+          OutlinedButton(
+            onPressed: () =>
+                Navigator.of(context).popUntil((route) => route.isFirst),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            ),
+            child: Tooltip(
+              message: AppLocalizations.of(context)!.backToDashboardTooltip,
+              child: const Icon(Icons.home_outlined, size: 18),
             ),
           ),
         ],

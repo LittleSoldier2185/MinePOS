@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
 import '../../l10n/app_localizations.dart';
+import '../cashier/models/order_item.dart';
 import '../welcome/welcome_screen.dart';
 import 'services/customer_display_service.dart';
 
@@ -179,6 +180,10 @@ class _CartView extends StatelessWidget {
             separatorBuilder: (_, _) => const Divider(color: Colors.white12, height: 1),
             itemBuilder: (context, index) {
               final item = svc.items[index];
+              final name = item.menuItem.displayName(Localizations.localeOf(context));
+              final label = item.sweetness == null
+                  ? name
+                  : '$name (${item.sweetness!.label(AppLocalizations.of(context)!)})';
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 child: Row(
@@ -187,7 +192,7 @@ class _CartView extends StatelessWidget {
                         style: const TextStyle(color: Colors.white54, fontSize: 18)),
                     const SizedBox(width: 14),
                     Expanded(
-                      child: Text(item.menuItem.name,
+                      child: Text(label,
                           style: const TextStyle(color: Colors.white, fontSize: 18)),
                     ),
                     Text(baht(item.subtotal),

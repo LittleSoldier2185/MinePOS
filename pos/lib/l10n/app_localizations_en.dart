@@ -403,6 +403,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get receiptFooterFieldHint => 'Optional, e.g. \"Thank you!\"';
 
   @override
+  String get shopDetailsSectionLabel => 'Shop Details';
+
+  @override
+  String get shopDetailsSavedMessage => 'Shop details saved';
+
+  @override
   String shopSetupFailedMessage(String error) {
     return 'Setup failed: $error';
   }
@@ -719,13 +725,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editItemFormTitle => 'Edit Item';
 
   @override
-  String get itemNameLabel => 'Item name';
+  String get itemNameLabel => 'Item name (English)';
 
   @override
   String get itemNameHint => 'e.g. Caramel Latte';
 
   @override
   String get itemNameRequired => 'Name is required';
+
+  @override
+  String get itemNameThLabel => 'Item name (Thai)';
+
+  @override
+  String get itemNameThHint => 'Optional, e.g. คาราเมลลาเต้';
 
   @override
   String get categoryLabel => 'Category';
@@ -752,7 +764,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get availableLabel => 'Available on menu';
 
   @override
+  String get hasSweetnessLabel => 'Ask sweetness level';
+
+  @override
   String get saveChangesButton => 'Save Changes';
+
+  @override
+  String get selectSweetnessTitle => 'Sweetness level';
+
+  @override
+  String get sweetnessLess => 'Less';
+
+  @override
+  String get sweetnessNormal => 'Normal';
+
+  @override
+  String get sweetnessSweet => 'Sweet';
 
   @override
   String get todayRange => 'Today';
@@ -939,6 +966,97 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get removeShopConfirmButton => 'DELETE SHOP';
+
+  @override
+  String get backToDashboardTooltip => 'Back to Dashboard';
+
+  @override
+  String get cropImageTitle => 'Crop Image';
+
+  @override
+  String get cropConfirmButton => 'Done';
+
+  @override
+  String get cropHintText => 'Pinch to zoom • Drag to reposition';
+
+  @override
+  String get gridViewTooltip => 'Grid View';
+
+  @override
+  String get listViewTooltip => 'List View';
+
+  @override
+  String get serverSectionLabel => 'SERVER';
+
+  @override
+  String get serverStatusButton => 'Server Status';
+
+  @override
+  String get serverStatusRunningLabel => 'Running';
+
+  @override
+  String get serverStatusStoppedLabel => 'Stopped';
+
+  @override
+  String get restartServerButton => 'Restart Server';
+
+  @override
+  String get restartServerTitle => 'Restart the server?';
+
+  @override
+  String get restartServerContent =>
+      'Every connected device — kitchen display, other cashiers, customer display — will briefly disconnect while it restarts.';
+
+  @override
+  String get restartingServerMessage => 'Restarting…';
+
+  @override
+  String get restartServerFailedMessage =>
+      'Couldn\'t restart automatically. Close and reopen the app if it doesn\'t come back.';
+
+  @override
+  String get startServerButton => 'Start Server';
+
+  @override
+  String get startingServerMessage => 'Starting…';
+
+  @override
+  String get startServerFailedMessage =>
+      'Couldn\'t start automatically. Check the log for details.';
+
+  @override
+  String get liveActivityTitle => 'Live Activity';
+
+  @override
+  String get usersOnlineLabel => 'Users online';
+
+  @override
+  String get noUsersOnlineMessage => 'No one else is signed in right now.';
+
+  @override
+  String get kitchenDisplaysLabel => 'Kitchen displays';
+
+  @override
+  String get customerDisplaysLabel => 'Customer displays';
+
+  @override
+  String get viewLogsButton => 'View Logs';
+
+  @override
+  String get serverLogsTitle => 'Server Logs';
+
+  @override
+  String get serverLogsEmptyMessage =>
+      'No log file found yet — this only appears on the Windows device hosting the shop.';
+
+  @override
+  String get copyLogsButton => 'Copy';
+
+  @override
+  String get logsCopiedSnackbar => 'Logs copied to clipboard';
+
+  @override
+  String get openLogFolderButton => 'Open Log Folder';
 
   @override
   String get kitchenDisplayTitle => 'Kitchen Display';

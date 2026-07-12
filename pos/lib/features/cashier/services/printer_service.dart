@@ -1,7 +1,12 @@
+import 'package:flutter/painting.dart' show FontWeight, TextStyle;
 import 'package:unified_esc_pos_printer/unified_esc_pos_printer.dart';
 
 import '../../../core/services/app_settings_service.dart';
+import '../../../core/services/locale_controller.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../manager/services/shop_config_service.dart';
 import '../models/order.dart';
+import '../models/order_item.dart';
 
 enum PrintOutcome { skipped, success, noPrinterFound, failed }
 
@@ -15,17 +20,17 @@ class PrintResult {
 /// address — used to remember "this exact printer" across scans, since scans
 /// don't return the same Dart object twice.
 String printerDeviceKey(PrinterDevice d) => switch (d) {
-      BluetoothPrinterDevice() => 'bluetooth:${d.address}',
-      BlePrinterDevice() => 'ble:${d.deviceId}',
-      UsbPrinterDevice() => 'usb:${d.identifier}',
-      NetworkPrinterDevice() => 'network:${d.host}:${d.port}',
-      _ => 'unknown:${d.name}',
-    };
+  BluetoothPrinterDevice() => 'bluetooth:${d.address}',
+  BlePrinterDevice() => 'ble:${d.deviceId}',
+  UsbPrinterDevice() => 'usb:${d.identifier}',
+  NetworkPrinterDevice() => 'network:${d.host}:${d.port}',
+  _ => 'unknown:${d.name}',
+};
 
 Set<PrinterConnectionType> _typesFor(PrinterChoice choice) =>
     choice == PrinterChoice.bluetooth
-        ? const {PrinterConnectionType.bluetooth, PrinterConnectionType.ble}
-        : const {PrinterConnectionType.usb};
+    ? const {PrinterConnectionType.bluetooth, PrinterConnectionType.ble}
+    : const {PrinterConnectionType.usb};
 
 PaperSize _paperSizeFor(ReceiptPaperSize size) =>
     size == ReceiptPaperSize.mm58 ? PaperSize.mm58 : PaperSize.mm80;
@@ -96,39 +101,60 @@ class PrinterService {
     }
   }
 
-  // Fixed labels (headers, "Order"/"Date"/"Total"/etc.) are plain English —
-  // pulled straight from here rather than AppLocalizations, since this runs
-  // with no BuildContext — and printed via the cheap Latin-1 text()/row()
-  // path, which is fine since they're always ASCII. Item names are
-  // user-entered and may be Thai, so those go through rowRaster() instead:
-  // it renders the text as a bitmap via Flutter's text engine, so it prints
-  // correctly regardless of the printer's active codepage.
+  // Labels follow the app's language setting (Settings > Language), not just
+  // the printer's fixed English text as before. Since Thai labels aren't
+  // Latin-1, every line — including "Order"/"Date"/"Total" — now goes
+  // through rowRaster()/textRaster() (bitmap via Flutter's text engine)
+  // rather than the cheap native-codec row()/text() path used previously;
+  // that's the same path item names (which may always be Thai) already used.
   Future<void> _buildReceipt(Ticket ticket, Order order) async {
-    // "THB" not "฿": the ticket's default codec is Latin-1, which can't
-    // represent the Baht sign — encoding falls back to UTF-8 for the whole
-    // string, and a single-byte-codepage printer prints those raw UTF-8
-    // bytes as garbage instead of the symbol.
-    String baht(double v) => 'THB ${v.toStringAsFixed(0)}';
+    // ฿ printed via raster rather than the native-codec path — that path
+    // can't encode the Baht sign and printed it as garbage on real hardware.
+    // Kept concatenated into one "฿65" string, not a separate column: a
+    // separate column left a gap between the symbol and the amount since
+    // flex-sized columns don't shrink to fit short content.
+    String baht(double v) => '฿${v.toStringAsFixed(0)}';
 
-    ticket.text(
-      'MinePOS Coffee',
+    final locale = LocaleController.instance.locale;
+    final l10n = lookupAppLocalizations(locale);
+    final shop = ShopConfigService.instance;
+
+    await ticket.textRaster(
+      shop.shopName,
       align: PrintAlign.center,
-      style: const PrintTextStyle(bold: true, height: TextSize.size2, width: TextSize.size2),
+      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 40),
     );
-    ticket.text('Thank you for your order!', align: PrintAlign.center, linesAfter: 1);
+    if (shop.address != null && shop.address!.isNotEmpty) {
+      await ticket.textRaster(shop.address!, align: PrintAlign.center);
+    }
+    if (shop.taxId != null && shop.taxId!.isNotEmpty) {
+      await ticket.textRaster(
+        '${l10n.taxIdFieldLabel}: ${shop.taxId}',
+        align: PrintAlign.center,
+      );
+    }
+    await ticket.textRaster(
+      l10n.receiptThankYouMessage,
+      align: PrintAlign.center,
+      linesAfter: 1,
+    );
 
-    ticket.row([
-      PrintColumn(text: 'Order', flex: 1),
-      PrintColumn(text: order.formattedNumber, flex: 1, align: PrintAlign.right),
+    await ticket.rowRaster([
+      PrintRasterColumn(text: l10n.receiptOrderLabel, flex: 1),
+      PrintRasterColumn(
+        text: order.formattedNumber,
+        flex: 1,
+        align: PrintAlign.right,
+      ),
     ]);
-    ticket.row([
-      PrintColumn(text: 'Date', flex: 1),
-      PrintColumn(text: order.formattedDate, flex: 1, align: PrintAlign.right),
+    await ticket.rowRaster([
+      PrintRasterColumn(text: l10n.receiptDateLabel, flex: 1),
+      PrintRasterColumn(text: order.formattedDate, flex: 1, align: PrintAlign.right),
     ]);
-    ticket.row([
-      PrintColumn(text: 'Payment', flex: 1),
-      PrintColumn(
-        text: order.paymentMethod == PaymentMethod.cash ? 'Cash' : 'PromptPay',
+    await ticket.rowRaster([
+      PrintRasterColumn(text: l10n.receiptPaymentLabel, flex: 1),
+      PrintRasterColumn(
+        text: order.paymentMethod == PaymentMethod.cash ? l10n.cash : l10n.promptpay,
         flex: 1,
         align: PrintAlign.right,
       ),
@@ -136,34 +162,67 @@ class PrinterService {
     ticket.separator();
 
     for (final item in order.items) {
+      final name = item.menuItem.displayName(locale);
+      final sweetness =
+          item.sweetness == null ? '' : ' (${item.sweetness!.label(l10n)})';
       await ticket.rowRaster([
-        PrintRasterColumn(text: '${item.quantity}x ${item.menuItem.name}', flex: 3),
-        PrintRasterColumn(text: baht(item.subtotal), flex: 1, align: PrintAlign.right),
+        PrintRasterColumn(
+          text: '${item.quantity}x $name$sweetness',
+          flex: 3,
+        ),
+        PrintRasterColumn(
+          text: baht(item.subtotal),
+          flex: 1,
+          align: PrintAlign.right,
+        ),
       ]);
     }
     ticket.separator();
 
-    ticket.row([
-      PrintColumn(text: 'Total', flex: 1, style: const PrintTextStyle(bold: true)),
-      PrintColumn(
+    await ticket.rowRaster([
+      PrintRasterColumn(
+        text: l10n.total,
+        flex: 1,
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+      PrintRasterColumn(
         text: baht(order.total),
         flex: 1,
         align: PrintAlign.right,
-        style: const PrintTextStyle(bold: true),
+        style: const TextStyle(fontWeight: FontWeight.bold),
       ),
     ]);
     if (order.paymentMethod == PaymentMethod.cash) {
-      ticket.row([
-        PrintColumn(text: 'Cash', flex: 1),
-        PrintColumn(text: baht(order.amountPaid ?? 0), flex: 1, align: PrintAlign.right),
+      await ticket.rowRaster([
+        PrintRasterColumn(text: l10n.cash, flex: 1),
+        PrintRasterColumn(
+          text: baht(order.amountPaid ?? 0),
+          flex: 1,
+          align: PrintAlign.right,
+        ),
       ]);
-      ticket.row([
-        PrintColumn(text: 'Change', flex: 1),
-        PrintColumn(text: baht(order.change), flex: 1, align: PrintAlign.right),
+      await ticket.rowRaster([
+        PrintRasterColumn(text: l10n.change, flex: 1),
+        PrintRasterColumn(
+          text: baht(order.change),
+          flex: 1,
+          align: PrintAlign.right,
+        ),
       ]);
     }
 
-    ticket.text('-- See you again! --', align: PrintAlign.center, linesAfter: 1);
+    if (shop.receiptFooter != null && shop.receiptFooter!.isNotEmpty) {
+      await ticket.textRaster(
+        shop.receiptFooter!,
+        align: PrintAlign.center,
+        linesAfter: 1,
+      );
+    }
+    await ticket.textRaster(
+      l10n.receiptClosingMessage,
+      align: PrintAlign.center,
+      linesAfter: 1,
+    );
     ticket.cut();
   }
 }

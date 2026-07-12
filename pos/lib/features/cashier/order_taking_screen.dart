@@ -42,8 +42,10 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
   // ── Cart helpers ──────────────────────────────────────────────────────────
 
   void _syncDisplay() {
-    final nextNum =
-        OrderService.instance.nextOrderNumber.toString().padLeft(3, '0');
+    final nextNum = OrderService.instance.nextOrderNumber.toString().padLeft(
+      3,
+      '0',
+    );
     CustomerDisplayService.instance.publishCart(
       items: _cart,
       total: _cartTotal,
@@ -51,17 +53,49 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
     );
   }
 
-  void _addItem(MenuItem item) {
+  Future<void> _addItem(MenuItem item) async {
+    SweetnessLevel? sweetness;
+    if (item.hasSweetness) {
+      sweetness = await _pickSweetness();
+      if (sweetness == null) return;
+    }
     setState(() {
-      final existing =
-          _cart.where((i) => i.menuItem.id == item.id).firstOrNull;
+      final existing = _cart
+          .where((i) => i.menuItem.id == item.id && i.sweetness == sweetness)
+          .firstOrNull;
       if (existing != null) {
         existing.quantity++;
       } else {
-        _cart.add(OrderItem(menuItem: item));
+        _cart.add(OrderItem(menuItem: item, sweetness: sweetness));
       }
     });
     _syncDisplay();
+  }
+
+  Future<SweetnessLevel?> _pickSweetness() {
+    final l10n = AppLocalizations.of(context)!;
+    return showModalBottomSheet<SweetnessLevel>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+              child: Text(
+                l10n.selectSweetnessTitle,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
+            for (final level in SweetnessLevel.values)
+              ListTile(
+                title: Text(level.label(l10n)),
+                onTap: () => Navigator.pop(context, level),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _increment(int index) {
@@ -91,8 +125,7 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
       context: context,
       builder: (_) => AlertDialog(
         title: Text(AppLocalizations.of(context)!.clearOrderDialogTitle),
-        content:
-            Text(AppLocalizations.of(context)!.clearOrderDialogContent),
+        content: Text(AppLocalizations.of(context)!.clearOrderDialogContent),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -100,8 +133,10 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text(AppLocalizations.of(context)!.clearButton,
-                style: const TextStyle(color: AppColors.terracottaDark)),
+            child: Text(
+              AppLocalizations.of(context)!.clearButton,
+              style: const TextStyle(color: AppColors.terracottaDark),
+            ),
           ),
         ],
       ),
@@ -115,9 +150,7 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
   void _proceedToPayment() {
     if (_cart.isEmpty) return;
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => PaymentScreen(items: List.from(_cart)),
-      ),
+      MaterialPageRoute(builder: (_) => PaymentScreen(items: List.from(_cart))),
     );
   }
 
@@ -125,8 +158,7 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isWide =
-        MediaQuery.sizeOf(context).width >= Breakpoints.mobile;
+    final isWide = MediaQuery.sizeOf(context).width >= Breakpoints.mobile;
     return isWide ? _buildWideLayout() : _buildNarrowLayout();
   }
 
@@ -163,7 +195,9 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
                     const SizedBox(width: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 1),
+                        horizontal: 6,
+                        vertical: 1,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primary,
                         borderRadius: BorderRadius.circular(10),
@@ -171,9 +205,10 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
                       child: Text(
                         '$_cartCount',
                         style: const TextStyle(
-                            color: AppColors.accent,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold),
+                          color: AppColors.accent,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
@@ -213,9 +248,9 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
         IconButton(
           icon: const Icon(Icons.history),
           tooltip: AppLocalizations.of(context)!.orderHistoryTooltip,
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const OrderHistoryScreen()),
-          ),
+          onPressed: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const OrderHistoryScreen())),
         ),
       ],
       bottom: bottom,
@@ -232,8 +267,7 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
         SizedBox(
           height: 52,
           child: ListView.separated(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             scrollDirection: Axis.horizontal,
             itemCount: _menuService.categories.length,
             separatorBuilder: (_, _) => const SizedBox(width: 8),
@@ -245,7 +279,9 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 6),
+                    horizontal: 16,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: selected ? AppColors.primary : Colors.white,
                     borderRadius: BorderRadius.circular(20),
@@ -260,8 +296,7 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color:
-                          selected ? AppColors.accent : AppColors.ink,
+                      color: selected ? AppColors.accent : AppColors.ink,
                     ),
                   ),
                 ),
@@ -272,8 +307,7 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final cols =
-                  (constraints.maxWidth / 140).floor().clamp(2, 5);
+              final cols = (constraints.maxWidth / 140).floor().clamp(2, 5);
               return GridView.builder(
                 padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -285,10 +319,10 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
                 itemCount: items.length,
                 itemBuilder: (context, index) {
                   final item = items[index];
-                  final qty = _cart
-                      .where((i) => i.menuItem.id == item.id)
-                      .map((i) => i.quantity)
-                      .firstOrNull;
+                  final matches = _cart.where((i) => i.menuItem.id == item.id);
+                  final qty = matches.isEmpty
+                      ? null
+                      : matches.fold(0, (s, i) => s + i.quantity);
                   return _MenuItemCard(
                     item: item,
                     cartQty: qty,
@@ -306,19 +340,20 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
   // ── Cart panel ────────────────────────────────────────────────────────────
 
   Widget _buildCartPanel() {
-    final nextNum = OrderService.instance.nextOrderNumber
-        .toString()
-        .padLeft(3, '0');
+    final nextNum = OrderService.instance.nextOrderNumber.toString().padLeft(
+      3,
+      '0',
+    );
 
     return Column(
       children: [
         Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: const BoxDecoration(
             color: Colors.white,
             border: Border(
-                bottom: BorderSide(color: AppColors.terracottaLight)),
+              bottom: BorderSide(color: AppColors.terracottaLight),
+            ),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -326,12 +361,13 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
               Text(
                 AppLocalizations.of(context)!.orderNumberLabel(nextNum),
                 style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 14),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
               ),
               Text(
                 AppLocalizations.of(context)!.itemsCount(_cartCount),
-                style: const TextStyle(
-                    color: AppColors.muted, fontSize: 12),
+                style: const TextStyle(color: AppColors.muted, fontSize: 12),
               ),
             ],
           ),
@@ -342,8 +378,7 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
                   child: Text(
                     AppLocalizations.of(context)!.emptyCartMessage,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                        color: AppColors.muted, height: 1.6),
+                    style: const TextStyle(color: AppColors.muted, height: 1.6),
                   ),
                 )
               : ListView.builder(
@@ -362,17 +397,20 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
           padding: const EdgeInsets.all(16),
           decoration: const BoxDecoration(
             color: Colors.white,
-            border: Border(
-                top: BorderSide(color: AppColors.terracottaLight)),
+            border: Border(top: BorderSide(color: AppColors.terracottaLight)),
           ),
           child: Column(
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(AppLocalizations.of(context)!.total,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 15)),
+                  Text(
+                    AppLocalizations.of(context)!.total,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
                   Text(
                     _baht(_cartTotal),
                     style: const TextStyle(
@@ -387,10 +425,8 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed:
-                      _cart.isNotEmpty ? _proceedToPayment : null,
-                  child:
-                      Text(AppLocalizations.of(context)!.proceedToPayButton),
+                  onPressed: _cart.isNotEmpty ? _proceedToPayment : null,
+                  child: Text(AppLocalizations.of(context)!.proceedToPayButton),
                 ),
               ),
             ],
@@ -432,8 +468,7 @@ class _MenuItemCard extends StatelessWidget {
               : Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color:
-                inCart ? AppColors.primary : AppColors.terracottaLight,
+            color: inCart ? AppColors.primary : AppColors.terracottaLight,
             width: inCart ? 1.5 : 1,
           ),
         ),
@@ -441,34 +476,35 @@ class _MenuItemCard extends StatelessWidget {
         child: Stack(
           children: [
             Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: item.imageBase64 != null
-                      ? Image.memory(
-                          base64Decode(item.imageBase64!),
-                          height: 40,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                        )
-                      : Container(
-                          height: 40,
-                          width: double.infinity,
-                          color: AppColors.background,
-                          child: const Icon(Icons.fastfood_outlined,
-                              size: 18, color: AppColors.muted),
-                        ),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: item.imageBase64 != null
+                        ? Image.memory(
+                            base64Decode(item.imageBase64!),
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                          )
+                        : Container(
+                            width: double.infinity,
+                            color: AppColors.background,
+                            child: const Icon(
+                              Icons.fastfood_outlined,
+                              size: 18,
+                              color: AppColors.muted,
+                            ),
+                          ),
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  item.name,
+                  item.displayName(Localizations.localeOf(context)),
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color:
-                        inCart ? AppColors.primary : AppColors.ink,
+                    color: inCart ? AppColors.primary : AppColors.ink,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -477,9 +513,10 @@ class _MenuItemCard extends StatelessWidget {
                 Text(
                   '฿${item.price.toStringAsFixed(0)}',
                   style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.muted,
-                      fontWeight: FontWeight.w500),
+                    fontSize: 13,
+                    color: AppColors.muted,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -498,9 +535,10 @@ class _MenuItemCard extends StatelessWidget {
                     child: Text(
                       '$cartQty',
                       style: const TextStyle(
-                          color: AppColors.accent,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold),
+                        color: AppColors.accent,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -530,6 +568,10 @@ class _CartItemRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final name = item.menuItem.displayName(Localizations.localeOf(context));
+    final label = item.sweetness == null
+        ? name
+        : '$name (${item.sweetness!.label(AppLocalizations.of(context)!)})';
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Row(
@@ -541,8 +583,7 @@ class _CartItemRow extends StatelessWidget {
             child: Text(
               '${item.quantity}',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                  fontWeight: FontWeight.bold, fontSize: 14),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
             ),
           ),
           const SizedBox(width: 4),
@@ -550,18 +591,16 @@ class _CartItemRow extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              item.menuItem.name,
+              label,
               style: const TextStyle(fontSize: 13),
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          Text(baht(item.subtotal),
-              style: const TextStyle(fontSize: 13)),
+          Text(baht(item.subtotal), style: const TextStyle(fontSize: 13)),
           const SizedBox(width: 4),
           GestureDetector(
             onTap: onRemove,
-            child: const Icon(Icons.close,
-                size: 16, color: AppColors.muted),
+            child: const Icon(Icons.close, size: 16, color: AppColors.muted),
           ),
         ],
       ),

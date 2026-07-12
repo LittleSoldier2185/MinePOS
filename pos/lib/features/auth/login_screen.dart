@@ -4,9 +4,12 @@ import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../l10n/app_localizations.dart';
+import '../cashier/services/menu_service.dart';
+import '../cashier/services/order_service.dart';
 import '../connect/models/device_purpose.dart';
 import '../home/home_placeholder_screen.dart';
 import '../kitchen/kitchen_display_screen.dart';
+import '../manager/services/shop_config_service.dart';
 import 'forgot_password_screen.dart';
 import 'services/auth_service.dart';
 
@@ -60,6 +63,23 @@ class _LoginScreenState extends State<LoginScreen> {
     if (result.success) {
       ServerClient.instance.role = result.role;
       ServerClient.instance.username = result.username;
+
+      // Both services start out seeded with local-only defaults/empty state
+      // — without this, every screen would show stale placeholder data (or
+      // nothing) until something happened to trigger a sync, making a fresh
+      // login look like menu items/order history "disappeared" after a
+      // restart when they were actually sitting on the server the whole
+      // time. Kitchen-only sign-in skips this: that screen only needs live
+      // orders over its own WebSocket, not the cashier menu/order history.
+      if (widget.purpose != DevicePurpose.kitchenOnly) {
+        await Future.wait([
+          MenuService.instance.fetchFromServer(),
+          OrderService.instance.loadFromServer(),
+          ShopConfigService.instance.fetch(),
+        ]);
+      }
+
+      if (!mounted) return;
       final welcomeMessage = AppLocalizations.of(context)!.loginWelcomeMessage;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
@@ -84,17 +104,23 @@ class _LoginScreenState extends State<LoginScreen> {
         AppTextField(
           label: l10n.usernameOrEmailLabel,
           controller: _usernameController,
-          validator: (v) => (v == null || v.trim().isEmpty) ? l10n.usernameRequiredValidator : null,
+          validator: (v) => (v == null || v.trim().isEmpty)
+              ? l10n.usernameRequiredValidator
+              : null,
         ),
         const SizedBox(height: 14),
         AppTextField(
           label: l10n.passwordLabel,
           controller: _passwordController,
           obscureText: _obscurePassword,
-          validator: (v) => (v == null || v.isEmpty) ? l10n.passwordRequiredValidator : null,
+          validator: (v) =>
+              (v == null || v.isEmpty) ? l10n.passwordRequiredValidator : null,
           suffixIcon: IconButton(
-            icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+            icon: Icon(
+              _obscurePassword ? Icons.visibility_off : Icons.visibility,
+            ),
+            onPressed: () =>
+                setState(() => _obscurePassword = !_obscurePassword),
           ),
         ),
         Align(
@@ -109,7 +135,13 @@ class _LoginScreenState extends State<LoginScreen> {
         if (_error != null) ...[
           Align(
             alignment: Alignment.centerLeft,
-            child: Text(_error!, style: const TextStyle(color: AppColors.terracottaDark, fontSize: 12)),
+            child: Text(
+              _error!,
+              style: const TextStyle(
+                color: AppColors.terracottaDark,
+                fontSize: 12,
+              ),
+            ),
           ),
           const SizedBox(height: 8),
         ],
@@ -122,7 +154,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 ? const SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.accent,
+                    ),
                   )
                 : Text(l10n.loginSignInButton),
           ),
@@ -146,11 +181,21 @@ class _LoginScreenState extends State<LoginScreen> {
                 Container(
                   width: 72,
                   height: 72,
-                  decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                  child: const Icon(Icons.local_cafe, color: AppColors.accent, size: 34),
+                  decoration: const BoxDecoration(
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.local_cafe,
+                    color: AppColors.accent,
+                    size: 34,
+                  ),
                 ),
                 const SizedBox(height: 20),
-                Text(l10n.loginScreenTitle, style: Theme.of(context).textTheme.headlineMedium),
+                Text(
+                  l10n.loginScreenTitle,
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
                 const SizedBox(height: 4),
                 Text(
                   l10n.loginConnectedTo(widget.serverAddress),
@@ -158,7 +203,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 32),
                 Card(
-                  child: Padding(padding: const EdgeInsets.all(24), child: _formFields(context)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: _formFields(context),
+                  ),
                 ),
               ],
             ),
@@ -185,18 +233,30 @@ class _LoginScreenState extends State<LoginScreen> {
                   Container(
                     width: 72,
                     height: 72,
-                    decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle),
-                    child: const Icon(Icons.local_cafe, color: AppColors.primary, size: 34),
+                    decoration: const BoxDecoration(
+                      color: AppColors.accent,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.local_cafe,
+                      color: AppColors.primary,
+                      size: 34,
+                    ),
                   ),
                   const SizedBox(height: 24),
                   Text(
                     l10n.loginScreenTitle,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: AppColors.accent),
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      color: AppColors.accent,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     l10n.loginConnectedTo(widget.serverAddress),
-                    style: const TextStyle(color: AppColors.primaryLight, fontSize: 13),
+                    style: const TextStyle(
+                      color: AppColors.primaryLight,
+                      fontSize: 13,
+                    ),
                   ),
                 ],
               ),
@@ -229,7 +289,8 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       body: SafeArea(
         child: LayoutBuilder(
-          builder: (context, constraints) => constraints.maxWidth >= _desktopBreakpoint
+          builder: (context, constraints) =>
+              constraints.maxWidth >= _desktopBreakpoint
               ? _desktopLayout(context)
               : _mobileLayout(context),
         ),

@@ -10,6 +10,8 @@ class CustomerDisplayHub {
 
   final Set<WebSocketChannel> _channels = {};
 
+  int get count => _channels.length;
+
   void add(WebSocketChannel channel) {
     _channels.add(channel);
     channel.stream.listen(

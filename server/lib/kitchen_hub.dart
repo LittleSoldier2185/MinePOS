@@ -13,6 +13,8 @@ class KitchenHub {
 
   final Set<WebSocketChannel> _channels = {};
 
+  int get count => _channels.length;
+
   void add(WebSocketChannel channel, AppDb db) {
     _channels.add(channel);
     channel.sink.add(jsonEncode({

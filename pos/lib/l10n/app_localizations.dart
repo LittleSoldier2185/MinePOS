@@ -818,6 +818,18 @@ abstract class AppLocalizations {
   /// **'Optional, e.g. \"Thank you!\"'**
   String get receiptFooterFieldHint;
 
+  /// No description provided for @shopDetailsSectionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Shop Details'**
+  String get shopDetailsSectionLabel;
+
+  /// No description provided for @shopDetailsSavedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Shop details saved'**
+  String get shopDetailsSavedMessage;
+
   /// No description provided for @shopSetupFailedMessage.
   ///
   /// In en, this message translates to:
@@ -1361,7 +1373,7 @@ abstract class AppLocalizations {
   /// No description provided for @itemNameLabel.
   ///
   /// In en, this message translates to:
-  /// **'Item name'**
+  /// **'Item name (English)'**
   String get itemNameLabel;
 
   /// No description provided for @itemNameHint.
@@ -1375,6 +1387,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Name is required'**
   String get itemNameRequired;
+
+  /// No description provided for @itemNameThLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Item name (Thai)'**
+  String get itemNameThLabel;
+
+  /// No description provided for @itemNameThHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional, e.g. คาราเมลลาเต้'**
+  String get itemNameThHint;
 
   /// No description provided for @categoryLabel.
   ///
@@ -1424,11 +1448,41 @@ abstract class AppLocalizations {
   /// **'Available on menu'**
   String get availableLabel;
 
+  /// No description provided for @hasSweetnessLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask sweetness level'**
+  String get hasSweetnessLabel;
+
   /// No description provided for @saveChangesButton.
   ///
   /// In en, this message translates to:
   /// **'Save Changes'**
   String get saveChangesButton;
+
+  /// No description provided for @selectSweetnessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sweetness level'**
+  String get selectSweetnessTitle;
+
+  /// No description provided for @sweetnessLess.
+  ///
+  /// In en, this message translates to:
+  /// **'Less'**
+  String get sweetnessLess;
+
+  /// No description provided for @sweetnessNormal.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal'**
+  String get sweetnessNormal;
+
+  /// No description provided for @sweetnessSweet.
+  ///
+  /// In en, this message translates to:
+  /// **'Sweet'**
+  String get sweetnessSweet;
 
   /// No description provided for @todayRange.
   ///
@@ -1777,6 +1831,180 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'DELETE SHOP'**
   String get removeShopConfirmButton;
+
+  /// No description provided for @backToDashboardTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to Dashboard'**
+  String get backToDashboardTooltip;
+
+  /// No description provided for @cropImageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Crop Image'**
+  String get cropImageTitle;
+
+  /// No description provided for @cropConfirmButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get cropConfirmButton;
+
+  /// No description provided for @cropHintText.
+  ///
+  /// In en, this message translates to:
+  /// **'Pinch to zoom • Drag to reposition'**
+  String get cropHintText;
+
+  /// No description provided for @gridViewTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Grid View'**
+  String get gridViewTooltip;
+
+  /// No description provided for @listViewTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'List View'**
+  String get listViewTooltip;
+
+  /// No description provided for @serverSectionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'SERVER'**
+  String get serverSectionLabel;
+
+  /// No description provided for @serverStatusButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Server Status'**
+  String get serverStatusButton;
+
+  /// No description provided for @serverStatusRunningLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get serverStatusRunningLabel;
+
+  /// No description provided for @serverStatusStoppedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped'**
+  String get serverStatusStoppedLabel;
+
+  /// No description provided for @restartServerButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart Server'**
+  String get restartServerButton;
+
+  /// No description provided for @restartServerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart the server?'**
+  String get restartServerTitle;
+
+  /// No description provided for @restartServerContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Every connected device — kitchen display, other cashiers, customer display — will briefly disconnect while it restarts.'**
+  String get restartServerContent;
+
+  /// No description provided for @restartingServerMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Restarting…'**
+  String get restartingServerMessage;
+
+  /// No description provided for @restartServerFailedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t restart automatically. Close and reopen the app if it doesn\'t come back.'**
+  String get restartServerFailedMessage;
+
+  /// No description provided for @startServerButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Server'**
+  String get startServerButton;
+
+  /// No description provided for @startingServerMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting…'**
+  String get startingServerMessage;
+
+  /// No description provided for @startServerFailedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t start automatically. Check the log for details.'**
+  String get startServerFailedMessage;
+
+  /// No description provided for @liveActivityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Live Activity'**
+  String get liveActivityTitle;
+
+  /// No description provided for @usersOnlineLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Users online'**
+  String get usersOnlineLabel;
+
+  /// No description provided for @noUsersOnlineMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'No one else is signed in right now.'**
+  String get noUsersOnlineMessage;
+
+  /// No description provided for @kitchenDisplaysLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Kitchen displays'**
+  String get kitchenDisplaysLabel;
+
+  /// No description provided for @customerDisplaysLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer displays'**
+  String get customerDisplaysLabel;
+
+  /// No description provided for @viewLogsButton.
+  ///
+  /// In en, this message translates to:
+  /// **'View Logs'**
+  String get viewLogsButton;
+
+  /// No description provided for @serverLogsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Server Logs'**
+  String get serverLogsTitle;
+
+  /// No description provided for @serverLogsEmptyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'No log file found yet — this only appears on the Windows device hosting the shop.'**
+  String get serverLogsEmptyMessage;
+
+  /// No description provided for @copyLogsButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get copyLogsButton;
+
+  /// No description provided for @logsCopiedSnackbar.
+  ///
+  /// In en, this message translates to:
+  /// **'Logs copied to clipboard'**
+  String get logsCopiedSnackbar;
+
+  /// No description provided for @openLogFolderButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Log Folder'**
+  String get openLogFolderButton;
 
   /// No description provided for @kitchenDisplayTitle.
   ///

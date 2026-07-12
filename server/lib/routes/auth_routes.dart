@@ -5,6 +5,7 @@ import 'package:shelf_router/shelf_router.dart';
 
 import '../config.dart';
 import '../database.dart';
+import '../server_log.dart';
 import '../utils.dart';
 
 void registerAuthRoutes(Router router, AppDb db, ServerConfig config) {
@@ -62,6 +63,9 @@ Future<Response> _requestOtp(Request req, AppDb db) async {
   final otp = db.generateAndStoreOtp(username);
   // In production wire this to an email/SMS provider.
   print('OTP for "$username": $otp  (valid 10 min)');
+  // Code stays console-only, same reasoning as the admin bootstrap password.
+  ServerLog.instance.log(
+      'OTP requested for "$username" (code shown in console output only, not persisted)');
 
   return jsonOk({'ok': true});
 }

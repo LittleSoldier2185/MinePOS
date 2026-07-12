@@ -139,6 +139,12 @@ class _OrderSummaryCard extends StatelessWidget {
   final List<OrderItem> items;
   final String Function(double) baht;
 
+  String _itemLabel(BuildContext context, OrderItem item) {
+    final name = item.menuItem.displayName(Localizations.localeOf(context));
+    if (item.sweetness == null) return name;
+    return '$name (${item.sweetness!.label(AppLocalizations.of(context)!)})';
+  }
+
   @override
   Widget build(BuildContext context) {
     final total = items.fold(0.0, (s, i) => s + i.subtotal);
@@ -167,7 +173,7 @@ class _OrderSummaryCard extends StatelessWidget {
                             color: AppColors.muted, fontSize: 13)),
                     const SizedBox(width: 8),
                     Expanded(
-                        child: Text(item.menuItem.name,
+                        child: Text(_itemLabel(context, item),
                             style: const TextStyle(fontSize: 13))),
                     Text(baht(item.subtotal),
                         style: const TextStyle(fontSize: 13)),

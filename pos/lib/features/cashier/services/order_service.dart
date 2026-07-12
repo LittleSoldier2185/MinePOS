@@ -15,7 +15,16 @@ class OrderService {
   int get nextOrderNumber => _nextNumber;
   final List<Order> _orders = [];
 
-  List<Order> get orders => List.unmodifiable(_orders.reversed.toList());
+  // Sorted explicitly by date rather than relying on _orders' internal
+  // ordering: loadFromServer() stores newest-first (mirrors the server's
+  // own `ORDER BY id DESC`), but complete() appends newly-placed orders to
+  // the end of whatever's already there — mixing the two silently produced
+  // an out-of-order list.
+  List<Order> get orders {
+    final sorted = List<Order>.of(_orders)
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return List.unmodifiable(sorted);
+  }
 
   List<Order> get todaysOrders {
     final today = DateTime.now();
@@ -27,8 +36,7 @@ class OrderService {
     }).toList();
   }
 
-  double get todaysRevenue =>
-      todaysOrders.fold(0.0, (s, o) => s + o.total);
+  double get todaysRevenue => todaysOrders.fold(0.0, (s, o) => s + o.total);
 
   /// Completes an order locally and syncs it to the server.
   /// Returns the order — if server sync succeeds the order number
@@ -90,8 +98,7 @@ class OrderService {
     final client = ServerClient.instance;
     if (!client.isConnected) return;
     try {
-      final uri = client.uri(
-          '/orders${date != null ? '?date=$date' : ''}');
+      final uri = client.uri('/orders${date != null ? '?date=$date' : ''}');
       final res = await http
           .get(uri, headers: client.headers)
           .timeout(const Duration(seconds: 10));
@@ -99,12 +106,11 @@ class OrderService {
         final list = jsonDecode(res.body) as List;
         _orders
           ..clear()
-          ..addAll(list.map(
-              (j) => Order.fromJson(j as Map<String, dynamic>)));
-        if (_orders.isNotEmpty) {
-          _nextNumber =
-              _orders.map((o) => o.orderNumber).reduce((a, b) => a > b ? a : b) + 1;
-        }
+          ..addAll(list.map((j) => Order.fromJson(j as Map<String, dynamic>)));
+        final todaysNumbers = todaysOrders.map((o) => o.orderNumber);
+        _nextNumber = todaysNumbers.isEmpty
+            ? 1
+            : todaysNumbers.reduce((a, b) => a > b ? a : b) + 1;
       }
     } catch (_) {}
   }

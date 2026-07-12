@@ -7,6 +7,7 @@ import 'package:sqlite3/sqlite3.dart';
 import 'package:uuid/uuid.dart';
 
 import 'config.dart';
+import 'server_log.dart';
 
 const _uuid = Uuid();
 
@@ -65,6 +66,8 @@ class DbMenuItem {
     required this.price,
     required this.available,
     this.imageBase64,
+    this.hasSweetness = false,
+    this.nameTh,
   });
 
   final String id;
@@ -73,6 +76,10 @@ class DbMenuItem {
   final double price;
   final bool available;
   final String? imageBase64;
+  final bool hasSweetness;
+
+  /// Optional Thai translation of [name].
+  final String? nameTh;
 
   factory DbMenuItem._fromRow(Row row) => DbMenuItem(
         id: row['id'] as String,
@@ -81,6 +88,8 @@ class DbMenuItem {
         price: (row['price'] as num).toDouble(),
         available: (row['available'] as int) == 1,
         imageBase64: row['image_base64'] as String?,
+        hasSweetness: (row['has_sweetness'] as int? ?? 0) == 1,
+        nameTh: row['name_th'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -90,6 +99,8 @@ class DbMenuItem {
         'price': price,
         'available': available,
         'imageBase64': imageBase64,
+        'hasSweetness': hasSweetness,
+        'nameTh': nameTh,
       };
 }
 
@@ -102,6 +113,8 @@ class DbOrderItem {
     required this.price,
     required this.quantity,
     required this.status,
+    this.sweetness,
+    this.menuItemNameTh,
   });
 
   final int id;
@@ -116,6 +129,15 @@ class DbOrderItem {
   /// serving the whole order is an order-level action.
   final String status;
 
+  /// One of "less" | "normal" | "sweet", only set for items ordered from a
+  /// menu item flagged [DbMenuItem.hasSweetness].
+  final String? sweetness;
+
+  /// Thai translation of [menuItemName], snapshotted at order time — same
+  /// reasoning as [menuItemName] itself: decoupled from the live menu item,
+  /// which may be renamed or deleted later.
+  final String? menuItemNameTh;
+
   factory DbOrderItem._fromRow(Row row) => DbOrderItem(
         id: row['id'] as int,
         menuItemId: row['menu_item_id'] as String,
@@ -124,6 +146,8 @@ class DbOrderItem {
         price: (row['price'] as num).toDouble(),
         quantity: row['quantity'] as int,
         status: row['status'] as String? ?? 'pending',
+        sweetness: row['sweetness'] as String?,
+        menuItemNameTh: row['menu_item_name_th'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -134,6 +158,8 @@ class DbOrderItem {
         'price': price,
         'quantity': quantity,
         'status': status,
+        'sweetness': sweetness,
+        'menuItemNameTh': menuItemNameTh,
       };
 
   double get subtotal => price * quantity;
@@ -209,6 +235,10 @@ class AppDb {
       );
       print('Created admin user "${config.adminUser}" with password: $pass');
       print('Change this password immediately in a production environment.');
+      // Password stays console-only — the persisted log below is redacted so
+      // it never lands somewhere the in-app log viewer (or the disk) shows it.
+      ServerLog.instance.log(
+          'Created admin user "${config.adminUser}" (password shown in console output only, not persisted)');
     }
 
     // Seed default menu if empty.
@@ -268,6 +298,13 @@ class AppDb {
     if (!menuCols.contains('image_base64')) {
       _db.execute('ALTER TABLE menu_items ADD COLUMN image_base64 TEXT');
     }
+    if (!menuCols.contains('has_sweetness')) {
+      _db.execute(
+          'ALTER TABLE menu_items ADD COLUMN has_sweetness INTEGER NOT NULL DEFAULT 0');
+    }
+    if (!menuCols.contains('name_th')) {
+      _db.execute('ALTER TABLE menu_items ADD COLUMN name_th TEXT');
+    }
 
     _db.execute('''
       CREATE TABLE IF NOT EXISTS orders (
@@ -315,6 +352,12 @@ class AppDb {
     if (!itemCols.contains('status')) {
       _db.execute(
           "ALTER TABLE order_items ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'");
+    }
+    if (!itemCols.contains('sweetness')) {
+      _db.execute('ALTER TABLE order_items ADD COLUMN sweetness TEXT');
+    }
+    if (!itemCols.contains('menu_item_name_th')) {
+      _db.execute('ALTER TABLE order_items ADD COLUMN menu_item_name_th TEXT');
     }
 
     // Singleton row (id always 1) holding the shop's own details, set once
@@ -499,15 +542,18 @@ class AppDb {
     required double price,
     bool available = true,
     String? imageBase64,
+    bool hasSweetness = false,
+    String? nameTh,
   }) {
     final id = 'u${_uuid.v4().substring(0, 8)}';
     final sortOrder = _db
         .select('SELECT COUNT(*) AS c FROM menu_items')
         .first['c'] as int;
     _db.execute(
-      'INSERT INTO menu_items (id, name, category, price, available, sort_order, image_base64) '
-      'VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [id, name.trim(), category.trim(), price, available ? 1 : 0, sortOrder, imageBase64],
+      'INSERT INTO menu_items (id, name, category, price, available, sort_order, image_base64, has_sweetness, name_th) '
+      'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, name.trim(), category.trim(), price, available ? 1 : 0, sortOrder, imageBase64,
+          hasSweetness ? 1 : 0, nameTh],
     );
     return getMenuItem(id)!;
   }
@@ -519,11 +565,14 @@ class AppDb {
     required double price,
     required bool available,
     String? imageBase64,
+    bool hasSweetness = false,
+    String? nameTh,
   }) {
     _db.execute(
-      'UPDATE menu_items SET name = ?, category = ?, price = ?, available = ?, image_base64 = ? '
-      'WHERE id = ?',
-      [name.trim(), category.trim(), price, available ? 1 : 0, imageBase64, id],
+      'UPDATE menu_items SET name = ?, category = ?, price = ?, available = ?, image_base64 = ?, '
+      'has_sweetness = ?, name_th = ? WHERE id = ?',
+      [name.trim(), category.trim(), price, available ? 1 : 0, imageBase64,
+          hasSweetness ? 1 : 0, nameTh, id],
     );
     return getMenuItem(id);
   }
@@ -543,8 +592,15 @@ class AppDb {
 
   // ── Orders ─────────────────────────────────────────────────────────────────
 
+  /// Scoped to today so the shop-facing counter restarts at 1 each day
+  /// instead of climbing forever — [id] (the real primary key) is what
+  /// every other query/route actually identifies an order by.
   int _nextOrderNumber() {
-    final rows = _db.select('SELECT MAX(order_number) AS m FROM orders');
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final rows = _db.select(
+      'SELECT MAX(order_number) AS m FROM orders WHERE DATE(created_at) = ?',
+      [today],
+    );
     final max = rows.first['m'] as int?;
     return (max ?? 0) + 1;
   }
@@ -571,8 +627,8 @@ class AppDb {
     for (final item in items) {
       _db.execute(
         'INSERT INTO order_items '
-        '(order_id, menu_item_id, menu_item_name, menu_item_category, price, quantity) '
-        'VALUES (?, ?, ?, ?, ?, ?)',
+        '(order_id, menu_item_id, menu_item_name, menu_item_category, price, quantity, sweetness, menu_item_name_th) '
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         [
           orderId,
           item['menuItemId'],
@@ -580,6 +636,8 @@ class AppDb {
           item['menuItemCategory'],
           (item['price'] as num).toDouble(),
           item['quantity'],
+          item['sweetness'],
+          item['menuItemNameTh'],
         ],
       );
     }

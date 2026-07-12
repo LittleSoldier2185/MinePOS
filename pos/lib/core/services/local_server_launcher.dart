@@ -78,4 +78,17 @@ class LocalServerLauncher {
     final bundled = File('${appDir.path}\\server\\minepos_server.exe');
     return bundled.existsSync() ? bundled : null;
   }
+
+  /// The log file the bundled server writes to (see `ServerLog` in the
+  /// server package) — same machine, so the app reads it straight off disk
+  /// rather than needing a dedicated HTTP endpoint. Null if the bundled exe
+  /// (and therefore its data dir) can't be found, e.g. running via
+  /// `flutter run` in dev, where the manual `dart run bin/server.dart`
+  /// workflow applies instead and writes its log wherever that shell's
+  /// working directory happened to be.
+  File? get logFile {
+    final exe = _findServerExecutable();
+    if (exe == null) return null;
+    return File('${exe.parent.path}\\data\\server.log');
+  }
 }

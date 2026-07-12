@@ -42,12 +42,16 @@ Future<Response> _createItem(
 
   final available = body?['available'] as bool? ?? true;
   final imageBase64 = body?['imageBase64'] as String?;
+  final hasSweetness = body?['hasSweetness'] as bool? ?? false;
+  final nameTh = (body?['nameTh'] as String?)?.trim();
   final item = db.createMenuItem(
     name: name,
     category: category,
     price: price,
     available: available,
     imageBase64: imageBase64,
+    hasSweetness: hasSweetness,
+    nameTh: nameTh == null || nameTh.isEmpty ? null : nameTh,
   );
   return jsonOk(item.toJson(), status: 201);
 }
@@ -70,6 +74,8 @@ Future<Response> _updateItem(
   }
 
   final imageBase64 = body?['imageBase64'] as String?;
+  final hasSweetness = body?['hasSweetness'] as bool? ?? false;
+  final nameTh = (body?['nameTh'] as String?)?.trim();
   final updated = db.updateMenuItem(
     id: id,
     name: name,
@@ -77,6 +83,8 @@ Future<Response> _updateItem(
     price: price,
     available: available,
     imageBase64: imageBase64,
+    hasSweetness: hasSweetness,
+    nameTh: nameTh == null || nameTh.isEmpty ? null : nameTh,
   );
   if (updated == null) return notFound('Menu item not found');
   return jsonOk(updated.toJson());

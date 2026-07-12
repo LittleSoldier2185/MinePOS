@@ -6,8 +6,43 @@ import '../config.dart';
 import '../database.dart';
 import '../utils.dart';
 
+const _kShopEditors = {'owner', 'manager'};
+
 void registerShopRoutes(Router router, AppDb db, ServerConfig config) {
+  router.get('/shop', (Request req) => _getShop(req, db, config));
+  router.patch('/shop', (Request req) => _updateShop(req, db, config));
   router.delete('/shop', (Request req) => _deleteShop(req, db, config));
+}
+
+// GET /shop — any authenticated role (the receipt/printer needs this for
+// every cashier, not just owner/manager).
+Response _getShop(Request req, AppDb db, ServerConfig config) {
+  if (requireAuth(req, db, config.jwtSecret) == null) return unauthorized();
+  final shopConfig = db.getShopConfig();
+  if (shopConfig == null) return notFound('Shop not configured');
+  return jsonOk(shopConfig);
+}
+
+// PATCH /shop  { shopName, address?, taxId?, email?, receiptFooter? }
+// Owner/manager only. Full replace of the editable fields (matches
+// setShopConfig's own upsert shape) rather than a partial patch.
+Future<Response> _updateShop(Request req, AppDb db, ServerConfig config) async {
+  if (requireRoles(req, db, config.jwtSecret, _kShopEditors) == null) {
+    return unauthorized();
+  }
+  final body = await parseJsonBody(req);
+  final shopName = (body?['shopName'] as String?)?.trim();
+  if (shopName == null || shopName.isEmpty) {
+    return jsonError('shopName is required');
+  }
+  db.setShopConfig(
+    shopName: shopName,
+    address: (body?['address'] as String?)?.trim(),
+    taxId: (body?['taxId'] as String?)?.trim(),
+    email: (body?['email'] as String?)?.trim(),
+    receiptFooter: (body?['receiptFooter'] as String?)?.trim(),
+  );
+  return jsonOk(db.getShopConfig()!);
 }
 
 // DELETE /shop  { email, username, password }  (owner only)

@@ -5,6 +5,7 @@ import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:shelf/shelf.dart';
 
 import 'database.dart';
+import 'presence_tracker.dart';
 
 // ── JSON responses ─────────────────────────────────────────────────────────────
 
@@ -63,6 +64,7 @@ DbUser? verifyToken(String token, AppDb db, String jwtSecret, {String? role}) {
   final user = db.getUserByUsername(username);
   if (user == null || !user.active || user.tokenVersion != ver) return null;
   if (role != null && user.role != role) return null;
+  PresenceTracker.instance.touch(user.username, user.role);
   return user;
 }
 

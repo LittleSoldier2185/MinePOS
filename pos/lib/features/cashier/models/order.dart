@@ -30,34 +30,35 @@ class Order {
 
   double get total => items.fold(0.0, (s, i) => s + i.subtotal);
 
-  double get change =>
-      paymentMethod == PaymentMethod.cash && amountPaid != null
-          ? amountPaid! - total
-          : 0.0;
+  double get change => paymentMethod == PaymentMethod.cash && amountPaid != null
+      ? amountPaid! - total
+      : 0.0;
 
-  String get formattedNumber =>
-      '#${orderNumber.toString().padLeft(3, '0')}';
+  String get formattedNumber => '#${orderNumber.toString().padLeft(3, '0')}';
 
   String get formattedDate {
     final d = createdAt;
     final date =
         '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-    final time =
-        '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
-    return '$date $time';
+    return '$date $formattedTime';
+  }
+
+  String get formattedTime {
+    final d = createdAt;
+    return '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
   }
 
   factory Order.fromJson(Map<String, dynamic> json) => Order(
-        id: json['id'] as int?,
-        orderNumber: json['orderNumber'] as int,
-        items: (json['items'] as List)
-            .map((i) => OrderItem.fromJson(i as Map<String, dynamic>))
-            .toList(),
-        createdAt: DateTime.parse(json['createdAt'] as String),
-        paymentMethod: (json['paymentMethod'] as String) == 'promptpay'
-            ? PaymentMethod.promptpay
-            : PaymentMethod.cash,
-        amountPaid: (json['amountPaid'] as num?)?.toDouble(),
-        kitchenStatus: json['status'] as String? ?? 'pending',
-      );
+    id: json['id'] as int?,
+    orderNumber: json['orderNumber'] as int,
+    items: (json['items'] as List)
+        .map((i) => OrderItem.fromJson(i as Map<String, dynamic>))
+        .toList(),
+    createdAt: DateTime.parse(json['createdAt'] as String),
+    paymentMethod: (json['paymentMethod'] as String) == 'promptpay'
+        ? PaymentMethod.promptpay
+        : PaymentMethod.cash,
+    amountPaid: (json['amountPaid'] as num?)?.toDouble(),
+    kitchenStatus: json['status'] as String? ?? 'pending',
+  );
 }

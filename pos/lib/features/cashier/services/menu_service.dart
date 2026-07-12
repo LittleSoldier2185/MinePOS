@@ -94,6 +94,8 @@ class MenuService {
     required double price,
     bool available = true,
     String? imageBase64,
+    bool hasSweetness = false,
+    String? nameTh,
   }) {
     final item = MenuItem(
       id: 'u${_nextId++}',
@@ -102,6 +104,8 @@ class MenuService {
       price: price,
       available: available,
       imageBase64: imageBase64,
+      hasSweetness: hasSweetness,
+      nameTh: nameTh,
     );
     _items.add(item);
     _serverCreate(item);
@@ -130,6 +134,8 @@ class MenuService {
       price: m.price,
       available: !m.available,
       imageBase64: m.imageBase64,
+      hasSweetness: m.hasSweetness,
+      nameTh: m.nameTh,
     );
     _serverToggle(id);
   }

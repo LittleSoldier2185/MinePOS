@@ -401,6 +401,12 @@ class AppLocalizationsTh extends AppLocalizations {
   String get receiptFooterFieldHint => 'ไม่บังคับ เช่น \"ขอบคุณค่ะ!\"';
 
   @override
+  String get shopDetailsSectionLabel => 'ข้อมูลร้าน';
+
+  @override
+  String get shopDetailsSavedMessage => 'บันทึกข้อมูลร้านแล้ว';
+
+  @override
   String shopSetupFailedMessage(String error) {
     return 'ตั้งค่าไม่สำเร็จ: $error';
   }
@@ -712,13 +718,19 @@ class AppLocalizationsTh extends AppLocalizations {
   String get editItemFormTitle => 'แก้ไขเมนู';
 
   @override
-  String get itemNameLabel => 'ชื่อเมนู';
+  String get itemNameLabel => 'ชื่อเมนู (อังกฤษ)';
 
   @override
   String get itemNameHint => 'เช่น คาราเมล ลาเต้';
 
   @override
   String get itemNameRequired => 'กรุณากรอกชื่อเมนู';
+
+  @override
+  String get itemNameThLabel => 'ชื่อเมนู (ไทย)';
+
+  @override
+  String get itemNameThHint => 'ไม่บังคับ เช่น คาราเมลลาเต้';
 
   @override
   String get categoryLabel => 'หมวดหมู่';
@@ -745,7 +757,22 @@ class AppLocalizationsTh extends AppLocalizations {
   String get availableLabel => 'แสดงในเมนู';
 
   @override
+  String get hasSweetnessLabel => 'ถามระดับความหวาน';
+
+  @override
   String get saveChangesButton => 'บันทึกการเปลี่ยนแปลง';
+
+  @override
+  String get selectSweetnessTitle => 'ระดับความหวาน';
+
+  @override
+  String get sweetnessLess => 'หวานน้อย';
+
+  @override
+  String get sweetnessNormal => 'หวานปกติ';
+
+  @override
+  String get sweetnessSweet => 'หวานมาก';
 
   @override
   String get todayRange => 'วันนี้';
@@ -931,6 +958,97 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get removeShopConfirmButton => 'ลบร้าน';
+
+  @override
+  String get backToDashboardTooltip => 'กลับไปหน้าหลัก';
+
+  @override
+  String get cropImageTitle => 'ครอบตัดรูปภาพ';
+
+  @override
+  String get cropConfirmButton => 'เสร็จสิ้น';
+
+  @override
+  String get cropHintText => 'บีบนิ้วเพื่อซูม • ลากเพื่อจัดตำแหน่งภาพ';
+
+  @override
+  String get gridViewTooltip => 'มุมมองตาราง';
+
+  @override
+  String get listViewTooltip => 'มุมมองรายการ';
+
+  @override
+  String get serverSectionLabel => 'เซิร์ฟเวอร์';
+
+  @override
+  String get serverStatusButton => 'สถานะเซิร์ฟเวอร์';
+
+  @override
+  String get serverStatusRunningLabel => 'กำลังทำงาน';
+
+  @override
+  String get serverStatusStoppedLabel => 'หยุดทำงาน';
+
+  @override
+  String get restartServerButton => 'รีสตาร์ทเซิร์ฟเวอร์';
+
+  @override
+  String get restartServerTitle => 'รีสตาร์ทเซิร์ฟเวอร์ใช่หรือไม่?';
+
+  @override
+  String get restartServerContent =>
+      'อุปกรณ์ที่เชื่อมต่ออยู่ทั้งหมด — จอครัว เครื่องแคชเชียร์อื่น จอลูกค้า — จะขาดการเชื่อมต่อชั่วคราวระหว่างรีสตาร์ท';
+
+  @override
+  String get restartingServerMessage => 'กำลังรีสตาร์ท…';
+
+  @override
+  String get restartServerFailedMessage =>
+      'ไม่สามารถรีสตาร์ทอัตโนมัติได้ ลองปิดแล้วเปิดแอปใหม่หากเซิร์ฟเวอร์ไม่กลับมาทำงาน';
+
+  @override
+  String get startServerButton => 'เริ่มเซิร์ฟเวอร์';
+
+  @override
+  String get startingServerMessage => 'กำลังเริ่ม…';
+
+  @override
+  String get startServerFailedMessage =>
+      'ไม่สามารถเริ่มอัตโนมัติได้ กรุณาตรวจสอบบันทึก';
+
+  @override
+  String get liveActivityTitle => 'กิจกรรมขณะนี้';
+
+  @override
+  String get usersOnlineLabel => 'ผู้ใช้ที่ออนไลน์';
+
+  @override
+  String get noUsersOnlineMessage => 'ไม่มีใครลงชื่อเข้าใช้อยู่ในขณะนี้';
+
+  @override
+  String get kitchenDisplaysLabel => 'จอครัว';
+
+  @override
+  String get customerDisplaysLabel => 'จอลูกค้า';
+
+  @override
+  String get viewLogsButton => 'ดูบันทึก';
+
+  @override
+  String get serverLogsTitle => 'บันทึกเซิร์ฟเวอร์';
+
+  @override
+  String get serverLogsEmptyMessage =>
+      'ยังไม่พบไฟล์บันทึก — จะปรากฏเฉพาะบนเครื่อง Windows ที่เป็นโฮสต์ของร้านเท่านั้น';
+
+  @override
+  String get copyLogsButton => 'คัดลอก';
+
+  @override
+  String get logsCopiedSnackbar => 'คัดลอกบันทึกแล้ว';
+
+  @override
+  String get openLogFolderButton => 'เปิดโฟลเดอร์บันทึก';
 
   @override
   String get kitchenDisplayTitle => 'จอครัว';

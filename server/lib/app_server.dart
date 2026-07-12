@@ -7,6 +7,7 @@ import 'package:shelf_router/shelf_router.dart';
 import 'config.dart';
 import 'database.dart';
 import 'mdns_service.dart';
+import 'routes/admin_routes.dart';
 import 'routes/auth_routes.dart';
 import 'routes/customer_display_routes.dart';
 import 'routes/health_route.dart';
@@ -16,6 +17,7 @@ import 'routes/order_routes.dart';
 import 'routes/setup_routes.dart';
 import 'routes/shop_routes.dart';
 import 'routes/user_routes.dart';
+import 'server_log.dart';
 import 'utils.dart';
 
 /// A running MinePOS server instance, returned by [startMinePosServer].
@@ -44,7 +46,9 @@ Future<RunningServer> startMinePosServer({
   required ServerConfig config,
   InternetAddress? bindAddress,
   bool enableMdns = true,
+  void Function()? onRestartRequested,
 }) async {
+  ServerLog.open(config.dataDir);
   final db = await AppDb.open(config);
 
   final router = Router();
@@ -57,15 +61,20 @@ Future<RunningServer> startMinePosServer({
   registerCustomerDisplayRoutes(router, db, config);
   registerSetupRoutes(router, db, config);
   registerShopRoutes(router, db, config);
+  registerAdminRoutes(router, db, config, onRestart: onRestartRequested);
 
   final handler = Pipeline()
-      .addMiddleware(logRequests())
+      .addMiddleware(logRequests(
+        logger: (message, isError) =>
+            ServerLog.instance.log(redactTokens(message)),
+      ))
       .addMiddleware(cors())
       .addHandler(router.call);
 
   final resolvedBindAddress = bindAddress ?? InternetAddress.anyIPv4;
   final httpServer = await io.serve(handler, resolvedBindAddress, config.port);
-  print('MinePOS server listening on http://${resolvedBindAddress.address}:${httpServer.port}');
+  ServerLog.instance.log(
+      'MinePOS server listening on http://${resolvedBindAddress.address}:${httpServer.port}');
 
   MdnsService? mdns;
   if (enableMdns) {

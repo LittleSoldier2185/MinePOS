@@ -20,6 +20,17 @@ class AppSettingsService {
   static const _kPrinterDeviceIdKey = 'settings.printerDeviceId';
   static const _kPrinterDeviceNameKey = 'settings.printerDeviceName';
   static const _kPaperSizeKey = 'settings.paperSize';
+  static const _kMenuGridViewKey = 'settings.menuGridView';
+
+  Future<bool> getMenuGridView() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_kMenuGridViewKey) ?? true;
+  }
+
+  Future<void> setMenuGridView(bool isGridView) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kMenuGridViewKey, isGridView);
+  }
 
   Future<ReceiptPaperSize> getPaperSize() async {
     final prefs = await SharedPreferences.getInstance();

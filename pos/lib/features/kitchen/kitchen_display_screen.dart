@@ -63,9 +63,11 @@ class KitchenDisplayScreen extends StatefulWidget {
   State<KitchenDisplayScreen> createState() => _KitchenDisplayScreenState();
 }
 
-class _KitchenDisplayScreenState extends State<KitchenDisplayScreen> {
+class _KitchenDisplayScreenState extends State<KitchenDisplayScreen>
+    with SingleTickerProviderStateMixin {
   final _svc = KitchenService.instance;
   Timer? _ticker;
+  late final _tabController = TabController(length: 3, vsync: this);
 
   @override
   void initState() {
@@ -82,6 +84,7 @@ class _KitchenDisplayScreenState extends State<KitchenDisplayScreen> {
     _svc.removeListener(_onChange);
     _svc.disconnect();
     _ticker?.cancel();
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -168,14 +171,27 @@ class _KitchenDisplayScreenState extends State<KitchenDisplayScreen> {
       ),
       backgroundColor: AppColors.background,
       body: isMobile
-          ? SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: columns
-                    .map((c) => SizedBox(width: 320, child: c))
-                    .toList(),
-              ),
+          ? Column(
+              children: [
+                TabBar(
+                  controller: _tabController,
+                  labelColor: AppColors.primary,
+                  unselectedLabelColor: AppColors.muted,
+                  indicatorColor: AppColors.primary,
+                  labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                  tabs: [
+                    Tab(text: '${l10n.newColumnTitle} (${pending.length})'),
+                    Tab(text: '${l10n.preparingColumnTitle} (${preparing.length})'),
+                    Tab(text: '${l10n.readyColumnTitle} (${ready.length})'),
+                  ],
+                ),
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: columns,
+                  ),
+                ),
+              ],
             )
           : Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -304,6 +320,12 @@ class _OrderCard extends StatelessWidget {
     return l10n.minAgoElapsed(mins);
   }
 
+  String _itemLabel(BuildContext context, OrderItem item) {
+    final name = item.menuItem.displayName(Localizations.localeOf(context));
+    if (item.sweetness == null) return name;
+    return '$name (${item.sweetness!.label(AppLocalizations.of(context)!)})';
+  }
+
   @override
   Widget build(BuildContext context) {
     final age = DateTime.now().difference(order.createdAt);
@@ -347,7 +369,10 @@ class _OrderCard extends StatelessWidget {
                           fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.ink)),
                   const SizedBox(width: 6),
                   Expanded(
-                    child: Text(item.menuItem.name, style: const TextStyle(fontSize: 13)),
+                    child: Text(
+                      _itemLabel(context, item),
+                      style: const TextStyle(fontSize: 13),
+                    ),
                   ),
                   _ItemStatusChip(item: item, onTap: () => onItemTap(item)),
                 ],

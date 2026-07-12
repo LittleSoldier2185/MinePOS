@@ -104,6 +104,7 @@ class KitchenService extends ChangeNotifier {
                       quantity: i.quantity,
                       id: i.id,
                       status: newItemStatus,
+                      sweetness: i.sweetness,
                     )
                   : i)
               .toList();

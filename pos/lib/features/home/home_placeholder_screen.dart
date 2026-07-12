@@ -30,8 +30,7 @@ class HomePlaceholderScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isWide =
-        MediaQuery.sizeOf(context).width >= Breakpoints.mobile;
+    final isWide = MediaQuery.sizeOf(context).width >= Breakpoints.mobile;
     return isWide ? _Desktop(title: title) : _Mobile(title: title);
   }
 }
@@ -47,8 +46,10 @@ String _greeting(BuildContext context) {
 
 String _dateStr(BuildContext context) {
   final d = DateTime.now();
-  return DateFormat('EEE, d MMM yyyy', Localizations.localeOf(context).toString())
-      .format(d);
+  return DateFormat(
+    'EEE, d MMM yyyy',
+    Localizations.localeOf(context).toString(),
+  ).format(d);
 }
 
 String _baht(double v) => '฿${v.toStringAsFixed(0)}';
@@ -66,8 +67,10 @@ Future<void> _confirmLogout(BuildContext context) async {
         ),
         TextButton(
           onPressed: () => Navigator.pop(context, true),
-          child: Text(AppLocalizations.of(context)!.signOut,
-              style: const TextStyle(color: AppColors.terracottaDark)),
+          child: Text(
+            AppLocalizations.of(context)!.signOut,
+            style: const TextStyle(color: AppColors.terracottaDark),
+          ),
         ),
       ],
     ),
@@ -82,45 +85,45 @@ Future<void> _confirmLogout(BuildContext context) async {
 }
 
 void _openNewOrder(BuildContext context) {
-  Navigator.of(context).push(
-    MaterialPageRoute(builder: (_) => const OrderTakingScreen()),
-  );
+  Navigator.of(
+    context,
+  ).push(MaterialPageRoute(builder: (_) => const OrderTakingScreen()));
 }
 
 void _openHistory(BuildContext context) {
-  Navigator.of(context).push(
-    MaterialPageRoute(builder: (_) => const OrderHistoryScreen()),
-  );
+  Navigator.of(
+    context,
+  ).push(MaterialPageRoute(builder: (_) => const OrderHistoryScreen()));
 }
 
 void _openMenuMgmt(BuildContext context) {
-  Navigator.of(context).push(
-    MaterialPageRoute(builder: (_) => const MenuManagementScreen()),
-  );
+  Navigator.of(
+    context,
+  ).push(MaterialPageRoute(builder: (_) => const MenuManagementScreen()));
 }
 
 void _openReports(BuildContext context) {
-  Navigator.of(context).push(
-    MaterialPageRoute(builder: (_) => const ReportsScreen()),
-  );
+  Navigator.of(
+    context,
+  ).push(MaterialPageRoute(builder: (_) => const ReportsScreen()));
 }
 
 void _openSettings(BuildContext context) {
-  Navigator.of(context).push(
-    MaterialPageRoute(builder: (_) => const SettingsScreen()),
-  );
+  Navigator.of(
+    context,
+  ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
 }
 
 void _openStaff(BuildContext context) {
-  Navigator.of(context).push(
-    MaterialPageRoute(builder: (_) => const StaffManagementScreen()),
-  );
+  Navigator.of(
+    context,
+  ).push(MaterialPageRoute(builder: (_) => const StaffManagementScreen()));
 }
 
 void _openKitchen(BuildContext context) {
-  Navigator.of(context).push(
-    MaterialPageRoute(builder: (_) => const KitchenDisplayScreen()),
-  );
+  Navigator.of(
+    context,
+  ).push(MaterialPageRoute(builder: (_) => const KitchenDisplayScreen()));
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -175,8 +178,11 @@ class _Sidebar extends StatelessWidget {
                         shape: BoxShape.circle,
                       ),
                       child: const Center(
-                        child: Icon(Icons.local_cafe,
-                            color: AppColors.accent, size: 14),
+                        child: Icon(
+                          Icons.local_cafe,
+                          color: AppColors.accent,
+                          size: 14,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 9),
@@ -215,8 +221,11 @@ class _Sidebar extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 child: Column(
                   children: [
-                    const Icon(Icons.add_circle_outline,
-                        color: AppColors.accent, size: 22),
+                    const Icon(
+                      Icons.add_circle_outline,
+                      color: AppColors.accent,
+                      size: 22,
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       AppLocalizations.of(context)!.newOrderButton,
@@ -240,7 +249,9 @@ class _Sidebar extends StatelessWidget {
                 children: [
                   _SideNavItem(
                     icon: Icons.home_outlined,
-                    label: AppLocalizations.of(context)!.desktopDashboardNavLabel,
+                    label: AppLocalizations.of(
+                      context,
+                    )!.desktopDashboardNavLabel,
                     active: true,
                   ),
                   _SideNavItem(
@@ -298,14 +309,18 @@ class _Sidebar extends StatelessWidget {
                   ServerClient.instance.username ??
                       AppLocalizations.of(context)!.defaultAdminUsername,
                   style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: _kSidebarText),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: _kSidebarText,
+                  ),
                 ),
                 GestureDetector(
                   onTap: () => _confirmLogout(context),
-                  child: const Icon(Icons.logout,
-                      size: 16, color: _kSidebarMuted),
+                  child: const Icon(
+                    Icons.logout,
+                    size: 16,
+                    color: _kSidebarMuted,
+                  ),
                 ),
               ],
             ),
@@ -372,7 +387,14 @@ class _ConnectionStatusState extends State<_ConnectionStatus> {
             decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
           const SizedBox(width: 6),
-          Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -404,16 +426,17 @@ class _SideNavItem extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(icon,
-                size: 16,
-                color: active ? _kSidebarText : _kSidebarMuted),
+            Icon(
+              icon,
+              size: 16,
+              color: active ? _kSidebarText : _kSidebarMuted,
+            ),
             const SizedBox(width: 10),
             Text(
               label,
               style: TextStyle(
                 fontSize: 13,
-                fontWeight:
-                    active ? FontWeight.w600 : FontWeight.w500,
+                fontWeight: active ? FontWeight.w600 : FontWeight.w500,
                 color: active ? _kSidebarText : _kSidebarMuted,
               ),
             ),
@@ -543,13 +566,40 @@ class _Mobile extends StatelessWidget {
 // Shared content panel
 // ════════════════════════════════════════════════════════════════════════════
 
-class _ContentPanel extends StatelessWidget {
+class _ContentPanel extends StatefulWidget {
   const _ContentPanel({required this.title, required this.desktop});
   final String title;
   final bool desktop;
 
   @override
+  State<_ContentPanel> createState() => _ContentPanelState();
+}
+
+class _ContentPanelState extends State<_ContentPanel> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    // OrderService is a plain singleton, not listenable — popping back here
+    // after completing an order doesn't rebuild this (already-built) widget
+    // on its own, so the stats looked frozen until something else happened
+    // to trigger a rebuild. Polling is the same fix already used for the
+    // connection-status dot further down this file.
+    _timer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final desktop = widget.desktop;
     final svc = OrderService.instance;
     final todayList = svc.todaysOrders;
     final count = todayList.length;
@@ -560,8 +610,7 @@ class _ContentPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (desktop)
-          _TopBar(onLogout: () => _confirmLogout(context)),
+        if (desktop) _TopBar(onLogout: () => _confirmLogout(context)),
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
@@ -640,17 +689,18 @@ class _TopBar extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                AppLocalizations.of(context)!
-                    .greetingWithName(_greeting(context)),
+                AppLocalizations.of(
+                  context,
+                )!.greetingWithName(_greeting(context)),
                 style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink,
+                ),
               ),
               Text(
                 _dateStr(context),
-                style: const TextStyle(
-                    fontSize: 11, color: AppColors.muted),
+                style: const TextStyle(fontSize: 11, color: AppColors.muted),
               ),
             ],
           ),
@@ -707,9 +757,10 @@ class _StatCard extends StatelessWidget {
             Text(
               label,
               style: const TextStyle(
-                  fontSize: 10,
-                  color: AppColors.muted,
-                  letterSpacing: 0.3),
+                fontSize: 10,
+                color: AppColors.muted,
+                letterSpacing: 0.3,
+              ),
             ),
           ],
         ),
@@ -721,10 +772,7 @@ class _StatCard extends StatelessWidget {
 // ── Recent orders ──────────────────────────────────────────────────────────
 
 class _RecentOrders extends StatelessWidget {
-  const _RecentOrders({
-    required this.orders,
-    required this.onViewAll,
-  });
+  const _RecentOrders({required this.orders, required this.onViewAll});
   final List<Order> orders;
   final VoidCallback onViewAll;
 
@@ -748,12 +796,15 @@ class _RecentOrders extends StatelessWidget {
             TextButton(
               onPressed: onViewAll,
               style: TextButton.styleFrom(
-                  foregroundColor: AppColors.primary,
-                  padding: EdgeInsets.zero,
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-              child: Text(AppLocalizations.of(context)!.viewAllOrdersLink,
-                  style: const TextStyle(fontSize: 12)),
+                foregroundColor: AppColors.primary,
+                padding: EdgeInsets.zero,
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                AppLocalizations.of(context)!.viewAllOrdersLink,
+                style: const TextStyle(fontSize: 12),
+              ),
             ),
           ],
         ),
@@ -769,14 +820,18 @@ class _RecentOrders extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    const Icon(Icons.receipt_long_outlined,
-                        size: 32,
-                        color: AppColors.muted),
+                    const Icon(
+                      Icons.receipt_long_outlined,
+                      size: 32,
+                      color: AppColors.muted,
+                    ),
                     const SizedBox(height: 8),
                     Text(
                       AppLocalizations.of(context)!.noOrdersTodayMessage,
                       style: const TextStyle(
-                          color: AppColors.muted, fontSize: 13),
+                        color: AppColors.muted,
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 ),
@@ -793,21 +848,28 @@ class _RecentOrders extends StatelessWidget {
                     final o = e.value;
                     final isLast = i == orders.length - 1;
                     final itemSummary = o.items
-                        .map((item) => '${item.quantity}× ${item.menuItem.name}')
+                        .map(
+                          (item) =>
+                              '${item.quantity}× ${item.menuItem.displayName(Localizations.localeOf(context))}',
+                        )
                         .join(', ');
                     final methodLabel = o.paymentMethod == PaymentMethod.cash
                         ? AppLocalizations.of(context)!.cash
                         : AppLocalizations.of(context)!.recentOrderQrLabel;
                     return Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 11),
+                        horizontal: 16,
+                        vertical: 11,
+                      ),
                       decoration: BoxDecoration(
                         border: isLast
                             ? null
                             : const Border(
                                 bottom: BorderSide(
-                                    color: AppColors.terracottaLight,
-                                    width: 0.5)),
+                                  color: AppColors.terracottaLight,
+                                  width: 0.5,
+                                ),
+                              ),
                       ),
                       child: Row(
                         children: [
@@ -840,7 +902,9 @@ class _RecentOrders extends StatelessWidget {
                           const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.background,
                               borderRadius: BorderRadius.circular(4),
@@ -848,9 +912,10 @@ class _RecentOrders extends StatelessWidget {
                             child: Text(
                               methodLabel,
                               style: const TextStyle(
-                                  fontSize: 9,
-                                  color: AppColors.muted,
-                                  fontWeight: FontWeight.w600),
+                                fontSize: 9,
+                                color: AppColors.muted,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ],

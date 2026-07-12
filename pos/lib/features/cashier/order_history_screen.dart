@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../l10n/app_localizations.dart';
 import 'models/order.dart';
+import 'models/order_item.dart';
 import 'services/order_service.dart';
 
 class OrderHistoryScreen extends StatefulWidget {
@@ -32,8 +34,11 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.receipt_long_outlined,
-                      size: 56, color: AppColors.muted.withValues(alpha: 0.5)),
+                  Icon(
+                    Icons.receipt_long_outlined,
+                    size: 56,
+                    color: AppColors.muted.withValues(alpha: 0.5),
+                  ),
                   const SizedBox(height: 12),
                   Text(
                     AppLocalizations.of(context)!.noOrdersMessage,
@@ -42,15 +47,57 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                 ],
               ),
             )
-          : ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: _orders.length,
-              separatorBuilder: (_, _) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final order = _orders[index];
-                return _OrderTile(order: order, baht: _baht);
-              },
-            ),
+          : _buildGroupedList(context),
+    );
+  }
+
+  // Orders are already newest-first, so same-day orders are always
+  // contiguous — a single pass is enough to insert a header whenever the
+  // calendar day changes.
+  Widget _buildGroupedList(BuildContext context) {
+    final dateFmt = DateFormat(
+      'EEEE, d MMMM yyyy',
+      Localizations.localeOf(context).toString(),
+    );
+    final children = <Widget>[];
+    DateTime? lastDay;
+    for (final order in _orders) {
+      final d = order.createdAt;
+      final day = DateTime(d.year, d.month, d.day);
+      if (day != lastDay) {
+        if (lastDay != null) children.add(const SizedBox(height: 4));
+        children.add(_DateHeader(text: dateFmt.format(day)));
+        lastDay = day;
+      } else {
+        children.add(const Divider(height: 1));
+      }
+      children.add(_OrderTile(order: order, baht: _baht));
+    }
+    return ListView(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      children: children,
+    );
+  }
+}
+
+class _DateHeader extends StatelessWidget {
+  const _DateHeader({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: AppColors.background,
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: AppColors.muted,
+        ),
+      ),
     );
   }
 }
@@ -66,6 +113,12 @@ class _OrderTile extends StatefulWidget {
 
 class _OrderTileState extends State<_OrderTile> {
   bool _expanded = false;
+
+  String _itemLabel(BuildContext context, OrderItem item) {
+    final name = item.menuItem.displayName(Localizations.localeOf(context));
+    if (item.sweetness == null) return name;
+    return '$name (${item.sweetness!.label(AppLocalizations.of(context)!)})';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -98,12 +151,13 @@ class _OrderTileState extends State<_OrderTile> {
             ),
           ),
           title: Text(
-            AppLocalizations.of(context)!
-                .orderItemsSummary(o.items.length, methodLabel),
+            AppLocalizations.of(
+              context,
+            )!.orderItemsSummary(o.items.length, methodLabel),
             style: const TextStyle(fontSize: 14),
           ),
           subtitle: Text(
-            o.formattedDate,
+            o.formattedTime,
             style: const TextStyle(fontSize: 12, color: AppColors.muted),
           ),
           trailing: Row(
@@ -119,9 +173,7 @@ class _OrderTileState extends State<_OrderTile> {
               ),
               const SizedBox(width: 4),
               Icon(
-                _expanded
-                    ? Icons.keyboard_arrow_up
-                    : Icons.keyboard_arrow_down,
+                _expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
                 color: AppColors.muted,
                 size: 20,
               ),
@@ -142,12 +194,16 @@ class _OrderTileState extends State<_OrderTile> {
                         Text(
                           '${item.quantity}×',
                           style: const TextStyle(
-                              color: AppColors.muted, fontSize: 13),
+                            color: AppColors.muted,
+                            fontSize: 13,
+                          ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Text(item.menuItem.name,
-                              style: const TextStyle(fontSize: 13)),
+                          child: Text(
+                            _itemLabel(context, item),
+                            style: const TextStyle(fontSize: 13),
+                          ),
                         ),
                         Text(
                           widget.baht(item.subtotal),
@@ -162,21 +218,33 @@ class _OrderTileState extends State<_OrderTile> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(AppLocalizations.of(context)!.cash,
-                          style: const TextStyle(
-                              fontSize: 12, color: AppColors.muted)),
-                      Text(widget.baht(o.amountPaid ?? 0),
-                          style: const TextStyle(fontSize: 12)),
+                      Text(
+                        AppLocalizations.of(context)!.cash,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                      Text(
+                        widget.baht(o.amountPaid ?? 0),
+                        style: const TextStyle(fontSize: 12),
+                      ),
                     ],
                   ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(AppLocalizations.of(context)!.change,
-                          style: const TextStyle(
-                              fontSize: 12, color: AppColors.muted)),
-                      Text(widget.baht(o.change),
-                          style: const TextStyle(fontSize: 12)),
+                      Text(
+                        AppLocalizations.of(context)!.change,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                      Text(
+                        widget.baht(o.change),
+                        style: const TextStyle(fontSize: 12),
+                      ),
                     ],
                   ),
                 ],
