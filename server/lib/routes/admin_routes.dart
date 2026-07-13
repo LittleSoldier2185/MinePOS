@@ -13,12 +13,15 @@ import '../utils.dart';
 
 const _kAdminViewers = {'owner', 'manager'};
 
-/// [onRestart] defaults to exiting the whole process — correct when the
-/// server is its own OS process (the CLI, or the bundled exe under
-/// `LocalServerLauncher`, which relaunches it). A caller that runs the
-/// server in-process instead (e.g. `server_launcher`, a GUI wrapping
-/// `startMinePosServer()` directly) must pass its own callback, or this
-/// would exit the whole host app, not just "the server".
+/// [onRestart] defaults to exiting the whole process. Every current
+/// entrypoint (`bin/server.dart`, used by both the CLI and the exe
+/// `LocalServerLauncher` bundles) overrides this with an in-process restart
+/// instead — swapping the running server for a fresh one without ever
+/// exiting — since nothing actually supervises this process to relaunch it
+/// after an exit. A future caller that runs the server in-process (e.g. a
+/// GUI wrapping `startMinePosServer()` directly) must pass its own callback
+/// too, or the exit(0) fallback here would kill the whole host app, not just
+/// "the server".
 void registerAdminRoutes(
   Router router,
   AppDb db,

@@ -249,6 +249,11 @@ class AppDb {
     return instance;
   }
 
+  /// Releases the native sqlite3 connection. Callers that reopen a fresh
+  /// [AppDb] afterward (e.g. an in-process server restart) must call this
+  /// first, or the old native handle leaks for the life of the process.
+  void close() => _db.dispose();
+
   void _migrate() {
     _db.execute('''
       CREATE TABLE IF NOT EXISTS users (

@@ -31,6 +31,7 @@ class RunningServer {
   Future<void> close() async {
     await mdns?.stop();
     await httpServer.close(force: true);
+    db.close();
   }
 }
 
