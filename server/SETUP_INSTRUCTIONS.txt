@@ -22,7 +22,7 @@ REQUIREMENTS
 FIRST-TIME SETUP
 -----------------
 1. Open a terminal in the server folder:
-     cd "D:\NSL files\MinePOS\server"
+     cd "..\MinePOS\server"
 
 2. Install/refresh Dart dependencies:
      dart pub get
