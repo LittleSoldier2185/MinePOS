@@ -1,5 +1,6 @@
 class StaffMember {
   const StaffMember({
+    required this.id,
     required this.username,
     required this.role,
     required this.active,
@@ -10,6 +11,7 @@ class StaffMember {
     this.avatarBase64,
   });
 
+  final int id;
   final String username;
   final String role; // "owner" | "manager" | "worker"
   final bool active;
@@ -24,6 +26,7 @@ class StaffMember {
   String get displayName => (name == null || name!.isEmpty) ? username : name!;
 
   factory StaffMember.fromJson(Map<String, dynamic> json) => StaffMember(
+        id: json['id'] as int,
         username: json['username'] as String,
         role: json['role'] as String,
         active: json['active'] as bool,

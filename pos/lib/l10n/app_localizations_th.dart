@@ -108,10 +108,10 @@ class AppLocalizationsTh extends AppLocalizations {
   String get ownerRoleDisplay => 'เจ้าของร้าน';
 
   @override
-  String get connectionModeLocalLabel => 'เครื่องนี้ (ภายในร้าน)';
+  String get connectionModeLocalLabel => 'โหมดออฟไลน์ (เครื่องนี้)';
 
   @override
-  String get connectionModeCloudLabel => 'คลาวด์';
+  String get connectionModeCloudLabel => 'โหมดออนไลน์';
 
   @override
   String get optionalHint => 'ไม่บังคับ';
@@ -161,6 +161,18 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get welcomeCreateShopButton => 'สร้างร้านใหม่';
+
+  @override
+  String get welcomeCreateShopUnavailableNote =>
+      'อุปกรณ์นี้ตั้งค่าร้านไว้แล้ว กรุณาใช้ \"เปิดเครื่องขาย\" เพื่อเข้าสู่ระบบ';
+
+  @override
+  String get shopAlreadyExistsLocalError =>
+      'อุปกรณ์นี้ตั้งค่าร้านไว้แล้ว กรุณาใช้ \"เปิดเครื่องขาย\" เพื่อเข้าสู่ระบบแทน';
+
+  @override
+  String get shopAlreadyExistsRemoteError =>
+      'เซิร์ฟเวอร์นี้ตั้งค่าร้านไว้แล้ว กรุณาให้เจ้าของร้านเข้าสู่ระบบให้คุณแทนการสร้างร้านใหม่';
 
   @override
   String get welcomeVersionInfo => 'v1.0 · โฮสต์เองหรือใช้คลาวด์';
@@ -291,6 +303,10 @@ class AppLocalizationsTh extends AppLocalizations {
   @override
   String get connectFailureError =>
       'เชื่อมต่อไม่สำเร็จ กรุณาตรวจสอบที่อยู่แล้วลองใหม่';
+
+  @override
+  String get connectNoShopError =>
+      'เซิร์ฟเวอร์นี้ยังไม่ได้ตั้งค่าร้าน กรุณาใช้ \"สร้างร้านใหม่\" เพื่อตั้งค่าก่อน';
 
   @override
   String get connectButton => 'เชื่อมต่อ';
@@ -428,7 +444,7 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get localConnectionModeSubtitleWindows =>
-      'โฮสต์เองบนพีซี Windows เครื่องนี้ อุปกรณ์อื่นเชื่อมต่อผ่านไวไฟ';
+      'ไม่ต้องใช้อินเทอร์เน็ต ข้อมูลอยู่ในพีซีเครื่องนี้ อุปกรณ์อื่นเชื่อมต่อผ่านไวไฟ';
 
   @override
   String get localConnectionModeSubtitleOther =>
@@ -436,11 +452,11 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get localConnectionModeSubtitleMobile =>
-      'โฮสต์เองบนอุปกรณ์นี้ — ใช้ได้เครื่องเดียวเท่านั้น อุปกรณ์อื่นเชื่อมต่อไม่ได้';
+      'ไม่ต้องใช้อินเทอร์เน็ต ข้อมูลอยู่ในอุปกรณ์นี้เท่านั้น อุปกรณ์อื่นเชื่อมต่อไม่ได้';
 
   @override
   String get cloudConnectionModeSubtitle =>
-      'โฮสต์ออนไลน์แทนการใช้อุปกรณ์ภายในร้าน';
+      'เชื่อมต่อกับเซิร์ฟเวอร์ที่ทำงานอยู่ที่อื่นแล้ว ด้วยที่อยู่เซิร์ฟเวอร์';
 
   @override
   String get printerSetupStepTitle => 'ตั้งค่าเครื่องพิมพ์';
@@ -880,6 +896,17 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get staffNameHint => 'เช่น สมชาย ใจดี';
+
+  @override
+  String get confirmYourPasswordLabel => 'รหัสผ่านของคุณ';
+
+  @override
+  String get confirmYourPasswordHint =>
+      'ป้อนรหัสผ่านของคุณเพื่อเปลี่ยนชื่อผู้ใช้นี้';
+
+  @override
+  String get confirmYourPasswordRequiredValidator =>
+      'ต้องใช้รหัสผ่านของคุณเพื่อเปลี่ยนชื่อผู้ใช้';
 
   @override
   String get settingsAccountSectionLabel => 'บัญชี';

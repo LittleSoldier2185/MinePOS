@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
 
+import '../../core/services/app_settings_service.dart';
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../core/window/platform_window.dart';
 import '../../l10n/app_localizations.dart';
-import '../auth/login_screen.dart';
-import '../customer_display/customer_display_screen.dart';
-import 'models/device_purpose.dart';
+import '../role_select/role_selection_screen.dart';
 import 'models/discovered_host.dart';
 import 'services/connection_service.dart';
 import 'services/mdns_discovery_service.dart';
 
+/// Entry point for joining an *existing* shop from a client device — asks
+/// for the server address first, then (once confirmed reachable and already
+/// set up) hands off to [RoleSelectionScreen] to pick what this device is
+/// for. Deliberately address-first: unlike the old flow, there's no point
+/// asking "what is this device for" before knowing there's even a shop to
+/// join at that address.
 class ConnectScreen extends StatefulWidget {
-  const ConnectScreen({super.key, this.purpose = DevicePurpose.staffHub});
-
-  final DevicePurpose purpose;
+  const ConnectScreen({super.key});
 
   @override
   State<ConnectScreen> createState() => _ConnectScreenState();
@@ -34,6 +37,11 @@ class _ConnectScreenState extends State<ConnectScreen> with SingleTickerProvider
     if (supportsMdns) {
       _tabController = TabController(length: 2, vsync: this);
     }
+    AppSettingsService.instance.getLastServerAddress().then((address) {
+      if (mounted && address != null && _addressController.text.isEmpty) {
+        setState(() => _addressController.text = address);
+      }
+    });
   }
 
   @override
@@ -54,30 +62,25 @@ class _ConnectScreenState extends State<ConnectScreen> with SingleTickerProvider
       _connectError = null;
     });
 
-    final success = await _connectionService.testConnection(address);
+    final status = await _connectionService.checkStatus(address);
 
     if (!mounted) return;
     setState(() => _connecting = false);
 
-    if (success) {
-      ServerClient.instance.baseUrl = address.trim();
-      if (widget.purpose == DevicePurpose.customerDisplay) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const CustomerDisplayScreen()),
-        );
-      } else {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => LoginScreen(
-              serverAddress: address.trim(),
-              purpose: widget.purpose,
-            ),
-          ),
-        );
-      }
-    } else {
+    if (!status.reachable) {
       setState(() => _connectError = AppLocalizations.of(context)!.connectFailureError);
+      return;
     }
+    if (!status.hasShop) {
+      setState(() => _connectError = AppLocalizations.of(context)!.connectNoShopError);
+      return;
+    }
+
+    ServerClient.instance.baseUrl = address.trim();
+    AppSettingsService.instance.setLastServerAddress(address.trim());
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
+    );
   }
 
   @override

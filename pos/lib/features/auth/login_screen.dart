@@ -63,6 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (result.success) {
       ServerClient.instance.role = result.role;
       ServerClient.instance.username = result.username;
+      ServerClient.instance.userId = result.id;
 
       // Both services start out seeded with local-only defaults/empty state
       // — without this, every screen would show stale placeholder data (or

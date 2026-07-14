@@ -16,6 +16,7 @@ import '../connect/services/connection_service.dart';
 import '../kitchen/kitchen_display_screen.dart';
 import '../manager/menu_management_screen.dart';
 import '../manager/reports_screen.dart';
+import '../manager/services/shop_config_service.dart';
 import '../manager/settings_screen.dart';
 import '../manager/staff_management_screen.dart';
 import '../welcome/welcome_screen.dart';
@@ -77,8 +78,9 @@ Future<void> _confirmLogout(BuildContext context) async {
     ),
   );
   if (ok == true && context.mounted) {
-    MenuService.instance.disconnect();
-    OrderService.instance.disconnect();
+    MenuService.instance.reset();
+    OrderService.instance.reset();
+    ShopConfigService.instance.reset();
     ServerClient.instance.clear();
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const WelcomeScreen()),
@@ -510,57 +512,67 @@ class _Mobile extends StatelessWidget {
         ],
       ),
       body: _ContentPanel(title: title, desktop: false),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _openNewOrder(context),
+        tooltip: AppLocalizations.of(context)!.newOrderButton,
+        child: const Icon(Icons.add),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: _buildBottomNav(context),
     );
   }
 
   // Tab actions are filtered by role, so build (item, onTap) pairs together
   // rather than hardcoding tab indices — hiding "Menu" for employees must
-  // not shift what the remaining tabs do.
+  // not shift what the remaining tabs do. Split across the FAB notch so the
+  // New Order button sits centered in the bar.
   Widget _buildBottomNav(BuildContext context) {
     final canManage = ServerClient.instance.canManageShop;
-    final entries = <(BottomNavigationBarItem, VoidCallback?)>[
+    final entries = <(IconData, String, VoidCallback?)>[
+      (Icons.home_outlined, AppLocalizations.of(context)!.mobileBottomNavHome, null),
       (
-        BottomNavigationBarItem(
-          icon: const Icon(Icons.home_outlined),
-          activeIcon: const Icon(Icons.home),
-          label: AppLocalizations.of(context)!.mobileBottomNavHome,
-        ),
-        null,
-      ),
-      (
-        BottomNavigationBarItem(
-          icon: const Icon(Icons.receipt_long_outlined),
-          activeIcon: const Icon(Icons.receipt_long),
-          label: AppLocalizations.of(context)!.mobileBottomNavOrders,
-        ),
+        Icons.receipt_long_outlined,
+        AppLocalizations.of(context)!.mobileBottomNavOrders,
         () => _openHistory(context),
       ),
       if (canManage)
         (
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.restaurant_menu_outlined),
-            label: AppLocalizations.of(context)!.menuLabel,
-          ),
+          Icons.restaurant_menu_outlined,
+          AppLocalizations.of(context)!.menuLabel,
           () => _openMenuMgmt(context),
         ),
       (
-        BottomNavigationBarItem(
-          icon: const Icon(Icons.settings_outlined),
-          label: AppLocalizations.of(context)!.settingsLabel,
-        ),
+        Icons.settings_outlined,
+        AppLocalizations.of(context)!.settingsLabel,
         () => _openSettings(context),
       ),
     ];
+    final mid = (entries.length / 2).ceil();
 
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      selectedItemColor: AppColors.primary,
-      unselectedItemColor: AppColors.muted,
-      showUnselectedLabels: true,
-      currentIndex: 0,
-      onTap: (i) => entries[i].$2?.call(),
-      items: entries.map((e) => e.$1).toList(),
+    Widget navButton((IconData, String, VoidCallback?) e) => Expanded(
+      child: InkWell(
+        onTap: e.$3,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(e.$1, color: AppColors.muted),
+            const SizedBox(height: 2),
+            Text(e.$2, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+          ],
+        ),
+      ),
+    );
+
+    return BottomAppBar(
+      shape: const CircularNotchedRectangle(),
+      notchMargin: 8,
+      child: Row(
+        children: [
+          ...entries.take(mid).map(navButton),
+          const Spacer(),
+          ...entries.skip(mid).map(navButton),
+        ],
+      ),
     );
   }
 }
@@ -648,19 +660,6 @@ class _ContentPanelState extends State<_ContentPanel> {
                   orders: recent,
                   onViewAll: () => _openHistory(context),
                 ),
-                // Mobile: New Order button in body
-                if (!desktop) ...[
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.add_circle_outline, size: 20),
-                      label: Text(AppLocalizations.of(context)!.newOrderButton),
-                      onPressed: () => _openNewOrder(context),
-                    ),
-                  ),
-                ],
               ],
             ),
           ),

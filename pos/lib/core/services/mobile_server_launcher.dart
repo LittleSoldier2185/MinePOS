@@ -30,6 +30,16 @@ class MobileServerLauncher {
   Isolate? _isolate;
   bool _starting = false;
 
+  /// Whether this device has already been set up as a shop — checked
+  /// directly off disk, same reasoning as [LocalServerLauncher.hasLocalShop]:
+  /// answering this should never have the side effect of spawning the
+  /// background isolate.
+  Future<bool> hasLocalShop() async {
+    final supportDir = await getApplicationSupportDirectory();
+    final dbFile = File(p.join(supportDir.path, 'minepos', 'minepos.db'));
+    return dbFile.existsSync();
+  }
+
   Future<bool> _isHealthy() async {
     try {
       final res = await http

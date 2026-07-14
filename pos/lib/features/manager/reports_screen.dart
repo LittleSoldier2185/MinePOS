@@ -69,8 +69,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
       context: context,
       firstDate: DateTime(now.year - 2),
       lastDate: now,
-      initialDateRange: _customRange ??
-          DateTimeRange(start: now.subtract(const Duration(days: 6)), end: now),
+      initialDateRange: _customRange == null
+          ? DateTimeRange(start: now.subtract(const Duration(days: 6)), end: now)
+          : DateTimeRange(
+              start: _customRange!.start,
+              end: _customRange!.end.subtract(const Duration(days: 1)),
+            ),
     );
     if (picked == null) return;
     setState(() {

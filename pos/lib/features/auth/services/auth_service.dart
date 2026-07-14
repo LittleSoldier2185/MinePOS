@@ -5,10 +5,11 @@ import 'package:http/http.dart' as http;
 import '../../../core/services/server_client.dart';
 
 class AuthResult {
-  const AuthResult({required this.success, this.role, this.username});
+  const AuthResult({required this.success, this.role, this.username, this.id});
   final bool success;
   final String? role;
   final String? username;
+  final int? id;
 }
 
 class AuthService {
@@ -37,6 +38,7 @@ class AuthService {
           success: true,
           role: data['role'] as String?,
           username: data['username'] as String?,
+          id: data['id'] as int?,
         );
       }
       return const AuthResult(success: false);

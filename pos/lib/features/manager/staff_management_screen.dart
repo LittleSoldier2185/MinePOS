@@ -128,7 +128,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
 
   Future<void> _toggleActive(StaffMember m) async {
     try {
-      await _svc.setActive(m.username, !m.active);
+      await _svc.setActive(m.id, !m.active);
       _reload();
     } catch (e) {
       _showError(e);
@@ -137,7 +137,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
 
   Future<void> _forceLogout(StaffMember m) async {
     try {
-      await _svc.forceLogout(m.username);
+      await _svc.forceLogout(m.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(AppLocalizations.of(context)!.signedOutSnackbar(m.username))),
@@ -170,7 +170,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
     );
     if (ok != true) return;
     try {
-      await _svc.delete(m.username);
+      await _svc.delete(m.id);
       _reload();
     } catch (e) {
       _showError(e);
@@ -246,7 +246,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                     itemCount: staff.length,
                     itemBuilder: (_, i) => _StaffGridCard(
                       member: staff[i],
-                      isSelf: staff[i].username == ServerClient.instance.username,
+                      isSelf: staff[i].id == ServerClient.instance.userId,
                       onEdit: () => _showEditStaffForm(staff[i]),
                       onToggleActive: () => _toggleActive(staff[i]),
                       onForceLogout: () => _forceLogout(staff[i]),
@@ -259,7 +259,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                     separatorBuilder: (_, _) => const SizedBox(height: 8),
                     itemBuilder: (_, i) => _StaffRow(
                       member: staff[i],
-                      isSelf: staff[i].username == ServerClient.instance.username,
+                      isSelf: staff[i].id == ServerClient.instance.userId,
                       onEdit: () => _showEditStaffForm(staff[i]),
                       onToggleActive: () => _toggleActive(staff[i]),
                       onForceLogout: () => _forceLogout(staff[i]),
@@ -624,7 +624,7 @@ class _StaffFormDialog extends StatelessWidget {
 class _StaffFormBody extends StatefulWidget {
   const _StaffFormBody({this.existing});
 
-  /// Null means "add staff"; non-null means "edit" (username fixed, password optional).
+  /// Null means "add staff"; non-null means "edit" (password optional).
   final StaffMember? existing;
 
   @override
@@ -633,7 +633,9 @@ class _StaffFormBody extends StatefulWidget {
 
 class _StaffFormBodyState extends State<_StaffFormBody> {
   bool get _isEdit => widget.existing != null;
-  bool get _isSelfEdit => _isEdit && widget.existing!.username == ServerClient.instance.username;
+  bool get _isSelfEdit => _isEdit && widget.existing!.id == ServerClient.instance.userId;
+  bool get _usernameChanged =>
+      _isEdit && _usernameCtrl.text.trim() != widget.existing!.username;
 
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
@@ -641,6 +643,7 @@ class _StaffFormBodyState extends State<_StaffFormBody> {
   final _passwordCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
+  final _confirmPasswordCtrl = TextEditingController();
   late String _role = widget.existing?.role ?? 'worker';
   String? _avatarBase64;
   bool _saving = false;
@@ -655,6 +658,9 @@ class _StaffFormBodyState extends State<_StaffFormBody> {
     _emailCtrl.text = e?.email ?? '';
     _phoneCtrl.text = e?.phone ?? '';
     _avatarBase64 = e?.avatarBase64;
+    // Renaming requires the confirm-password field to appear/disappear, so
+    // the form needs to react to every keystroke here, not just on submit.
+    _usernameCtrl.addListener(() => setState(() {}));
   }
 
   @override
@@ -664,6 +670,7 @@ class _StaffFormBodyState extends State<_StaffFormBody> {
     _passwordCtrl.dispose();
     _emailCtrl.dispose();
     _phoneCtrl.dispose();
+    _confirmPasswordCtrl.dispose();
     super.dispose();
   }
 
@@ -696,13 +703,15 @@ class _StaffFormBodyState extends State<_StaffFormBody> {
     try {
       if (_isEdit) {
         await StaffService.instance.update(
-          widget.existing!.username,
+          widget.existing!.id,
           role: _role,
           password: _passwordCtrl.text,
           name: name,
           email: email,
           phone: phone,
           avatarBase64: _avatarBase64,
+          username: _usernameChanged ? _usernameCtrl.text.trim() : null,
+          confirmPassword: _usernameChanged ? _confirmPasswordCtrl.text : null,
         );
       } else {
         await StaffService.instance.create(
@@ -779,7 +788,6 @@ class _StaffFormBodyState extends State<_StaffFormBody> {
             const SizedBox(height: 16),
             TextFormField(
               controller: _usernameCtrl,
-              enabled: !_isEdit,
               decoration: InputDecoration(
                 labelText: l10n.usernameLabel,
                 hintText: l10n.usernameHint,
@@ -789,6 +797,21 @@ class _StaffFormBodyState extends State<_StaffFormBody> {
                   ? l10n.usernameRequiredValidator
                   : null,
             ),
+            if (_usernameChanged) ...[
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _confirmPasswordCtrl,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: l10n.confirmYourPasswordLabel,
+                  hintText: l10n.confirmYourPasswordHint,
+                  border: const OutlineInputBorder(),
+                ),
+                validator: (v) => (v == null || v.isEmpty)
+                    ? l10n.confirmYourPasswordRequiredValidator
+                    : null,
+              ),
+            ],
             const SizedBox(height: 16),
             TextFormField(
               controller: _passwordCtrl,

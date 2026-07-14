@@ -11,6 +11,7 @@ void registerHealthRoute(Router router, AppDb db, ServerConfig config) {
       'status': 'ok',
       'version': '1.0.0',
       'shopName': config.shopName,
+      'hasShop': db.hasAnyUser(),
     });
   });
 }

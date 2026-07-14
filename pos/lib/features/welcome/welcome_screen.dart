@@ -7,7 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/window/platform_window.dart';
 import '../../l10n/app_localizations.dart';
 import '../auth/login_screen.dart';
-import '../role_select/role_selection_screen.dart';
+import '../connect/connect_screen.dart';
 import '../shop_setup/create_shop_screen.dart';
 
 class WelcomeScreen extends StatefulWidget {
@@ -19,6 +19,22 @@ class WelcomeScreen extends StatefulWidget {
 
 class _WelcomeScreenState extends State<WelcomeScreen> {
   bool _openingRegister = false;
+  bool _hasLocalShop = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLocalShop();
+  }
+
+  Future<void> _checkLocalShop() async {
+    final hasShop = isWindowsDesktop
+        ? LocalServerLauncher.instance.hasLocalShop()
+        : isMobile
+            ? await MobileServerLauncher.instance.hasLocalShop()
+            : false;
+    if (mounted) setState(() => _hasLocalShop = hasShop);
+  }
 
   // Self-hosting means launching a local server: a detached exe on Windows
   // (can also serve other devices on the LAN), or an in-process loopback-only
@@ -136,24 +152,37 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                               label: Text(AppLocalizations.of(context)!.welcomeConnectServerButton),
                               onPressed: () => Navigator.of(context).push(
                                 MaterialPageRoute(
-                                    builder: (_) => const RoleSelectionScreen()),
+                                    builder: (_) => const ConnectScreen()),
                               ),
                             ),
                           ),
                           const SizedBox(height: 8),
-                          // First-time setup only
+                          // First-time setup only — disabled once this
+                          // device already has a shop, since POST /setup is
+                          // permanently closed off after the first one
+                          // anyway (see server/lib/routes/setup_routes.dart).
                           SizedBox(
                             width: double.infinity,
                             child: TextButton.icon(
                               icon: const Icon(Icons.add_business_outlined,
                                   size: 16),
                               label: Text(AppLocalizations.of(context)!.welcomeCreateShopButton),
-                              onPressed: () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                    builder: (_) => const CreateShopScreen()),
-                              ),
+                              onPressed: _hasLocalShop
+                                  ? null
+                                  : () => Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                            builder: (_) => const CreateShopScreen()),
+                                      ),
                             ),
                           ),
+                          if (_hasLocalShop) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              AppLocalizations.of(context)!.welcomeCreateShopUnavailableNote,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: AppColors.muted, fontSize: 11),
+                            ),
+                          ],
                         ],
                       ),
                     ),

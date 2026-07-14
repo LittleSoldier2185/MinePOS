@@ -25,6 +25,16 @@ class ShopConfigService {
   String? email;
   String? receiptFooter;
 
+  /// Drops any in-memory config from a previous shop's session. Call
+  /// whenever leaving a shop (logout, delete shop).
+  void reset() {
+    shopName = 'MinePOS';
+    address = null;
+    taxId = null;
+    email = null;
+    receiptFooter = null;
+  }
+
   Future<void> fetch() async {
     final client = ServerClient.instance;
     if (!client.isConnected) return;

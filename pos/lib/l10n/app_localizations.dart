@@ -299,13 +299,13 @@ abstract class AppLocalizations {
   /// No description provided for @connectionModeLocalLabel.
   ///
   /// In en, this message translates to:
-  /// **'Local (this device)'**
+  /// **'Offline Mode (this device)'**
   String get connectionModeLocalLabel;
 
   /// No description provided for @connectionModeCloudLabel.
   ///
   /// In en, this message translates to:
-  /// **'Cloud'**
+  /// **'Online Mode'**
   String get connectionModeCloudLabel;
 
   /// No description provided for @optionalHint.
@@ -385,6 +385,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'CREATE SHOP'**
   String get welcomeCreateShopButton;
+
+  /// No description provided for @welcomeCreateShopUnavailableNote.
+  ///
+  /// In en, this message translates to:
+  /// **'This device already has a shop set up. Use \"Open Register\" to sign in.'**
+  String get welcomeCreateShopUnavailableNote;
+
+  /// No description provided for @shopAlreadyExistsLocalError.
+  ///
+  /// In en, this message translates to:
+  /// **'This device already has a shop set up. Use \"Open Register\" to sign in instead.'**
+  String get shopAlreadyExistsLocalError;
+
+  /// No description provided for @shopAlreadyExistsRemoteError.
+  ///
+  /// In en, this message translates to:
+  /// **'This server already has a shop set up. Ask its owner to sign you in instead of creating a new one.'**
+  String get shopAlreadyExistsRemoteError;
 
   /// No description provided for @welcomeVersionInfo.
   ///
@@ -619,6 +637,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t connect. Check the address and try again.'**
   String get connectFailureError;
+
+  /// No description provided for @connectNoShopError.
+  ///
+  /// In en, this message translates to:
+  /// **'This server hasn\'t set up a shop yet. Use \"Create Shop\" to set it up first.'**
+  String get connectNoShopError;
 
   /// No description provided for @connectButton.
   ///
@@ -869,7 +893,7 @@ abstract class AppLocalizations {
   /// No description provided for @localConnectionModeSubtitleWindows.
   ///
   /// In en, this message translates to:
-  /// **'Self-host on this Windows PC. Other devices connect over Wi-Fi.'**
+  /// **'No internet needed. Data stays on this PC — other devices connect over Wi-Fi.'**
   String get localConnectionModeSubtitleWindows;
 
   /// No description provided for @localConnectionModeSubtitleOther.
@@ -881,13 +905,13 @@ abstract class AppLocalizations {
   /// No description provided for @localConnectionModeSubtitleMobile.
   ///
   /// In en, this message translates to:
-  /// **'Self-host on this device — single device only, other devices can\'t connect.'**
+  /// **'No internet needed. Data stays on this device only — others can\'t connect.'**
   String get localConnectionModeSubtitleMobile;
 
   /// No description provided for @cloudConnectionModeSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Host online instead of on a local device.'**
+  /// **'Connect to a server already running elsewhere, by its address.'**
   String get cloudConnectionModeSubtitle;
 
   /// No description provided for @printerSetupStepTitle.
@@ -1681,6 +1705,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'e.g. Jane Smith'**
   String get staffNameHint;
+
+  /// No description provided for @confirmYourPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Your password'**
+  String get confirmYourPasswordLabel;
+
+  /// No description provided for @confirmYourPasswordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your password to change this username'**
+  String get confirmYourPasswordHint;
+
+  /// No description provided for @confirmYourPasswordRequiredValidator.
+  ///
+  /// In en, this message translates to:
+  /// **'Your password is required to change a username'**
+  String get confirmYourPasswordRequiredValidator;
 
   /// No description provided for @settingsAccountSectionLabel.
   ///

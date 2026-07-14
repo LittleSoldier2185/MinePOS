@@ -199,4 +199,14 @@ class OrderService extends ChangeNotifier {
     _channel?.sink.close();
     _channel = null;
   }
+
+  /// Drops any in-memory orders from a previous shop's session. Call alongside
+  /// [disconnect] whenever leaving a shop (logout, delete shop) so the next
+  /// shop doesn't briefly render stale data before its own fetch completes.
+  void reset() {
+    disconnect();
+    _orders.clear();
+    _nextNumber = 1;
+    notifyListeners();
+  }
 }

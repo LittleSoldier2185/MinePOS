@@ -57,14 +57,14 @@ DbUser? verifyToken(String token, AppDb db, String jwtSecret, {String? role}) {
     return null;
   }
 
-  final username = claims['sub'] as String?;
+  final id = int.tryParse(claims['sub'] as String? ?? '');
   final ver = claims['ver'] as int?;
-  if (username == null || ver == null) return null;
+  if (id == null || ver == null) return null;
 
-  final user = db.getUserByUsername(username);
+  final user = db.getUserById(id);
   if (user == null || !user.active || user.tokenVersion != ver) return null;
   if (role != null && user.role != role) return null;
-  PresenceTracker.instance.touch(user.username, user.role);
+  PresenceTracker.instance.touch(user.id, user.username, user.role);
   return user;
 }
 

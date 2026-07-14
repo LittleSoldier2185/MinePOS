@@ -11,12 +11,12 @@ const _validRoles = {'owner', 'manager', 'worker'};
 void registerUserRoutes(Router router, AppDb db, ServerConfig config) {
   router.get('/users', (Request req) => _listUsers(req, db, config));
   router.post('/users', (Request req) => _createUser(req, db, config));
-  router.patch('/users/<username>',
-      (Request req, String username) => _updateUser(req, username, db, config));
-  router.post('/users/<username>/logout',
-      (Request req, String username) => _forceLogout(req, username, db, config));
-  router.delete('/users/<username>',
-      (Request req, String username) => _deleteUser(req, username, db, config));
+  router.patch('/users/<id>',
+      (Request req, String id) => _updateUser(req, id, db, config));
+  router.post('/users/<id>/logout',
+      (Request req, String id) => _forceLogout(req, id, db, config));
+  router.delete('/users/<id>',
+      (Request req, String id) => _deleteUser(req, id, db, config));
 }
 
 // GET /users  (owner only)
@@ -68,40 +68,53 @@ Future<Response> _createUser(
   return jsonOk(db.getUserByUsername(username)!.toJson(), status: 201);
 }
 
-// PATCH /users/:username  { active?, role?, password?, name?, email?, phone?, avatarBase64? }  (owner only)
+// PATCH /users/:id  { active?, role?, password?, username?, confirmPassword?,
+//                      name?, email?, phone?, avatarBase64? }  (owner only)
 // name/email/phone/avatarBase64 are always sent together as one profile
 // update (full replace, like the menu item edit form) — not
 // security-sensitive like active/role/password, so no self-edit restriction
 // applies to them; the owner can update their own info the same as anyone
-// else's.
+// else's. Renaming (username) is security-sensitive since it's the login
+// identity, so it requires the acting owner's own password
+// (confirmPassword) regardless of whose account is being renamed — the
+// owner may not know a *different* staff member's password, but always
+// knows their own.
 Future<Response> _updateUser(
-    Request req, String username, AppDb db, ServerConfig config) async {
+    Request req, String idParam, AppDb db, ServerConfig config) async {
   final actor = requireAuth(req, db, config.jwtSecret, role: 'owner');
   if (actor == null) return unauthorized();
 
-  final target = db.getUserByUsername(username);
+  final id = int.tryParse(idParam);
+  if (id == null) return jsonError('Invalid user id');
+  final target = db.getUserById(id);
   if (target == null) return notFound('User not found');
 
   final body = await parseJsonBody(req);
   final active = body?['active'] as bool?;
   final role = (body?['role'] as String?)?.trim().toLowerCase();
   final password = body?['password'] as String?;
+  final newUsername = (body?['username'] as String?)?.trim().toLowerCase();
+  final confirmPassword = body?['confirmPassword'] as String?;
   final hasProfileUpdate = body != null &&
       (body.containsKey('name') ||
           body.containsKey('email') ||
           body.containsKey('phone') ||
           body.containsKey('avatarBase64'));
-  final isSelf = username.toLowerCase() == actor.username;
+  final isSelf = target.id == actor.id;
 
-  if (active == null && role == null && password == null && !hasProfileUpdate) {
-    return jsonError('active, role, password, or profile fields required');
+  if (active == null &&
+      role == null &&
+      password == null &&
+      newUsername == null &&
+      !hasProfileUpdate) {
+    return jsonError('active, role, password, username, or profile fields required');
   }
 
   if (active != null) {
     if (isSelf && !active) {
       return jsonError('You cannot deactivate your own account');
     }
-    db.setUserActive(username, active);
+    db.setUserActive(id, active);
   }
   if (role != null) {
     if (!_validRoles.contains(role)) {
@@ -110,13 +123,29 @@ Future<Response> _updateUser(
     if (isSelf && role != 'owner') {
       return jsonError('You cannot change your own role');
     }
-    db.setUserRole(username, role);
+    db.setUserRole(id, role);
   }
   if (password != null) {
     if (password.length < 8) {
       return jsonError('password must be at least 8 characters');
     }
-    db.updatePasswordHash(username, BCrypt.hashpw(password, BCrypt.gensalt()));
+    db.updatePasswordHash(id, BCrypt.hashpw(password, BCrypt.gensalt()));
+  }
+  if (newUsername != null) {
+    if (newUsername.isEmpty) {
+      return jsonError('username cannot be empty');
+    }
+    if (confirmPassword == null || confirmPassword.isEmpty) {
+      return jsonError('Your password is required to change a username');
+    }
+    if (!BCrypt.checkpw(confirmPassword, actor.passwordHash)) {
+      return unauthorized('Incorrect password');
+    }
+    final conflict = db.getUserByUsername(newUsername);
+    if (conflict != null && conflict.id != id) {
+      return jsonError('Username already exists', status: 409);
+    }
+    db.updateUsername(id, newUsername);
   }
   if (hasProfileUpdate) {
     final name = (body['name'] as String?)?.trim();
@@ -124,7 +153,7 @@ Future<Response> _updateUser(
     final phone = (body['phone'] as String?)?.trim();
     final avatarBase64 = body['avatarBase64'] as String?;
     db.updateUserProfile(
-      username,
+      id,
       name: name == null || name.isEmpty ? null : name,
       email: email == null || email.isEmpty ? null : email,
       phone: phone == null || phone.isEmpty ? null : phone,
@@ -132,33 +161,37 @@ Future<Response> _updateUser(
     );
   }
 
-  return jsonOk(db.getUserByUsername(username)!.toJson());
+  return jsonOk(db.getUserById(id)!.toJson());
 }
 
-// POST /users/:username/logout  (owner only) — invalidates outstanding JWTs
+// POST /users/:id/logout  (owner only) — invalidates outstanding JWTs
 Response _forceLogout(
-    Request req, String username, AppDb db, ServerConfig config) {
+    Request req, String idParam, AppDb db, ServerConfig config) {
   if (requireAuth(req, db, config.jwtSecret, role: 'owner') == null) {
     return unauthorized();
   }
-  final target = db.getUserByUsername(username);
+  final id = int.tryParse(idParam);
+  if (id == null) return jsonError('Invalid user id');
+  final target = db.getUserById(id);
   if (target == null) return notFound('User not found');
 
-  final updated = db.bumpTokenVersion(username);
+  final updated = db.bumpTokenVersion(id);
   return jsonOk(updated!.toJson());
 }
 
-// DELETE /users/:username  (owner only)
+// DELETE /users/:id  (owner only)
 Response _deleteUser(
-    Request req, String username, AppDb db, ServerConfig config) {
+    Request req, String idParam, AppDb db, ServerConfig config) {
   final actor = requireAuth(req, db, config.jwtSecret, role: 'owner');
   if (actor == null) return unauthorized();
 
-  if (username.toLowerCase() == actor.username) {
+  final id = int.tryParse(idParam);
+  if (id == null) return jsonError('Invalid user id');
+  if (id == actor.id) {
     return jsonError('You cannot delete your own account');
   }
 
-  final deleted = db.deleteUser(username);
+  final deleted = db.deleteUser(id);
   if (!deleted) return notFound('User not found');
   return Response(204);
 }

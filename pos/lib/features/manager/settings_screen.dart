@@ -168,8 +168,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
     if (ok == true && mounted) {
-      MenuService.instance.disconnect();
-      OrderService.instance.disconnect();
+      MenuService.instance.reset();
+      OrderService.instance.reset();
+      ShopConfigService.instance.reset();
       ServerClient.instance.clear();
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const WelcomeScreen()),
@@ -191,8 +192,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (_) => const _RemoveShopSheet(),
     );
     if (deleted == true && mounted) {
-      MenuService.instance.disconnect();
-      OrderService.instance.disconnect();
+      MenuService.instance.reset();
+      OrderService.instance.reset();
+      ShopConfigService.instance.reset();
       ServerClient.instance.clear();
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const WelcomeScreen()),

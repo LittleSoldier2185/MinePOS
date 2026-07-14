@@ -9,6 +9,7 @@ class ServerClient {
   String? token;
   String? role; // "owner" | "manager" | "worker"
   String? username;
+  int? userId;
 
   bool get isConnected => baseUrl != null;
   bool get isOwner => role == 'owner';
@@ -34,5 +35,6 @@ class ServerClient {
     token = null;
     role = null;
     username = null;
+    userId = null;
   }
 }

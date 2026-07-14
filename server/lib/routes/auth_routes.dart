@@ -40,10 +40,15 @@ Future<Response> _login(
       ? const Duration(days: 30)
       : const Duration(hours: 8);
   final token = JWT(
-    {'sub': user.username, 'role': user.role, 'ver': user.tokenVersion},
+    {'sub': user.id.toString(), 'role': user.role, 'ver': user.tokenVersion},
   ).sign(SecretKey(config.jwtSecret), expiresIn: ttl);
 
-  return jsonOk({'token': token, 'role': user.role, 'username': user.username});
+  return jsonOk({
+    'token': token,
+    'role': user.role,
+    'username': user.username,
+    'id': user.id,
+  });
 }
 
 // POST /auth/request-otp  { username }
@@ -111,8 +116,11 @@ Future<Response> _resetPassword(
     return jsonError('Invalid or expired OTP', status: 422);
   }
 
+  final user = db.getUserByUsername(username);
+  if (user == null) return jsonError('Invalid or expired OTP', status: 422);
+
   final hash = BCrypt.hashpw(newPassword, BCrypt.gensalt());
-  db.updatePasswordHash(username, hash);
+  db.updatePasswordHash(user.id, hash);
   db.deleteOtp(username);
 
   return jsonOk({'ok': true});

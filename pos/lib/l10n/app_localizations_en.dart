@@ -108,10 +108,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ownerRoleDisplay => 'Owner';
 
   @override
-  String get connectionModeLocalLabel => 'Local (this device)';
+  String get connectionModeLocalLabel => 'Offline Mode (this device)';
 
   @override
-  String get connectionModeCloudLabel => 'Cloud';
+  String get connectionModeCloudLabel => 'Online Mode';
 
   @override
   String get optionalHint => 'Optional';
@@ -162,6 +162,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get welcomeCreateShopButton => 'CREATE SHOP';
+
+  @override
+  String get welcomeCreateShopUnavailableNote =>
+      'This device already has a shop set up. Use \"Open Register\" to sign in.';
+
+  @override
+  String get shopAlreadyExistsLocalError =>
+      'This device already has a shop set up. Use \"Open Register\" to sign in instead.';
+
+  @override
+  String get shopAlreadyExistsRemoteError =>
+      'This server already has a shop set up. Ask its owner to sign you in instead of creating a new one.';
 
   @override
   String get welcomeVersionInfo => 'v1.0 · Self-hosted or Cloud';
@@ -293,6 +305,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get connectFailureError =>
       'Couldn\'t connect. Check the address and try again.';
+
+  @override
+  String get connectNoShopError =>
+      'This server hasn\'t set up a shop yet. Use \"Create Shop\" to set it up first.';
 
   @override
   String get connectButton => 'CONNECT';
@@ -431,7 +447,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get localConnectionModeSubtitleWindows =>
-      'Self-host on this Windows PC. Other devices connect over Wi-Fi.';
+      'No internet needed. Data stays on this PC — other devices connect over Wi-Fi.';
 
   @override
   String get localConnectionModeSubtitleOther =>
@@ -439,11 +455,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get localConnectionModeSubtitleMobile =>
-      'Self-host on this device — single device only, other devices can\'t connect.';
+      'No internet needed. Data stays on this device only — others can\'t connect.';
 
   @override
   String get cloudConnectionModeSubtitle =>
-      'Host online instead of on a local device.';
+      'Connect to a server already running elsewhere, by its address.';
 
   @override
   String get printerSetupStepTitle => 'Printer setup';
@@ -887,6 +903,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get staffNameHint => 'e.g. Jane Smith';
+
+  @override
+  String get confirmYourPasswordLabel => 'Your password';
+
+  @override
+  String get confirmYourPasswordHint =>
+      'Enter your password to change this username';
+
+  @override
+  String get confirmYourPasswordRequiredValidator =>
+      'Your password is required to change a username';
 
   @override
   String get settingsAccountSectionLabel => 'ACCOUNT';

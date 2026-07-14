@@ -165,6 +165,17 @@ class MenuService extends ChangeNotifier {
     _channel = null;
   }
 
+  /// Drops any in-memory items from a previous shop's session. Call alongside
+  /// [disconnect] whenever leaving a shop (logout, delete shop) so the next
+  /// shop doesn't briefly render stale data before its own fetch completes.
+  void reset() {
+    disconnect();
+    _items
+      ..clear()
+      ..addAll(_defaultItems);
+    notifyListeners();
+  }
+
   // ── Write ─────────────────────────────────────────────────────────────────
   // Create/update/delete/toggle all fire the request then rely on our own
   // /ws/menu connection to apply the confirmed result to `_items` — this

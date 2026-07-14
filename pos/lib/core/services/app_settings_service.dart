@@ -22,6 +22,17 @@ class AppSettingsService {
   static const _kPaperSizeKey = 'settings.paperSize';
   static const _kMenuGridViewKey = 'settings.menuGridView';
   static const _kStaffGridViewKey = 'settings.staffGridView';
+  static const _kLastServerAddressKey = 'settings.lastServerAddress';
+
+  Future<String?> getLastServerAddress() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_kLastServerAddressKey);
+  }
+
+  Future<void> setLastServerAddress(String address) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kLastServerAddressKey, address);
+  }
 
   Future<bool> getMenuGridView() async {
     final prefs = await SharedPreferences.getInstance();

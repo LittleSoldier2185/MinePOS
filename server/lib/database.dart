@@ -15,6 +15,7 @@ const _uuid = Uuid();
 
 class DbUser {
   DbUser({
+    required this.id,
     required this.username,
     required this.passwordHash,
     required this.role,
@@ -27,6 +28,7 @@ class DbUser {
     this.avatarBase64,
   });
 
+  final int id;
   final String username;
   final String passwordHash;
   final String role;
@@ -39,6 +41,7 @@ class DbUser {
   final String? avatarBase64;
 
   factory DbUser._fromRow(Row row) => DbUser(
+        id: row['id'] as int,
         username: row['username'] as String,
         passwordHash: row['password_hash'] as String,
         role: row['role'] as String,
@@ -52,6 +55,7 @@ class DbUser {
       );
 
   Map<String, dynamic> toJson() => {
+        'id': id,
         'username': username,
         'role': role,
         'active': active,
@@ -304,6 +308,38 @@ class AppDb {
     if (!userCols.contains('name')) {
       _db.execute('ALTER TABLE users ADD COLUMN name TEXT');
     }
+    // One-time rebuild: username used to be the PK (and the identifier used
+    // in routes/JWTs), which made it impossible to rename a user without
+    // breaking their own row's identity. Numeric `id` is now the real key;
+    // `username` becomes an ordinary unique column. Runs once per DB — later
+    // opens see `id` already present and skip straight past this block.
+    if (!userCols.contains('id')) {
+      _db.execute('ALTER TABLE users RENAME TO users_old');
+      _db.execute('''
+        CREATE TABLE users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT NOT NULL UNIQUE,
+          password_hash TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT 'worker',
+          active INTEGER NOT NULL DEFAULT 1,
+          token_version INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          name TEXT,
+          email TEXT,
+          phone TEXT,
+          avatar_base64 TEXT
+        )
+      ''');
+      _db.execute('''
+        INSERT INTO users (username, password_hash, role, active,
+                            token_version, created_at, name, email, phone,
+                            avatar_base64)
+          SELECT username, password_hash, role, active, token_version,
+                 created_at, name, email, phone, avatar_base64
+          FROM users_old ORDER BY created_at
+      ''');
+      _db.execute('DROP TABLE users_old');
+    }
 
     _db.execute('''
       CREATE TABLE IF NOT EXISTS otp_tokens (
@@ -467,6 +503,12 @@ class AppDb {
     return DbUser._fromRow(rows.first);
   }
 
+  DbUser? getUserById(int id) {
+    final rows = _db.select('SELECT * FROM users WHERE id = ?', [id]);
+    if (rows.isEmpty) return null;
+    return DbUser._fromRow(rows.first);
+  }
+
   void createUser({
     required String username,
     required String password,
@@ -484,27 +526,37 @@ class AppDb {
     );
   }
 
-  void updatePasswordHash(String username, String newPasswordHash) {
+  /// Renames a user. Uniqueness against other users is the caller's
+  /// responsibility (checked via [getUserByUsername] before calling this).
+  DbUser? updateUsername(int id, String newUsername) {
     _db.execute(
-      'UPDATE users SET password_hash = ? WHERE username = ?',
-      [newPasswordHash, username.toLowerCase()],
+      'UPDATE users SET username = ? WHERE id = ?',
+      [newUsername.toLowerCase(), id],
+    );
+    return getUserById(id);
+  }
+
+  void updatePasswordHash(int id, String newPasswordHash) {
+    _db.execute(
+      'UPDATE users SET password_hash = ? WHERE id = ?',
+      [newPasswordHash, id],
     );
   }
 
   /// Updates a user's contact/profile fields (not security-sensitive, unlike
   /// role/active/password — no self-edit restrictions apply to these).
   DbUser? updateUserProfile(
-    String username, {
+    int id, {
     String? name,
     String? email,
     String? phone,
     String? avatarBase64,
   }) {
     _db.execute(
-      'UPDATE users SET name = ?, email = ?, phone = ?, avatar_base64 = ? WHERE username = ?',
-      [name, email, phone, avatarBase64, username.toLowerCase()],
+      'UPDATE users SET name = ?, email = ?, phone = ?, avatar_base64 = ? WHERE id = ?',
+      [name, email, phone, avatarBase64, id],
     );
-    return getUserByUsername(username);
+    return getUserById(id);
   }
 
   List<DbUser> getAllUsers() {
@@ -514,36 +566,36 @@ class AppDb {
 
   /// Sets [active] and — when deactivating — bumps the token version so any
   /// outstanding JWTs for this user immediately fail auth checks.
-  DbUser? setUserActive(String username, bool active) {
+  DbUser? setUserActive(int id, bool active) {
     _db.execute(
       'UPDATE users SET active = ?, '
       'token_version = token_version + CASE WHEN ? THEN 0 ELSE 1 END '
-      'WHERE username = ?',
-      [active ? 1 : 0, active ? 1 : 0, username.toLowerCase()],
+      'WHERE id = ?',
+      [active ? 1 : 0, active ? 1 : 0, id],
     );
-    return getUserByUsername(username);
+    return getUserById(id);
   }
 
-  DbUser? setUserRole(String username, String role) {
+  DbUser? setUserRole(int id, String role) {
     _db.execute(
-      'UPDATE users SET role = ? WHERE username = ?',
-      [role, username.toLowerCase()],
+      'UPDATE users SET role = ? WHERE id = ?',
+      [role, id],
     );
-    return getUserByUsername(username);
+    return getUserById(id);
   }
 
-  /// Invalidates all outstanding JWTs for [username] without changing role
-  /// or active state — used for a manual "force logout".
-  DbUser? bumpTokenVersion(String username) {
+  /// Invalidates all outstanding JWTs for [id] without changing role or
+  /// active state — used for a manual "force logout".
+  DbUser? bumpTokenVersion(int id) {
     _db.execute(
-      'UPDATE users SET token_version = token_version + 1 WHERE username = ?',
-      [username.toLowerCase()],
+      'UPDATE users SET token_version = token_version + 1 WHERE id = ?',
+      [id],
     );
-    return getUserByUsername(username);
+    return getUserById(id);
   }
 
-  bool deleteUser(String username) {
-    _db.execute('DELETE FROM users WHERE username = ?', [username.toLowerCase()]);
+  bool deleteUser(int id) {
+    _db.execute('DELETE FROM users WHERE id = ?', [id]);
     return _db.updatedRows > 0;
   }
 

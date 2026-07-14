@@ -7,7 +7,11 @@ import '../../core/theme/app_colors.dart';
 import '../../core/window/platform_window.dart';
 import '../../l10n/app_localizations.dart';
 import '../auth/services/auth_service.dart';
+import '../cashier/services/menu_service.dart';
+import '../cashier/services/order_service.dart';
+import '../connect/services/connection_service.dart';
 import '../home/home_placeholder_screen.dart';
+import '../manager/services/shop_config_service.dart';
 import 'models/shop_setup_data.dart';
 import 'services/shop_setup_service.dart';
 import 'steps/admin_account_step.dart';
@@ -45,20 +49,31 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
   GlobalKey<FormState>? get _currentFormKey {
     switch (_currentStep) {
       case 0:
-        return _detailsFormKey;
-      case 1:
-        return _adminFormKey;
-      case 2:
         return _connectionFormKey;
+      case 1:
+        return _detailsFormKey;
+      case 2:
+        return _adminFormKey;
       default:
         return null;
     }
   }
 
-  void _next() {
+  Future<void> _next() async {
     if (_submitting) return;
     final formKey = _currentFormKey;
     if (formKey != null && !(formKey.currentState?.validate() ?? true)) return;
+
+    if (_currentStep == 0) {
+      setState(() => _submitting = true);
+      final blocked = await _checkTargetAvailable();
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      if (blocked != null) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(blocked)));
+        return;
+      }
+    }
 
     if (_currentStep == _stepCount - 1) {
       _finish();
@@ -71,6 +86,27 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeOut,
     );
+  }
+
+  /// Checks whether the chosen connection target (this device, or the
+  /// entered server address) already has a shop set up, so the wizard can
+  /// block right after step 0 instead of only failing at the final
+  /// `POST /setup` after the whole form is filled in. Returns an error
+  /// message when blocked, null when clear to proceed.
+  Future<String?> _checkTargetAvailable() async {
+    final l10n = AppLocalizations.of(context)!;
+    if (_data.connectionMode == ConnectionMode.local) {
+      final hasShop = isWindowsDesktop
+          ? LocalServerLauncher.instance.hasLocalShop()
+          : isMobile
+              ? await MobileServerLauncher.instance.hasLocalShop()
+              : false;
+      return hasShop ? l10n.shopAlreadyExistsLocalError : null;
+    }
+    final status = await ConnectionService().checkStatus(_data.cloudServerAddress);
+    if (!status.reachable) return l10n.connectFailureError;
+    if (status.hasShop) return l10n.shopAlreadyExistsRemoteError;
+    return null;
   }
 
   void _back() {
@@ -111,6 +147,18 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
       }
       ServerClient.instance.role = result.role;
       ServerClient.instance.username = result.username;
+      ServerClient.instance.userId = result.id;
+
+      // Mirrors login_screen.dart's post-login sync — without it this
+      // screen would carry over whatever menu/orders/shop config were
+      // still cached in memory from a previously connected shop.
+      await Future.wait([
+        MenuService.instance.fetchFromServer(),
+        OrderService.instance.loadFromServer(),
+        ShopConfigService.instance.fetch(),
+      ]);
+      MenuService.instance.connect();
+      OrderService.instance.connect();
     } catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
@@ -178,9 +226,9 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
               controller: _pageController,
               physics: const NeverScrollableScrollPhysics(),
               children: [
+                ConnectionModeStep(formKey: _connectionFormKey, data: _data),
                 ShopDetailsStep(formKey: _detailsFormKey, data: _data),
                 AdminAccountStep(formKey: _adminFormKey, data: _data),
-                ConnectionModeStep(formKey: _connectionFormKey, data: _data),
                 PrinterSetupStep(data: _data),
                 SetupSummaryStep(data: _data),
               ],

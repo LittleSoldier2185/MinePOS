@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 
+import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
 import '../../l10n/app_localizations.dart';
-import '../connect/connect_screen.dart';
+import '../auth/login_screen.dart';
 import '../connect/models/device_purpose.dart';
+import '../customer_display/customer_display_screen.dart';
 
-/// First stop when a device joins an existing shop as a client: pick what
-/// this device is for before connecting. Cashier/Manager stations and
-/// Kitchen Displays still sign in normally afterward; a Customer Display
-/// connects and goes straight to the live view, no login needed.
+/// Reached after [ConnectScreen] has already confirmed a shop exists at
+/// the entered address: pick what this device is for. Cashier/Manager
+/// stations and Kitchen Displays still sign in normally afterward; a
+/// Customer Display connects and goes straight to the live view, no login
+/// needed.
 class RoleSelectionScreen extends StatelessWidget {
   const RoleSelectionScreen({super.key});
 
@@ -70,8 +73,19 @@ class RoleSelectionScreen extends StatelessWidget {
   }
 
   void _go(BuildContext context, DevicePurpose purpose) {
+    if (purpose == DevicePurpose.customerDisplay) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const CustomerDisplayScreen()),
+      );
+      return;
+    }
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => ConnectScreen(purpose: purpose)),
+      MaterialPageRoute(
+        builder: (_) => LoginScreen(
+          serverAddress: ServerClient.instance.baseUrl!,
+          purpose: purpose,
+        ),
+      ),
     );
   }
 }

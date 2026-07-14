@@ -54,9 +54,9 @@ class StaffService {
     return StaffMember.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
-  Future<StaffMember> setActive(String username, bool active) async {
+  Future<StaffMember> setActive(int id, bool active) async {
     final res = await _send(() => http.patch(
-          ServerClient.instance.uri('/users/$username'),
+          ServerClient.instance.uri('/users/$id'),
           headers: ServerClient.instance.headers,
           body: jsonEncode({'active': active}),
         ));
@@ -67,17 +67,22 @@ class StaffService {
   /// [name]/[email]/[phone]/[avatarBase64] are always sent together as a
   /// full profile replace (same shape as the menu item edit form) — pass an
   /// empty string/null to clear a field, not just to leave it unchanged.
+  /// [username] renames the account and requires [confirmPassword] — the
+  /// *acting* owner's own password, not the target account's — pass both
+  /// only when the username actually changed.
   Future<StaffMember> update(
-    String username, {
+    int id, {
     required String role,
     String? password,
     String? name,
     String? email,
     String? phone,
     String? avatarBase64,
+    String? username,
+    String? confirmPassword,
   }) async {
     final res = await _send(() => http.patch(
-          ServerClient.instance.uri('/users/$username'),
+          ServerClient.instance.uri('/users/$id'),
           headers: ServerClient.instance.headers,
           body: jsonEncode({
             'role': role,
@@ -86,18 +91,20 @@ class StaffService {
             'email': email,
             'phone': phone,
             'avatarBase64': avatarBase64,
+            if (username != null) 'username': username,
+            if (confirmPassword != null) 'confirmPassword': confirmPassword,
           }),
         ));
     return StaffMember.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
-  Future<void> forceLogout(String username) => _send(() => http.post(
-        ServerClient.instance.uri('/users/$username/logout'),
+  Future<void> forceLogout(int id) => _send(() => http.post(
+        ServerClient.instance.uri('/users/$id/logout'),
         headers: ServerClient.instance.headers,
       ));
 
-  Future<void> delete(String username) => _send(() => http.delete(
-        ServerClient.instance.uri('/users/$username'),
+  Future<void> delete(int id) => _send(() => http.delete(
+        ServerClient.instance.uri('/users/$id'),
         headers: ServerClient.instance.headers,
       ));
 

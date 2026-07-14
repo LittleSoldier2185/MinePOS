@@ -69,6 +69,19 @@ class LocalServerLauncher {
     return false;
   }
 
+  /// Whether this device has already been set up as a shop (the bundled
+  /// server's data dir has a database file) — checked directly off disk
+  /// rather than by starting the server and asking it, so viewing the
+  /// welcome screen never has the side effect of spinning up a background
+  /// server process just to answer this. False (not just "unset up") is
+  /// also the honest answer in dev (`flutter run`), where no bundled exe —
+  /// and therefore no fixed data dir to check — exists yet.
+  bool hasLocalShop() {
+    final exe = _findServerExecutable();
+    if (exe == null) return false;
+    return File('${exe.parent.path}\\data\\minepos.db').existsSync();
+  }
+
   /// The compiled server executable ships in a `server/` folder next to the
   /// app's own .exe — Flutter Windows desktop apps are distributed as a
   /// folder of files (not a single-file installer), so a sibling folder is

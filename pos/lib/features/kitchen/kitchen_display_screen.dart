@@ -10,6 +10,7 @@ import '../cashier/models/order.dart';
 import '../cashier/models/order_item.dart';
 import '../cashier/services/menu_service.dart';
 import '../cashier/services/order_service.dart';
+import '../manager/services/shop_config_service.dart';
 import '../welcome/welcome_screen.dart';
 import 'services/kitchen_service.dart';
 
@@ -44,8 +45,9 @@ Future<void> _confirmLogout(BuildContext context) async {
     ),
   );
   if (ok == true && context.mounted) {
-    MenuService.instance.disconnect();
-    OrderService.instance.disconnect();
+    MenuService.instance.reset();
+    OrderService.instance.reset();
+    ShopConfigService.instance.reset();
     ServerClient.instance.clear();
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const WelcomeScreen()),
