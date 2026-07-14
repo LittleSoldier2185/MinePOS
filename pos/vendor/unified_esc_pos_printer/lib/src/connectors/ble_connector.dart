@@ -37,6 +37,29 @@ class BleConnector extends PrinterConnector<BlePrinterDevice> {
   @override
   PrinterConnectionState get state => _state;
 
+  /// Already-paired (bonded) BLE devices, returned instantly with no active
+  /// scan — the fast, reliable path for a printer this phone already knows
+  /// about. Requests Bluetooth permissions the same as [scan].
+  Future<List<BlePrinterDevice>> bondedDevices() async {
+    final bool granted = await _platform.requestBluetoothPermissions();
+    if (!granted) {
+      throw const PrinterPermissionException(
+        'Bluetooth permissions were denied',
+      );
+    }
+
+    final List<Map<String, dynamic>> bonded =
+        await _platform.getBondedBleDevices();
+
+    return [
+      for (final Map<String, dynamic> d in bonded)
+        BlePrinterDevice(
+          name: (d['name'] as String?) ?? (d['deviceId'] as String),
+          deviceId: d['deviceId'] as String,
+        ),
+    ];
+  }
+
   @override
   Stream<List<BlePrinterDevice>> scan({
     Duration timeout = const Duration(seconds: 5),
@@ -56,16 +79,7 @@ class BleConnector extends PrinterConnector<BlePrinterDevice> {
 
     // Emit bonded (paired) BLE devices immediately.
     try {
-      final List<Map<String, dynamic>> bonded =
-          await _platform.getBondedBleDevices();
-
-      for (final Map<String, dynamic> d in bonded) {
-        found.add(BlePrinterDevice(
-          name: (d['name'] as String?) ?? (d['deviceId'] as String),
-          deviceId: d['deviceId'] as String,
-        ));
-      }
-
+      found.addAll(await bondedDevices());
       if (found.isNotEmpty) yield List<BlePrinterDevice>.from(found);
     } catch (_) {
       // Ignore — permissions may be denied; scan below will also fail.

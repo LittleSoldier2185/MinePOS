@@ -134,6 +134,52 @@ class PrinterManager {
     return controller.stream;
   }
 
+  /// Already-paired (bonded) BLE/Bluetooth-Classic devices, returned
+  /// instantly with no active discovery scan — the fast, reliable path for
+  /// a printer this phone already knows about (network/USB have no
+  /// "paired" concept, so [types] entries other than ble/bluetooth are
+  /// ignored here; use [scanPrinters] for those). A failure on one
+  /// transport (e.g. permissions denied) doesn't prevent the other from
+  /// still returning results — but if *nothing* was found and at least one
+  /// transport failed specifically due to permissions, that's rethrown
+  /// rather than swallowed, so a caller can tell "permission denied" apart
+  /// from "genuinely no printers nearby" instead of both looking identical.
+  Future<List<PrinterDevice>> pairedPrinters({
+    Set<PrinterConnectionType> types = const {
+      PrinterConnectionType.ble,
+      PrinterConnectionType.bluetooth,
+    },
+  }) async {
+    final List<PrinterDevice> found = [];
+    PrinterPermissionException? permissionError;
+
+    if (types.contains(PrinterConnectionType.bluetooth)) {
+      try {
+        found.addAll(await _bluetooth.bondedDevices());
+      } on PrinterPermissionException catch (e) {
+        permissionError = e;
+      } catch (_) {
+        // Ignore — a non-permission failure just means this transport has
+        // nothing to offer; the other transport (or scanPrinters()) may
+        // still succeed.
+      }
+    }
+
+    if (types.contains(PrinterConnectionType.ble)) {
+      try {
+        found.addAll(await _ble.bondedDevices());
+      } on PrinterPermissionException catch (e) {
+        permissionError = e;
+      } catch (_) {
+        // Ignore — same reasoning as above.
+      }
+    }
+
+    if (found.isEmpty && permissionError != null) throw permissionError;
+
+    return found;
+  }
+
   /// Scan all printer types and collect results, returning after [timeout].
   Future<List<PrinterDevice>> scanPrinters({
     Duration timeout = const Duration(seconds: 5),

@@ -40,6 +40,38 @@ class BluetoothConnector extends PrinterConnector<BluetoothPrinterDevice> {
   @override
   PrinterConnectionState get state => _state;
 
+  /// Already-paired (bonded) devices, returned instantly with no active
+  /// discovery scan — the fast, reliable path for a printer this phone
+  /// already knows about, since Classic BT discovery is comparatively slow
+  /// and can miss devices depending on radio conditions. Requests Bluetooth
+  /// permissions the same as [scan].
+  Future<List<BluetoothPrinterDevice>> bondedDevices() async {
+    if (!Platform.isAndroid && !Platform.isWindows) {
+      throw const PrinterConnectionException(
+        'Classic Bluetooth (SPP) is only supported on Android and Windows. '
+        'Use BleConnector for other platforms.',
+      );
+    }
+
+    final bool granted = await _platform.requestBluetoothPermissions();
+    if (!granted) {
+      throw const PrinterPermissionException(
+        'Bluetooth permissions were denied',
+      );
+    }
+
+    final List<Map<String, dynamic>> bonded =
+        await _platform.getBondedDevices();
+
+    return [
+      for (final Map<String, dynamic> d in bonded)
+        BluetoothPrinterDevice(
+          name: (d['name'] as String?) ?? (d['address'] as String),
+          address: d['address'] as String,
+        ),
+    ];
+  }
+
   @override
   Stream<List<BluetoothPrinterDevice>> scan({
     Duration timeout = const Duration(seconds: 5),
@@ -68,16 +100,7 @@ class BluetoothConnector extends PrinterConnector<BluetoothPrinterDevice> {
 
     // Emit bonded (paired) devices immediately.
     try {
-      final List<Map<String, dynamic>> bonded =
-          await _platform.getBondedDevices();
-
-      for (final Map<String, dynamic> d in bonded) {
-        found.add(BluetoothPrinterDevice(
-          name: (d['name'] as String?) ?? (d['address'] as String),
-          address: d['address'] as String,
-        ));
-      }
-
+      found.addAll(await bondedDevices());
       if (found.isNotEmpty) yield List<BluetoothPrinterDevice>.from(found);
     } catch (_) {
       // Ignore — permissions may be denied; discovery below will also fail.

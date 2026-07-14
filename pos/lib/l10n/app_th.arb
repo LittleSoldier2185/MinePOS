@@ -201,6 +201,7 @@
 
   "orderHistoryAppBarTitle": "ประวัติออร์เดอร์",
   "noOrdersMessage": "ยังไม่มีออร์เดอร์",
+  "noMenuItemsMessage": "ยังไม่มีรายการเมนู กรุณาเพิ่มในหน้าจัดการเมนู",
   "orderItemsSummary": "{count, plural, other{{count} รายการ}}  •  {paymentMethod}",
 
   "exitCustomerDisplayTitle": "ออกจากจอลูกค้า?",
@@ -225,6 +226,7 @@
   "defaultAdminUsername": "ผู้ดูแลระบบ",
   "mobileBottomNavHome": "หน้าแรก",
   "mobileBottomNavOrders": "ออร์เดอร์",
+  "mobileBottomNavMore": "เพิ่มเติม",
   "greetingWithName": "{greeting} คุณแอดมิน",
   "homeOrdersTodayStat": "ออร์เดอร์วันนี้",
   "recentOrdersHeader": "ออร์เดอร์ล่าสุด",
@@ -314,6 +316,10 @@
   "selectPrinterDialogTitle": "เลือกเครื่องพิมพ์",
   "noPrintersFoundMessage": "ไม่พบเครื่องพิมพ์ ตรวจสอบว่าเปิดเครื่องและอยู่ในระยะ",
   "scanningForPrintersLabel": "กำลังค้นหาเครื่องพิมพ์…",
+  "loadingPairedPrintersLabel": "กำลังตรวจสอบเครื่องพิมพ์ที่จับคู่ไว้…",
+  "scanForPrintersButton": "สแกน",
+  "noPairedPrintersMessage": "ไม่มีเครื่องพิมพ์ที่จับคู่ไว้ กรุณาจับคู่ในตั้งค่าบลูทูธ หรือสแกนหาอุปกรณ์ใกล้เคียง",
+  "bluetoothPermissionDeniedMessage": "ต้องได้รับอนุญาตบลูทูธเพื่อค้นหาเครื่องพิมพ์ กรุณาเปิดสิทธิ์นี้ให้แอปในการตั้งค่าโทรศัพท์",
   "paperSizeLabel": "ขนาดกระดาษ",
   "paperSize58": "58มม.",
   "paperSize80": "80มม.",

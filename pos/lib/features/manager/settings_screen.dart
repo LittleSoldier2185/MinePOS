@@ -825,9 +825,14 @@ class _PrinterPickerDialog extends StatefulWidget {
 }
 
 class _PrinterPickerDialogState extends State<_PrinterPickerDialog> {
-  late Future<List<PrinterDevice>> _future = PrinterService().scanAvailable(
+  // Paired devices load instantly (no active discovery scan) and are the
+  // common case — the printer was already paired via Android Bluetooth
+  // settings. "Scan" below is the fallback for a printer that's never been
+  // paired at the OS level, or USB, which has no "paired" concept at all.
+  late Future<List<PrinterDevice>> _future = PrinterService().pairedDevices(
     widget.choice,
   );
+  bool _scanned = false;
 
   @override
   Widget build(BuildContext context) {
@@ -855,10 +860,22 @@ class _PrinterPickerDialogState extends State<_PrinterPickerDialog> {
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      l10n.scanningForPrintersLabel,
+                      _scanned ? l10n.scanningForPrintersLabel : l10n.loadingPairedPrintersLabel,
                       style: const TextStyle(color: AppColors.muted),
                     ),
                   ],
+                ),
+              );
+            }
+            if (snapshot.hasError) {
+              final isPermissionError = snapshot.error is PrinterPermissionException;
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Text(
+                  isPermissionError
+                      ? l10n.bluetoothPermissionDeniedMessage
+                      : '${snapshot.error}',
+                  style: const TextStyle(color: AppColors.terracottaDark),
                 ),
               );
             }
@@ -867,7 +884,7 @@ class _PrinterPickerDialogState extends State<_PrinterPickerDialog> {
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Text(
-                  l10n.noPrintersFoundMessage,
+                  _scanned ? l10n.noPrintersFoundMessage : l10n.noPairedPrintersMessage,
                   style: const TextStyle(color: AppColors.muted),
                 ),
               );
@@ -892,10 +909,11 @@ class _PrinterPickerDialogState extends State<_PrinterPickerDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => setState(
-            () => _future = PrinterService().scanAvailable(widget.choice),
-          ),
-          child: Text(l10n.retry),
+          onPressed: () => setState(() {
+            _scanned = true;
+            _future = PrinterService().scanAvailable(widget.choice);
+          }),
+          child: Text(l10n.scanForPrintersButton),
         ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),

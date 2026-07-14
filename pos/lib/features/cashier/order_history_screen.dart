@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/responsive/breakpoints.dart';
 import '../../core/theme/app_colors.dart';
 import '../../l10n/app_localizations.dart';
+import '../home/mobile_bottom_nav.dart';
 import 'models/order.dart';
 import 'models/order_item.dart';
 import 'services/order_service.dart';
@@ -39,6 +41,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = Responsive.isMobile(context);
     return Scaffold(
       appBar: AppBar(
         title: Text(AppLocalizations.of(context)!.orderHistoryAppBarTitle),
@@ -47,6 +50,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
         elevation: 0,
         surfaceTintColor: Colors.transparent,
       ),
+      floatingActionButton: isMobile ? const MobileNewOrderFab() : null,
+      floatingActionButtonLocation: isMobile ? FloatingActionButtonLocation.centerDocked : null,
+      bottomNavigationBar: isMobile ? const MobileBottomNav(current: MobileTab.orders) : null,
       body: _orders.isEmpty
           ? Center(
               child: Column(

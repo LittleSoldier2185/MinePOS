@@ -27,6 +27,16 @@ String printerDeviceKey(PrinterDevice d) => switch (d) {
   _ => 'unknown:${d.name}',
 };
 
+/// Finds the device matching a remembered [printerDeviceKey], or null if
+/// [selectedId] is unset or not present in [devices].
+PrinterDevice? _findMatch(List<PrinterDevice> devices, String? selectedId) {
+  if (selectedId == null) return null;
+  for (final d in devices) {
+    if (printerDeviceKey(d) == selectedId) return d;
+  }
+  return null;
+}
+
 Set<PrinterConnectionType> _typesFor(PrinterChoice choice) =>
     choice == PrinterChoice.bluetooth
     ? const {PrinterConnectionType.bluetooth, PrinterConnectionType.ble}
@@ -43,8 +53,22 @@ PaperSize _paperSizeFor(ReceiptPaperSize size) =>
 /// device isn't found this time) it falls back to the first match, same as
 /// before a device was ever picked.
 class PrinterService {
+  /// Already-paired devices matching [choice]'s transport, no active scan —
+  /// used by the Settings screen's "select printer" picker as its default,
+  /// instant list (empty for [PrinterChoice.usb], which has no "paired"
+  /// concept; the picker's explicit "Scan" action covers that case, and a
+  /// printer that was never paired at the OS level either).
+  Future<List<PrinterDevice>> pairedDevices(PrinterChoice choice) async {
+    final manager = PrinterManager();
+    try {
+      return await manager.pairedPrinters(types: _typesFor(choice));
+    } finally {
+      await manager.dispose();
+    }
+  }
+
   /// Scans for devices matching [choice]'s transport — used by the Settings
-  /// screen's "select printer" picker.
+  /// screen's "select printer" picker's explicit "Scan" action.
   Future<List<PrinterDevice>> scanAvailable(PrinterChoice choice) async {
     final manager = PrinterManager();
     try {
@@ -66,25 +90,32 @@ class PrinterService {
 
     final manager = PrinterManager();
     try {
-      final devices = await manager.scanPrinters(
-        timeout: const Duration(seconds: 5),
-        types: _typesFor(choice),
-      );
-      if (devices.isEmpty) {
-        return const PrintResult(PrintOutcome.noPrinterFound);
+      final types = _typesFor(choice);
+      final selectedId = await settings.getSelectedPrinterId();
+
+      // Fast path: the phone's already-paired device list, no active scan —
+      // this is what was actually flaky before (a live Bluetooth discovery
+      // scan on every single print). Only Bluetooth/BLE have a "paired"
+      // concept; USB always falls straight through to scanPrinters below.
+      PrinterDevice? target;
+      if (choice == PrinterChoice.bluetooth) {
+        final paired = await manager.pairedPrinters(types: types);
+        target = _findMatch(paired, selectedId) ?? paired.firstOrNull;
       }
 
-      final selectedId = await settings.getSelectedPrinterId();
-      PrinterDevice? matched;
-      if (selectedId != null) {
-        for (final d in devices) {
-          if (printerDeviceKey(d) == selectedId) {
-            matched = d;
-            break;
-          }
+      // Fall back to a live scan if the paired lookup found nothing usable —
+      // covers USB, and a printer that's paired at the OS level but wasn't
+      // returned by the bonded-device query, or one never paired at all.
+      if (target == null) {
+        final scanned = await manager.scanPrinters(
+          timeout: const Duration(seconds: 5),
+          types: types,
+        );
+        if (scanned.isEmpty) {
+          return const PrintResult(PrintOutcome.noPrinterFound);
         }
+        target = _findMatch(scanned, selectedId) ?? scanned.first;
       }
-      final target = matched ?? devices.first;
 
       final paperSize = _paperSizeFor(await settings.getPaperSize());
       await manager.connect(target);

@@ -614,6 +614,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noOrdersMessage => 'No orders yet';
 
   @override
+  String get noMenuItemsMessage =>
+      'No menu items yet — add some in Menu Management';
+
+  @override
   String orderItemsSummary(int count, String paymentMethod) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -694,6 +698,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mobileBottomNavOrders => 'Orders';
+
+  @override
+  String get mobileBottomNavMore => 'More';
 
   @override
   String greetingWithName(String greeting) {
@@ -964,6 +971,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get scanningForPrintersLabel => 'Scanning for printers…';
+
+  @override
+  String get loadingPairedPrintersLabel => 'Checking paired printers…';
+
+  @override
+  String get scanForPrintersButton => 'SCAN';
+
+  @override
+  String get noPairedPrintersMessage =>
+      'No paired printers. Pair one in Bluetooth settings, or scan for nearby devices.';
+
+  @override
+  String get bluetoothPermissionDeniedMessage =>
+      'Bluetooth permission is required to find printers. Enable it for this app in phone Settings.';
 
   @override
   String get paperSizeLabel => 'Paper Size';

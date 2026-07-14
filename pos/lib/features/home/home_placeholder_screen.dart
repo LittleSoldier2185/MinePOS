@@ -20,6 +20,7 @@ import '../manager/services/shop_config_service.dart';
 import '../manager/settings_screen.dart';
 import '../manager/staff_management_screen.dart';
 import '../welcome/welcome_screen.dart';
+import 'mobile_bottom_nav.dart';
 
 const _kSidebarBg = Color(0xFF232315);
 const _kSidebarText = Color(0xFFEEEBCF);
@@ -481,30 +482,10 @@ class _Mobile extends StatelessWidget {
             padding: EdgeInsets.only(right: 4),
             child: Center(child: _ConnectionStatus()),
           ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'kitchen',
-                child: Text(AppLocalizations.of(context)!.kitchenNavLabel),
-              ),
-              if (ServerClient.instance.canManageShop)
-                PopupMenuItem(
-                  value: 'reports',
-                  child: Text(AppLocalizations.of(context)!.reportsLabel),
-                ),
-              if (ServerClient.instance.isOwner)
-                PopupMenuItem(
-                  value: 'staff',
-                  child: Text(AppLocalizations.of(context)!.staffLabel),
-                ),
-            ],
-            onSelected: (value) {
-              if (value == 'kitchen') _openKitchen(context);
-              if (value == 'reports') _openReports(context);
-              if (value == 'staff') _openStaff(context);
-            },
-          ),
+          // Menu/Reports/Staff/Settings used to live in an AppBar overflow
+          // (⋮) popup here; moved to the "More" bottom-nav tab (MoreScreen)
+          // instead, so they're a real screen with the same shared bottom
+          // nav/New Order FAB as everywhere else, not a dead-end popup.
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () => _confirmLogout(context),
@@ -512,67 +493,9 @@ class _Mobile extends StatelessWidget {
         ],
       ),
       body: _ContentPanel(title: title, desktop: false),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _openNewOrder(context),
-        tooltip: AppLocalizations.of(context)!.newOrderButton,
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: const MobileNewOrderFab(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: _buildBottomNav(context),
-    );
-  }
-
-  // Tab actions are filtered by role, so build (item, onTap) pairs together
-  // rather than hardcoding tab indices — hiding "Menu" for employees must
-  // not shift what the remaining tabs do. Split across the FAB notch so the
-  // New Order button sits centered in the bar.
-  Widget _buildBottomNav(BuildContext context) {
-    final canManage = ServerClient.instance.canManageShop;
-    final entries = <(IconData, String, VoidCallback?)>[
-      (Icons.home_outlined, AppLocalizations.of(context)!.mobileBottomNavHome, null),
-      (
-        Icons.receipt_long_outlined,
-        AppLocalizations.of(context)!.mobileBottomNavOrders,
-        () => _openHistory(context),
-      ),
-      if (canManage)
-        (
-          Icons.restaurant_menu_outlined,
-          AppLocalizations.of(context)!.menuLabel,
-          () => _openMenuMgmt(context),
-        ),
-      (
-        Icons.settings_outlined,
-        AppLocalizations.of(context)!.settingsLabel,
-        () => _openSettings(context),
-      ),
-    ];
-    final mid = (entries.length / 2).ceil();
-
-    Widget navButton((IconData, String, VoidCallback?) e) => Expanded(
-      child: InkWell(
-        onTap: e.$3,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(e.$1, color: AppColors.muted),
-            const SizedBox(height: 2),
-            Text(e.$2, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
-          ],
-        ),
-      ),
-    );
-
-    return BottomAppBar(
-      shape: const CircularNotchedRectangle(),
-      notchMargin: 8,
-      child: Row(
-        children: [
-          ...entries.take(mid).map(navButton),
-          const Spacer(),
-          ...entries.skip(mid).map(navButton),
-        ],
-      ),
+      bottomNavigationBar: const MobileBottomNav(current: MobileTab.home),
     );
   }
 }

@@ -1184,6 +1184,12 @@ abstract class AppLocalizations {
   /// **'No orders yet'**
   String get noOrdersMessage;
 
+  /// No description provided for @noMenuItemsMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'No menu items yet — add some in Menu Management'**
+  String get noMenuItemsMessage;
+
   /// No description provided for @orderItemsSummary.
   ///
   /// In en, this message translates to:
@@ -1315,6 +1321,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Orders'**
   String get mobileBottomNavOrders;
+
+  /// No description provided for @mobileBottomNavMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get mobileBottomNavMore;
 
   /// No description provided for @greetingWithName.
   ///
@@ -1819,6 +1831,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Scanning for printers…'**
   String get scanningForPrintersLabel;
+
+  /// No description provided for @loadingPairedPrintersLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking paired printers…'**
+  String get loadingPairedPrintersLabel;
+
+  /// No description provided for @scanForPrintersButton.
+  ///
+  /// In en, this message translates to:
+  /// **'SCAN'**
+  String get scanForPrintersButton;
+
+  /// No description provided for @noPairedPrintersMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'No paired printers. Pair one in Bluetooth settings, or scan for nearby devices.'**
+  String get noPairedPrintersMessage;
+
+  /// No description provided for @bluetoothPermissionDeniedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Bluetooth permission is required to find printers. Enable it for this app in phone Settings.'**
+  String get bluetoothPermissionDeniedMessage;
 
   /// No description provided for @paperSizeLabel.
   ///

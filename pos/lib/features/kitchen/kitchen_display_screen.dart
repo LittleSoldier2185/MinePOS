@@ -10,6 +10,7 @@ import '../cashier/models/order.dart';
 import '../cashier/models/order_item.dart';
 import '../cashier/services/menu_service.dart';
 import '../cashier/services/order_service.dart';
+import '../home/mobile_bottom_nav.dart';
 import '../manager/services/shop_config_service.dart';
 import '../welcome/welcome_screen.dart';
 import 'services/kitchen_service.dart';
@@ -141,6 +142,10 @@ class _KitchenDisplayScreenState extends State<KitchenDisplayScreen>
     final preparing = _svc.orders.where((o) => o.kitchenStatus == 'preparing').toList();
     final ready = _svc.orders.where((o) => o.kitchenStatus == 'ready').toList();
     final isMobile = Responsive.isMobile(context);
+    // A standalone kitchen-only station has no hub in its nav stack to
+    // offer quick access to — Home/Orders/Settings/New Order all assume one
+    // exists, so the shared nav only makes sense when reached from the hub.
+    final showMobileNav = isMobile && !widget.standalone;
 
     final columns = [
       _KitchenColumn(
@@ -186,6 +191,11 @@ class _KitchenDisplayScreenState extends State<KitchenDisplayScreen>
         ],
       ),
       backgroundColor: AppColors.background,
+      floatingActionButton: showMobileNav ? const MobileNewOrderFab() : null,
+      floatingActionButtonLocation:
+          showMobileNav ? FloatingActionButtonLocation.centerDocked : null,
+      bottomNavigationBar:
+          showMobileNav ? const MobileBottomNav(current: MobileTab.kitchen) : null,
       body: isMobile
           ? Column(
               children: [

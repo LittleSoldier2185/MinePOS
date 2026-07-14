@@ -25,7 +25,10 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
   final _menuService = MenuService.instance;
   TabController? _tabController;
 
-  String _selectedCategory = MenuService.instance.categories.first;
+  // A brand-new shop can genuinely have zero menu items (none added in
+  // Menu Management yet) — .first would throw on that empty list.
+  String _selectedCategory =
+      MenuService.instance.categories.isEmpty ? '' : MenuService.instance.categories.first;
   final List<OrderItem> _cart = [];
 
   int get _cartCount => _cart.fold(0, (s, i) => s + i.quantity);
@@ -44,7 +47,16 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
   // off, etc.) arrive over MenuService's own /ws/menu connection; this just
   // triggers a rebuild so the grid here reflects them without a re-login.
   void _onMenuChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {
+      // Keep the selection valid as the menu changes live — covers both a
+      // once-empty menu gaining its first item and the selected category
+      // itself being deleted out from under this screen.
+      final categories = _menuService.categories;
+      if (!categories.contains(_selectedCategory) && categories.isNotEmpty) {
+        _selectedCategory = categories.first;
+      }
+    });
   }
 
   // ── Cart helpers ──────────────────────────────────────────────────────────
@@ -268,6 +280,26 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
   // ── Menu panel ────────────────────────────────────────────────────────────
 
   Widget _buildMenuPanel() {
+    if (_menuService.categories.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.restaurant_menu_outlined,
+              size: 56,
+              color: AppColors.muted.withValues(alpha: 0.5),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              AppLocalizations.of(context)!.noMenuItemsMessage,
+              style: const TextStyle(color: AppColors.muted),
+            ),
+          ],
+        ),
+      );
+    }
+
     final items = _menuService.itemsForCategory(_selectedCategory);
 
     return Column(

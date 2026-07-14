@@ -211,6 +211,7 @@
 
   "orderHistoryAppBarTitle": "Order History",
   "noOrdersMessage": "No orders yet",
+  "noMenuItemsMessage": "No menu items yet — add some in Menu Management",
   "orderItemsSummary": "{count, plural, one{{count} item} other{{count} items}}  •  {paymentMethod}",
   "@orderItemsSummary": { "placeholders": { "count": { "type": "int" }, "paymentMethod": { "type": "String" } } },
 
@@ -239,6 +240,7 @@
   "defaultAdminUsername": "Admin",
   "mobileBottomNavHome": "Home",
   "mobileBottomNavOrders": "Orders",
+  "mobileBottomNavMore": "More",
   "greetingWithName": "{greeting}, Admin",
   "@greetingWithName": { "placeholders": { "greeting": { "type": "String" } } },
   "homeOrdersTodayStat": "Orders Today",
@@ -335,6 +337,10 @@
   "selectPrinterDialogTitle": "Select Printer",
   "noPrintersFoundMessage": "No printers found. Make sure it's on and in range.",
   "scanningForPrintersLabel": "Scanning for printers…",
+  "loadingPairedPrintersLabel": "Checking paired printers…",
+  "scanForPrintersButton": "SCAN",
+  "noPairedPrintersMessage": "No paired printers. Pair one in Bluetooth settings, or scan for nearby devices.",
+  "bluetoothPermissionDeniedMessage": "Bluetooth permission is required to find printers. Enable it for this app in phone Settings.",
   "paperSizeLabel": "Paper Size",
   "paperSize58": "58mm",
   "paperSize80": "80mm",
