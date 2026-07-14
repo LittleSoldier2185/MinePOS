@@ -1,0 +1,111 @@
+MinePOS Server - Setup & Launch Instructions
+=============================================
+
+This is the Dart backend (Shelf) that the MinePOS app (cashier, kitchen
+display, customer display, manager tools) all talk to over HTTP + WebSocket.
+
+REQUIREMENTS
+------------
+1. Dart SDK (bundled with Flutter - already installed via .flutter\bin\dart)
+2. sqlite3.dll reachable at runtime (NOT on PATH by default on this machine)
+
+   The server uses package:sqlite3, which needs the native sqlite3.dll.
+   Copy one into the server folder before first run:
+
+     copy "..\pos\build\windows\x64\runner\Debug\sqlite3.dll" .
+
+   (If that build folder doesn't exist yet, run "flutter build windows"
+   or "flutter run" once from pos\ to produce it, or download sqlite3.dll
+   from https://www.sqlite.org/download.html and drop the DLL next to
+   bin\server.dart / run_server.bat.)
+
+FIRST-TIME SETUP
+-----------------
+1. Open a terminal in the server folder:
+     cd "D:\NSL files\MinePOS\server"
+
+2. Install/refresh Dart dependencies:
+     dart pub get
+
+   (Re-run this any time you see "Error when reading ... pub.dev/... :
+   The system cannot find the path specified" - it means the cached
+   package paths belong to a different Windows user/machine.)
+
+RUNNING THE SERVER
+-------------------
+Option A - double-click / run the batch script (checks port 8080 first):
+     run_server.bat
+
+Option B - run directly:
+     dart run bin/server.dart
+
+The server listens on port 8080 by default and binds to all network
+interfaces, so other devices on the same LAN/Wi-Fi (kitchen display,
+customer display, other cashier stations) can reach it at this PC's
+LAN IP, e.g. http://192.168.x.x:8080.
+
+Stop it with Ctrl+C in the console window it's running in.
+
+FIRST RUN / BOOTSTRAPPING A SHOP
+----------------------------------
+By default the server starts with ZERO users - no auto-created admin.
+Bootstrap it from the MinePOS app instead:
+  1. Launch the MinePOS app.
+  2. Welcome screen -> "Create Shop".
+  3. Choose "Local" connection mode (assumes this server is already
+     running on 127.0.0.1:8080).
+  4. Fill in shop details + the first Owner account, tap Finish.
+     This POSTs to /setup once (fails with 409 if a shop already exists).
+
+Alternative: headless/scripted bootstrap by setting env vars BEFORE
+starting the server (creates an admin account automatically):
+     set MINEPOS_ADMIN_USER=admin
+     set MINEPOS_ADMIN_PASS=some-strong-password
+     dart run bin/server.dart
+
+CONFIGURATION (all optional environment variables, set before launch)
+------------------------------------------------------------------
+  MINEPOS_PORT         TCP port to listen on               (default: 8080)
+  MINEPOS_DATA_DIR     Where the DB + JWT secret are saved  (default: data)
+  MINEPOS_SHOP_NAME    Default shop name                    (default: MinePOS)
+  MINEPOS_ADMIN_USER   Auto-create this admin username      (default: none)
+  MINEPOS_ADMIN_PASS   Password for the auto-created admin  (default: none)
+  MINEPOS_JWT_SECRET   Fixed JWT signing secret     (default: random, saved to data/server.json)
+
+Example (PowerShell):
+     $env:MINEPOS_PORT = "9090"
+     dart run bin/server.dart
+
+DATA STORAGE
+------------
+  data\minepos.db    SQLite database (menu, orders, users, shop config)
+  data\server.log     Server log
+  data\server.json    Persisted JWT signing secret (keep this stable -
+                       changing/deleting it logs out every device)
+
+HEALTH CHECK
+------------
+While running, verify it's alive:
+     curl http://127.0.0.1:8080/health
+or open that URL in a browser. The MinePOS app's home screen also shows
+a live "Connected/Offline" indicator polling this endpoint every 15s.
+
+TROUBLESHOOTING
+----------------
+- "Port 8080 is already in use" (from run_server.bat):
+    Another instance is already running. Check Task Manager for
+    dart.exe / dartvm.exe / minepos_server.exe, or set a different
+    MINEPOS_PORT.
+
+- "Error when reading '.../pub.dev/...'" at startup:
+    Stale package cache paths from a different machine/user account.
+    Run "dart pub get" in the server folder to regenerate them.
+
+- Server starts but another device on the network can't reach it:
+    Windows Firewall may be blocking inbound connections on port 8080.
+    Allow dart.exe / the server through the firewall, or add an inbound
+    rule for TCP 8080.
+
+- sqlite3 / "Failed to load dynamic library" errors:
+    sqlite3.dll isn't reachable. Copy it next to bin\server.dart (or
+    run_server.bat) or add its folder to PATH - see REQUIREMENTS above.
