@@ -1,8 +1,11 @@
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
+import 'package:shelf_web_socket/shelf_web_socket.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../config.dart';
 import '../database.dart';
+import '../menu_hub.dart';
 import '../utils.dart';
 
 void registerMenuRoutes(Router router, AppDb db, ServerConfig config) {
@@ -11,6 +14,18 @@ void registerMenuRoutes(Router router, AppDb db, ServerConfig config) {
   router.put('/menu/<id>', (Request req, String id) => _updateItem(req, id, db, config));
   router.delete('/menu/<id>', (Request req, String id) => _deleteItem(req, id, db, config));
   router.patch('/menu/<id>/toggle', (Request req, String id) => _toggleItem(req, id, db, config));
+
+  // Browsers can't set custom headers on a WebSocket handshake, so the JWT
+  // travels as a query param here instead of the usual Authorization header.
+  router.get('/ws/menu', (Request req) {
+    final token = req.url.queryParameters['token'];
+    if (token == null || verifyToken(token, db, config.jwtSecret) == null) {
+      return unauthorized();
+    }
+    return webSocketHandler((WebSocketChannel channel, String? protocol) {
+      MenuHub.instance.add(channel, db);
+    })(req);
+  });
 }
 
 // GET /menu
@@ -53,6 +68,7 @@ Future<Response> _createItem(
     hasSweetness: hasSweetness,
     nameTh: nameTh == null || nameTh.isEmpty ? null : nameTh,
   );
+  MenuHub.instance.broadcastItemChanged(item);
   return jsonOk(item.toJson(), status: 201);
 }
 
@@ -87,6 +103,7 @@ Future<Response> _updateItem(
     nameTh: nameTh == null || nameTh.isEmpty ? null : nameTh,
   );
   if (updated == null) return notFound('Menu item not found');
+  MenuHub.instance.broadcastItemChanged(updated);
   return jsonOk(updated.toJson());
 }
 
@@ -98,6 +115,7 @@ Response _deleteItem(
   }
   final deleted = db.deleteMenuItem(id);
   if (!deleted) return notFound('Menu item not found');
+  MenuHub.instance.broadcastItemDeleted(id);
   return Response(204);
 }
 
@@ -109,5 +127,6 @@ Response _toggleItem(
   }
   final item = db.toggleMenuItem(id);
   if (item == null) return notFound('Menu item not found');
+  MenuHub.instance.broadcastItemChanged(item);
   return jsonOk(item.toJson());
 }

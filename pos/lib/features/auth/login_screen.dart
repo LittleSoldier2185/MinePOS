@@ -77,6 +77,8 @@ class _LoginScreenState extends State<LoginScreen> {
           OrderService.instance.loadFromServer(),
           ShopConfigService.instance.fetch(),
         ]);
+        MenuService.instance.connect();
+        OrderService.instance.connect();
       }
 
       if (!mounted) return;

@@ -307,6 +307,10 @@
   "editStaffLabel": "Edit Staff",
   "staffPasswordEditHint": "Leave blank to keep current password",
   "saveChanges": "Save Changes",
+  "phoneFieldLabel": "Phone",
+  "phoneFieldHint": "e.g. 081-234-5678",
+  "staffNameLabel": "Name",
+  "staffNameHint": "e.g. Jane Smith",
 
   "settingsAccountSectionLabel": "ACCOUNT",
   "signedInAsLabel": "Signed in as",

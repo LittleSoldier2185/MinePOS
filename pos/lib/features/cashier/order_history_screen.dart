@@ -20,6 +20,24 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   String _baht(double v) => '฿${v.toStringAsFixed(0)}';
 
   @override
+  void initState() {
+    super.initState();
+    OrderService.instance.addListener(_onOrdersChanged);
+  }
+
+  @override
+  void dispose() {
+    OrderService.instance.removeListener(_onOrdersChanged);
+    super.dispose();
+  }
+
+  // Orders placed on another device arrive over OrderService's own
+  // /ws/orders connection; this just triggers a rebuild to show them.
+  void _onOrdersChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(

@@ -870,6 +870,18 @@ class AppLocalizationsTh extends AppLocalizations {
   String get saveChanges => 'บันทึกการเปลี่ยนแปลง';
 
   @override
+  String get phoneFieldLabel => 'เบอร์โทรศัพท์';
+
+  @override
+  String get phoneFieldHint => 'เช่น 081-234-5678';
+
+  @override
+  String get staffNameLabel => 'ชื่อ';
+
+  @override
+  String get staffNameHint => 'เช่น สมชาย ใจดี';
+
+  @override
   String get settingsAccountSectionLabel => 'บัญชี';
 
   @override

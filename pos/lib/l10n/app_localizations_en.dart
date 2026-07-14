@@ -877,6 +877,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get saveChanges => 'Save Changes';
 
   @override
+  String get phoneFieldLabel => 'Phone';
+
+  @override
+  String get phoneFieldHint => 'e.g. 081-234-5678';
+
+  @override
+  String get staffNameLabel => 'Name';
+
+  @override
+  String get staffNameHint => 'e.g. Jane Smith';
+
+  @override
   String get settingsAccountSectionLabel => 'ACCOUNT';
 
   @override

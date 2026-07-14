@@ -286,6 +286,10 @@
   "editStaffLabel": "แก้ไขพนักงาน",
   "staffPasswordEditHint": "เว้นว่างไว้เพื่อใช้รหัสผ่านเดิม",
   "saveChanges": "บันทึกการเปลี่ยนแปลง",
+  "phoneFieldLabel": "เบอร์โทรศัพท์",
+  "phoneFieldHint": "เช่น 081-234-5678",
+  "staffNameLabel": "ชื่อ",
+  "staffNameHint": "เช่น สมชาย ใจดี",
 
   "settingsAccountSectionLabel": "บัญชี",
   "signedInAsLabel": "เข้าสู่ระบบในชื่อ",

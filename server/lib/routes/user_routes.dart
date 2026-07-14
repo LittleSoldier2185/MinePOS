@@ -27,7 +27,7 @@ Response _listUsers(Request req, AppDb db, ServerConfig config) {
   return jsonOk(db.getAllUsers().map((u) => u.toJson()).toList());
 }
 
-// POST /users  { username, password, role }  (owner only)
+// POST /users  { username, password, role, name?, email?, phone?, avatarBase64? }  (owner only)
 Future<Response> _createUser(
     Request req, AppDb db, ServerConfig config) async {
   if (requireAuth(req, db, config.jwtSecret, role: 'owner') == null) {
@@ -52,11 +52,28 @@ Future<Response> _createUser(
     return jsonError('Username already exists', status: 409);
   }
 
-  db.createUser(username: username, password: password, role: role);
+  final name = (body?['name'] as String?)?.trim();
+  final email = (body?['email'] as String?)?.trim();
+  final phone = (body?['phone'] as String?)?.trim();
+  final avatarBase64 = body?['avatarBase64'] as String?;
+  db.createUser(
+    username: username,
+    password: password,
+    role: role,
+    name: name == null || name.isEmpty ? null : name,
+    email: email == null || email.isEmpty ? null : email,
+    phone: phone == null || phone.isEmpty ? null : phone,
+    avatarBase64: avatarBase64,
+  );
   return jsonOk(db.getUserByUsername(username)!.toJson(), status: 201);
 }
 
-// PATCH /users/:username  { active?, role?, password? }  (owner only)
+// PATCH /users/:username  { active?, role?, password?, name?, email?, phone?, avatarBase64? }  (owner only)
+// name/email/phone/avatarBase64 are always sent together as one profile
+// update (full replace, like the menu item edit form) — not
+// security-sensitive like active/role/password, so no self-edit restriction
+// applies to them; the owner can update their own info the same as anyone
+// else's.
 Future<Response> _updateUser(
     Request req, String username, AppDb db, ServerConfig config) async {
   final actor = requireAuth(req, db, config.jwtSecret, role: 'owner');
@@ -69,10 +86,15 @@ Future<Response> _updateUser(
   final active = body?['active'] as bool?;
   final role = (body?['role'] as String?)?.trim().toLowerCase();
   final password = body?['password'] as String?;
+  final hasProfileUpdate = body != null &&
+      (body.containsKey('name') ||
+          body.containsKey('email') ||
+          body.containsKey('phone') ||
+          body.containsKey('avatarBase64'));
   final isSelf = username.toLowerCase() == actor.username;
 
-  if (active == null && role == null && password == null) {
-    return jsonError('active, role, or password is required');
+  if (active == null && role == null && password == null && !hasProfileUpdate) {
+    return jsonError('active, role, password, or profile fields required');
   }
 
   if (active != null) {
@@ -95,6 +117,19 @@ Future<Response> _updateUser(
       return jsonError('password must be at least 8 characters');
     }
     db.updatePasswordHash(username, BCrypt.hashpw(password, BCrypt.gensalt()));
+  }
+  if (hasProfileUpdate) {
+    final name = (body['name'] as String?)?.trim();
+    final email = (body['email'] as String?)?.trim();
+    final phone = (body['phone'] as String?)?.trim();
+    final avatarBase64 = body['avatarBase64'] as String?;
+    db.updateUserProfile(
+      username,
+      name: name == null || name.isEmpty ? null : name,
+      email: email == null || email.isEmpty ? null : email,
+      phone: phone == null || phone.isEmpty ? null : phone,
+      avatarBase64: avatarBase64,
+    );
   }
 
   return jsonOk(db.getUserByUsername(username)!.toJson());

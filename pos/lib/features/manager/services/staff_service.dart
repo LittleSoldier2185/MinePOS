@@ -33,6 +33,10 @@ class StaffService {
     required String username,
     required String password,
     required String role,
+    String? name,
+    String? email,
+    String? phone,
+    String? avatarBase64,
   }) async {
     final res = await _send(() => http.post(
           ServerClient.instance.uri('/users'),
@@ -41,6 +45,10 @@ class StaffService {
             'username': username.trim(),
             'password': password,
             'role': role,
+            'name': name,
+            'email': email,
+            'phone': phone,
+            'avatarBase64': avatarBase64,
           }),
         ));
     return StaffMember.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
@@ -56,13 +64,28 @@ class StaffService {
   }
 
   /// [password] omitted or empty leaves the current password unchanged.
-  Future<StaffMember> update(String username, {required String role, String? password}) async {
+  /// [name]/[email]/[phone]/[avatarBase64] are always sent together as a
+  /// full profile replace (same shape as the menu item edit form) — pass an
+  /// empty string/null to clear a field, not just to leave it unchanged.
+  Future<StaffMember> update(
+    String username, {
+    required String role,
+    String? password,
+    String? name,
+    String? email,
+    String? phone,
+    String? avatarBase64,
+  }) async {
     final res = await _send(() => http.patch(
           ServerClient.instance.uri('/users/$username'),
           headers: ServerClient.instance.headers,
           body: jsonEncode({
             'role': role,
             if (password != null && password.isNotEmpty) 'password': password,
+            'name': name,
+            'email': email,
+            'phone': phone,
+            'avatarBase64': avatarBase64,
           }),
         ));
     return StaffMember.fromJson(jsonDecode(res.body) as Map<String, dynamic>);

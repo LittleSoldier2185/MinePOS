@@ -5,3 +5,8 @@ data/
 # Dart build cache / compiled release binaries.
 .dart_tool/
 *.exe
+
+# Local console redirects from manual dev-server runs — not part of the
+# project, just this machine's runtime output.
+out.log
+err.log

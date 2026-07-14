@@ -8,6 +8,8 @@ import '../../core/theme/app_colors.dart';
 import '../../l10n/app_localizations.dart';
 import '../cashier/models/order.dart';
 import '../cashier/models/order_item.dart';
+import '../cashier/services/menu_service.dart';
+import '../cashier/services/order_service.dart';
 import '../welcome/welcome_screen.dart';
 import 'services/kitchen_service.dart';
 
@@ -42,6 +44,8 @@ Future<void> _confirmLogout(BuildContext context) async {
     ),
   );
   if (ok == true && context.mounted) {
+    MenuService.instance.disconnect();
+    OrderService.instance.disconnect();
     ServerClient.instance.clear();
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const WelcomeScreen()),
@@ -67,11 +71,21 @@ class _KitchenDisplayScreenState extends State<KitchenDisplayScreen>
     with SingleTickerProviderStateMixin {
   final _svc = KitchenService.instance;
   Timer? _ticker;
-  late final _tabController = TabController(length: 3, vsync: this);
+  late final TabController _tabController;
 
   @override
   void initState() {
     super.initState();
+    // Built eagerly here rather than as a lazy `late final = ...` field
+    // initializer: the mobile-only TabBar/TabBarView layout is the only
+    // place that reads this, so on desktop/tablet it was never constructed
+    // until dispose()'s unconditional _tabController.dispose() triggered
+    // that first access — but a widget can't do the vsync/TickerMode tree
+    // lookup a TabController needs while it's already being torn down,
+    // which crashed with "Looking up a deactivated widget's ancestor is
+    // unsafe." Constructing it here, while the widget is still fully
+    // mounted, avoids that regardless of which layout ends up using it.
+    _tabController = TabController(length: 3, vsync: this);
     _svc.addListener(_onChange);
     _svc.connect();
     // Re-render periodically so "elapsed" labels and urgency highlighting

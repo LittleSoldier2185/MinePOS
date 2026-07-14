@@ -1658,6 +1658,30 @@ abstract class AppLocalizations {
   /// **'Save Changes'**
   String get saveChanges;
 
+  /// No description provided for @phoneFieldLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone'**
+  String get phoneFieldLabel;
+
+  /// No description provided for @phoneFieldHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. 081-234-5678'**
+  String get phoneFieldHint;
+
+  /// No description provided for @staffNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get staffNameLabel;
+
+  /// No description provided for @staffNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Jane Smith'**
+  String get staffNameHint;
+
   /// No description provided for @settingsAccountSectionLabel.
   ///
   /// In en, this message translates to:

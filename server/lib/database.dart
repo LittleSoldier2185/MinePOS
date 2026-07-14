@@ -21,6 +21,10 @@ class DbUser {
     required this.active,
     required this.tokenVersion,
     required this.createdAt,
+    this.name,
+    this.email,
+    this.phone,
+    this.avatarBase64,
   });
 
   final String username;
@@ -29,6 +33,10 @@ class DbUser {
   final bool active;
   final int tokenVersion;
   final DateTime createdAt;
+  final String? name;
+  final String? email;
+  final String? phone;
+  final String? avatarBase64;
 
   factory DbUser._fromRow(Row row) => DbUser(
         username: row['username'] as String,
@@ -37,6 +45,10 @@ class DbUser {
         active: (row['active'] as int) == 1,
         tokenVersion: row['token_version'] as int,
         createdAt: DateTime.parse(row['created_at'] as String),
+        name: row['name'] as String?,
+        email: row['email'] as String?,
+        phone: row['phone'] as String?,
+        avatarBase64: row['avatar_base64'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -44,6 +56,10 @@ class DbUser {
         'role': role,
         'active': active,
         'createdAt': createdAt.toIso8601String(),
+        'name': name,
+        'email': email,
+        'phone': phone,
+        'avatarBase64': avatarBase64,
       };
 }
 
@@ -276,6 +292,18 @@ class AppDb {
       _db.execute(
           'ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0');
     }
+    if (!userCols.contains('email')) {
+      _db.execute('ALTER TABLE users ADD COLUMN email TEXT');
+    }
+    if (!userCols.contains('phone')) {
+      _db.execute('ALTER TABLE users ADD COLUMN phone TEXT');
+    }
+    if (!userCols.contains('avatar_base64')) {
+      _db.execute('ALTER TABLE users ADD COLUMN avatar_base64 TEXT');
+    }
+    if (!userCols.contains('name')) {
+      _db.execute('ALTER TABLE users ADD COLUMN name TEXT');
+    }
 
     _db.execute('''
       CREATE TABLE IF NOT EXISTS otp_tokens (
@@ -443,11 +471,16 @@ class AppDb {
     required String username,
     required String password,
     required String role,
+    String? name,
+    String? email,
+    String? phone,
+    String? avatarBase64,
   }) {
     final hash = BCrypt.hashpw(password, BCrypt.gensalt());
     _db.execute(
-      "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
-      [username.toLowerCase(), hash, role],
+      'INSERT INTO users (username, password_hash, role, name, email, phone, avatar_base64) '
+      'VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [username.toLowerCase(), hash, role, name, email, phone, avatarBase64],
     );
   }
 
@@ -456,6 +489,22 @@ class AppDb {
       'UPDATE users SET password_hash = ? WHERE username = ?',
       [newPasswordHash, username.toLowerCase()],
     );
+  }
+
+  /// Updates a user's contact/profile fields (not security-sensitive, unlike
+  /// role/active/password — no self-edit restrictions apply to these).
+  DbUser? updateUserProfile(
+    String username, {
+    String? name,
+    String? email,
+    String? phone,
+    String? avatarBase64,
+  }) {
+    _db.execute(
+      'UPDATE users SET name = ?, email = ?, phone = ?, avatar_base64 = ? WHERE username = ?',
+      [name, email, phone, avatarBase64, username.toLowerCase()],
+    );
+    return getUserByUsername(username);
   }
 
   List<DbUser> getAllUsers() {

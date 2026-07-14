@@ -37,6 +37,14 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
   void initState() {
     super.initState();
     CustomerDisplayService.instance.connect();
+    _menuService.addListener(_onMenuChanged);
+  }
+
+  // Menu edits made on another device (new item, price change, item toggled
+  // off, etc.) arrive over MenuService's own /ws/menu connection; this just
+  // triggers a rebuild so the grid here reflects them without a re-login.
+  void _onMenuChanged() {
+    if (mounted) setState(() {});
   }
 
   // ── Cart helpers ──────────────────────────────────────────────────────────
@@ -438,6 +446,7 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
 
   @override
   void dispose() {
+    _menuService.removeListener(_onMenuChanged);
     _tabController?.dispose();
     super.dispose();
   }

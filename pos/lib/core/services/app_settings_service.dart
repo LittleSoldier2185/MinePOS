@@ -21,6 +21,7 @@ class AppSettingsService {
   static const _kPrinterDeviceNameKey = 'settings.printerDeviceName';
   static const _kPaperSizeKey = 'settings.paperSize';
   static const _kMenuGridViewKey = 'settings.menuGridView';
+  static const _kStaffGridViewKey = 'settings.staffGridView';
 
   Future<bool> getMenuGridView() async {
     final prefs = await SharedPreferences.getInstance();
@@ -30,6 +31,16 @@ class AppSettingsService {
   Future<void> setMenuGridView(bool isGridView) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kMenuGridViewKey, isGridView);
+  }
+
+  Future<bool> getStaffGridView() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_kStaffGridViewKey) ?? false;
+  }
+
+  Future<void> setStaffGridView(bool isGridView) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kStaffGridViewKey, isGridView);
   }
 
   Future<ReceiptPaperSize> getPaperSize() async {

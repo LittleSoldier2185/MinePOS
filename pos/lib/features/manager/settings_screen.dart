@@ -8,6 +8,8 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../core/window/platform_window.dart';
 import '../../l10n/app_localizations.dart';
+import '../cashier/services/menu_service.dart';
+import '../cashier/services/order_service.dart';
 import '../cashier/services/printer_service.dart';
 import '../welcome/welcome_screen.dart';
 import 'server_status_screen.dart';
@@ -166,6 +168,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
     if (ok == true && mounted) {
+      MenuService.instance.disconnect();
+      OrderService.instance.disconnect();
       ServerClient.instance.clear();
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const WelcomeScreen()),
@@ -179,9 +183,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      // Barrier tap / drag are disabled so an accidental tap or swipe can't
+      // dismiss this mid-delete — see PopScope in _RemoveShopSheet, which
+      // additionally blocks the back button while the delete is in flight.
+      isDismissible: false,
+      enableDrag: false,
       builder: (_) => const _RemoveShopSheet(),
     );
     if (deleted == true && mounted) {
+      MenuService.instance.disconnect();
+      OrderService.instance.disconnect();
       ServerClient.instance.clear();
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const WelcomeScreen()),
@@ -560,7 +571,14 @@ class _RemoveShopSheetState extends State<_RemoveShopSheet> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-    return Container(
+    // Blocks the back button while the delete is in flight, so it can't be
+    // used to slip past the disabled Cancel/Confirm buttons — the barrier
+    // tap and drag-to-dismiss routes are already closed off via
+    // isDismissible/enableDrag on the showModalBottomSheet call that opens
+    // this sheet.
+    return PopScope(
+      canPop: !_deleting,
+      child: Container(
       margin: EdgeInsets.only(bottom: bottomInset),
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -673,6 +691,7 @@ class _RemoveShopSheetState extends State<_RemoveShopSheet> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

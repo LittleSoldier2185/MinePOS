@@ -4,6 +4,8 @@ import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
 import '../../l10n/app_localizations.dart';
 import '../cashier/models/order_item.dart';
+import '../cashier/services/menu_service.dart';
+import '../cashier/services/order_service.dart';
 import '../welcome/welcome_screen.dart';
 import 'services/customer_display_service.dart';
 
@@ -59,6 +61,8 @@ class _CustomerDisplayScreenState extends State<CustomerDisplayScreen> {
       ),
     );
     if (ok == true && mounted) {
+      MenuService.instance.disconnect();
+      OrderService.instance.disconnect();
       ServerClient.instance.clear();
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const WelcomeScreen()),

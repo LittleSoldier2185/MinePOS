@@ -1,8 +1,6 @@
 import 'dart:convert';
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -10,6 +8,7 @@ import '../../core/services/app_settings_service.dart';
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/access_restricted.dart';
+import '../../core/widgets/image_crop_screen.dart';
 import '../../l10n/app_localizations.dart';
 import '../cashier/models/menu_item.dart';
 import '../cashier/services/menu_service.dart';
@@ -32,6 +31,19 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
     AppSettingsService.instance.getMenuGridView().then((v) {
       if (mounted) setState(() => _isGridView = v);
     });
+    _svc.addListener(_onMenuChanged);
+  }
+
+  @override
+  void dispose() {
+    _svc.removeListener(_onMenuChanged);
+    super.dispose();
+  }
+
+  // Menu edits made on another device arrive over MenuService's own
+  // /ws/menu connection; this just triggers a rebuild to show them.
+  void _onMenuChanged() {
+    if (mounted) setState(() {});
   }
 
   void _setGridView(bool value) {
@@ -53,6 +65,12 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      // Barrier tap / drag are disabled so an accidental tap or swipe can't
+      // silently discard the form or dismiss it mid-save (see PopScope in
+      // _ItemFormSheet, which additionally blocks the back button while a
+      // save is actually in flight) — Cancel/Save remain the only way out.
+      isDismissible: false,
+      enableDrag: false,
       builder: (_) =>
           _ItemFormSheet(existing: editing, categories: _svc.categories),
     );
@@ -477,191 +495,6 @@ class _ItemGridCard extends StatelessWidget {
   }
 }
 
-// ── Image crop screen ────────────────────────────────────────────────────────
-
-/// Pinch/pan-to-crop, no third-party plugin — the standard `image_cropper`
-/// package has no Windows desktop implementation, and this screen is used
-/// from the till (Windows) as much as from a phone. Renders exactly what's
-/// visible in the fixed square viewport via a [RepaintBoundary] snapshot.
-class _ImageCropScreen extends StatefulWidget {
-  const _ImageCropScreen({required this.imageBytes});
-  final Uint8List imageBytes;
-
-  @override
-  State<_ImageCropScreen> createState() => _ImageCropScreenState();
-}
-
-class _ImageCropScreenState extends State<_ImageCropScreen> {
-  static const _outputPx = 320.0;
-
-  final _boundaryKey = GlobalKey();
-  final _controller = TransformationController();
-  bool _saving = false;
-  bool _centered = false;
-  double? _imgW;
-  double? _imgH;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadImageSize();
-  }
-
-  Future<void> _loadImageSize() async {
-    final codec = await ui.instantiateImageCodec(widget.imageBytes);
-    final frame = await codec.getNextFrame();
-    if (!mounted) return;
-    setState(() {
-      _imgW = frame.image.width.toDouble();
-      _imgH = frame.image.height.toDouble();
-    });
-  }
-
-  // Scale so the image's shorter side fills the frame (cover-style starting
-  // crop), then center it.
-  void _centerImage(double side) {
-    final w = _imgW!;
-    final h = _imgH!;
-    final scale = side / (w < h ? w : h);
-    final dx = (side - w * scale) / 2;
-    final dy = (side - h * scale) / 2;
-    _controller.value = Matrix4.identity()
-      ..translateByDouble(dx, dy, 0, 1)
-      ..scaleByDouble(scale, scale, scale, 1);
-    _centered = true;
-  }
-
-  Future<void> _confirm(double side) async {
-    setState(() => _saving = true);
-    try {
-      final boundary =
-          _boundaryKey.currentContext!.findRenderObject()
-              as RenderRepaintBoundary;
-      final image = await boundary.toImage(pixelRatio: _outputPx / side);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (mounted) Navigator.of(context).pop(byteData!.buffer.asUint8List());
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    // Fills most of the screen instead of a small fixed square — a Windows
-    // window is much bigger than a phone, so this scales with it.
-    final side = (MediaQuery.sizeOf(context).shortestSide * 0.8).clamp(
-      240.0,
-      480.0,
-    );
-    if (_imgW != null && !_centered) _centerImage(side);
-
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        title: Text(l10n.cropImageTitle),
-        actions: [
-          TextButton.icon(
-            onPressed: (_saving || _imgW == null) ? null : () => _confirm(side),
-            icon: _saving
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(Icons.check, color: Colors.white, size: 18),
-            label: Text(
-              l10n.cropConfirmButton,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: _imgW == null
-          ? const Center(child: CircularProgressIndicator(color: Colors.white))
-          : Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: side,
-                    height: side,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
-                    child: Stack(
-                      children: [
-                        RepaintBoundary(
-                          key: _boundaryKey,
-                          child: ClipRect(
-                            child: InteractiveViewer(
-                              transformationController: _controller,
-                              constrained: false,
-                              minScale: 0.1,
-                              maxScale: 5,
-                              boundaryMargin: const EdgeInsets.all(
-                                double.infinity,
-                              ),
-                              child: Image.memory(widget.imageBytes),
-                            ),
-                          ),
-                        ),
-                        IgnorePointer(
-                          child: CustomPaint(
-                            size: Size(side, side),
-                            painter: _CropGridPainter(),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    l10n.cropHintText,
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-    );
-  }
-}
-
-/// Rule-of-thirds guide lines drawn over the crop frame — purely a visual
-/// aid, drawn outside the [RepaintBoundary] so it never ends up baked into
-/// the exported crop.
-class _CropGridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.4)
-      ..strokeWidth = 1;
-    for (final f in [1 / 3, 2 / 3]) {
-      canvas.drawLine(
-        Offset(size.width * f, 0),
-        Offset(size.width * f, size.height),
-        paint,
-      );
-      canvas.drawLine(
-        Offset(0, size.height * f),
-        Offset(size.width, size.height * f),
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
 // ── Add / edit bottom sheet ─────────────────────────────────────────────────
 
 class _ItemFormSheet extends StatefulWidget {
@@ -711,7 +544,7 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
     final bytes = await file.readAsBytes();
     if (!mounted) return;
     final cropped = await Navigator.of(context).push<Uint8List>(
-      MaterialPageRoute(builder: (_) => _ImageCropScreen(imageBytes: bytes)),
+      MaterialPageRoute(builder: (_) => ImageCropScreen(imageBytes: bytes)),
     );
     if (cropped == null) return;
     setState(() => _imageBase64 = base64Encode(cropped));
@@ -726,7 +559,9 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
     super.dispose();
   }
 
-  void _save() {
+  bool _saving = false;
+
+  Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     final price = double.tryParse(_priceCtrl.text.trim()) ?? 0;
     final nameTh = _nameThCtrl.text.trim().isEmpty
@@ -747,7 +582,8 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
         ),
       );
     } else {
-      svc.addItem(
+      setState(() => _saving = true);
+      await svc.addItem(
         name: _nameCtrl.text.trim(),
         nameTh: nameTh,
         category: _categoryCtrl.text.trim(),
@@ -756,6 +592,7 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
         imageBase64: _imageBase64,
         hasSweetness: _hasSweetness,
       );
+      if (!mounted) return;
     }
     Navigator.of(context).pop(true);
   }
@@ -764,7 +601,13 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-    return Container(
+    // Blocks the back button while a save is in flight, so it can't be used
+    // to slip past the disabled Cancel/Save buttons — the barrier tap and
+    // drag-to-dismiss routes are already closed off via isDismissible/
+    // enableDrag on the showModalBottomSheet call that opens this sheet.
+    return PopScope(
+      canPop: !_saving,
+      child: Container(
       margin: EdgeInsets.only(bottom: bottomInset),
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -928,23 +771,32 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(false),
+                    onPressed: _saving
+                        ? null
+                        : () => Navigator.of(context).pop(false),
                     child: Text(l10n.cancel),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: _save,
-                    child: Text(
-                      _isEdit ? l10n.saveChangesButton : l10n.addItemLabel,
-                    ),
+                    onPressed: _saving ? null : _save,
+                    child: _saving
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(
+                            _isEdit ? l10n.saveChangesButton : l10n.addItemLabel,
+                          ),
                   ),
                 ),
               ],
             ),
           ],
         ),
+      ),
       ),
     );
   }

@@ -10,6 +10,7 @@ import '../../l10n/app_localizations.dart';
 import '../cashier/models/order.dart';
 import '../cashier/order_history_screen.dart';
 import '../cashier/order_taking_screen.dart';
+import '../cashier/services/menu_service.dart';
 import '../cashier/services/order_service.dart';
 import '../connect/services/connection_service.dart';
 import '../kitchen/kitchen_display_screen.dart';
@@ -76,6 +77,8 @@ Future<void> _confirmLogout(BuildContext context) async {
     ),
   );
   if (ok == true && context.mounted) {
+    MenuService.instance.disconnect();
+    OrderService.instance.disconnect();
     ServerClient.instance.clear();
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const WelcomeScreen()),
@@ -576,24 +579,22 @@ class _ContentPanel extends StatefulWidget {
 }
 
 class _ContentPanelState extends State<_ContentPanel> {
-  Timer? _timer;
-
   @override
   void initState() {
     super.initState();
-    // OrderService is a plain singleton, not listenable — popping back here
-    // after completing an order doesn't rebuild this (already-built) widget
-    // on its own, so the stats looked frozen until something else happened
-    // to trigger a rebuild. Polling is the same fix already used for the
-    // connection-status dot further down this file.
-    _timer = Timer.periodic(const Duration(seconds: 5), (_) {
-      if (mounted) setState(() {});
-    });
+    // OrderService now notifies on any change — completing an order here or
+    // one arriving live from another device over its /ws/orders connection
+    // both trigger a rebuild, so the stats never sit stale.
+    OrderService.instance.addListener(_onOrdersChanged);
+  }
+
+  void _onOrdersChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    OrderService.instance.removeListener(_onOrdersChanged);
     super.dispose();
   }
 

@@ -1,2 +1,5 @@
 # Claude Code session-local config (not part of the project)
 .claude/
+
+# Personal scratch notes, not project source
+plan.txt
