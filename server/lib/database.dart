@@ -185,8 +185,10 @@ class DbOrderItem {
   double get subtotal => price * quantity;
 }
 
-/// Kitchen prep states an order moves through, oldest-first.
-const kOrderStatuses = ['pending', 'preparing', 'ready', 'completed'];
+/// Kitchen prep states an order moves through, oldest-first. 'cancelled' is
+/// a terminal state reached only from 'pending' (see [AppDb.cancelOrder]),
+/// never derived from item statuses like the others.
+const kOrderStatuses = ['pending', 'preparing', 'ready', 'completed', 'cancelled'];
 
 /// Per-item prep states — a subset of [kOrderStatuses] with no "completed"
 /// (serving is order-level only).
@@ -202,6 +204,7 @@ class DbOrder {
     required this.items,
     required this.status,
     this.amountPaid,
+    this.cancelReason,
   });
 
   final int id;
@@ -213,6 +216,10 @@ class DbOrder {
   final String status;
   final List<DbOrderItem> items;
 
+  /// Set only when [status] is 'cancelled' — the reason chosen (plus any
+  /// free-text detail) at cancel time.
+  final String? cancelReason;
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'orderNumber': orderNumber,
@@ -221,6 +228,7 @@ class DbOrder {
         'status': status,
         'total': total,
         'amountPaid': amountPaid,
+        'cancelReason': cancelReason,
         'items': items.map((i) => i.toJson()).toList(),
       };
 }
@@ -396,6 +404,9 @@ class AppDb {
     if (!orderCols.contains('status')) {
       _db.execute(
           "ALTER TABLE orders ADD COLUMN status TEXT NOT NULL DEFAULT 'completed'");
+    }
+    if (!orderCols.contains('cancel_reason')) {
+      _db.execute('ALTER TABLE orders ADD COLUMN cancel_reason TEXT');
     }
 
     _db.execute('''
@@ -748,7 +759,7 @@ class AppDb {
       );
     }
 
-    return _buildOrder(orderId, orderNumber, now, paymentMethod, amountPaid, total, 'pending');
+    return _buildOrder(orderId, orderNumber, now, paymentMethod, amountPaid, total, 'pending', null);
   }
 
   DbOrder _buildOrder(
@@ -759,6 +770,7 @@ class AppDb {
     double? amountPaid,
     double total,
     String status,
+    String? cancelReason,
   ) {
     final itemRows = _db.select(
       'SELECT * FROM order_items WHERE order_id = ?',
@@ -772,6 +784,7 @@ class AppDb {
       total: total,
       amountPaid: amountPaid,
       status: status,
+      cancelReason: cancelReason,
       items: itemRows.map(DbOrderItem._fromRow).toList(),
     );
   }
@@ -784,12 +797,13 @@ class AppDb {
         row['amount_paid'] as double?,
         (row['total'] as num).toDouble(),
         row['status'] as String,
+        row['cancel_reason'] as String?,
       );
 
   List<DbOrder> getOrders({String? date}) {
     final buffer = StringBuffer(
       'SELECT o.id, o.order_number, o.created_at, o.payment_method, '
-      'o.amount_paid, o.total, o.status FROM orders o',
+      'o.amount_paid, o.total, o.status, o.cancel_reason FROM orders o',
     );
     final args = <Object?>[];
 
@@ -803,18 +817,18 @@ class AppDb {
     return orderRows.map(_rowToOrder).toList();
   }
 
-  /// Orders still in the kitchen pipeline (not yet completed), oldest first.
+  /// Orders still in the kitchen pipeline (not completed or cancelled), oldest first.
   List<DbOrder> getActiveOrders() {
     final rows = _db.select(
-      "SELECT id, order_number, created_at, payment_method, amount_paid, total, status "
-      "FROM orders WHERE status != 'completed' ORDER BY id ASC",
+      "SELECT id, order_number, created_at, payment_method, amount_paid, total, status, cancel_reason "
+      "FROM orders WHERE status NOT IN ('completed', 'cancelled') ORDER BY id ASC",
     );
     return rows.map(_rowToOrder).toList();
   }
 
   DbOrder? getOrderById(int id) {
     final rows = _db.select(
-      'SELECT id, order_number, created_at, payment_method, amount_paid, total, status '
+      'SELECT id, order_number, created_at, payment_method, amount_paid, total, status, cancel_reason '
       'FROM orders WHERE id = ?',
       [id],
     );
@@ -822,8 +836,12 @@ class AppDb {
     return _rowToOrder(rows.first);
   }
 
-  DbOrder? updateOrderStatus(int id, String status) {
-    _db.execute('UPDATE orders SET status = ? WHERE id = ?', [status, id]);
+  DbOrder? updateOrderStatus(int id, String status, {String? reason}) {
+    if (status == 'cancelled') {
+      _db.execute('UPDATE orders SET status = ?, cancel_reason = ? WHERE id = ?', [status, reason, id]);
+    } else {
+      _db.execute('UPDATE orders SET status = ? WHERE id = ?', [status, id]);
+    }
     if (_db.updatedRows == 0) return null;
     return getOrderById(id);
   }
@@ -842,7 +860,7 @@ class AppDb {
 
     final order = getOrderById(orderId);
     if (order == null) return null;
-    if (order.status == 'completed') return order;
+    if (order.status == 'completed' || order.status == 'cancelled') return order;
 
     final itemStatuses = order.items.map((i) => i.status).toSet();
     final derived = itemStatuses.every((s) => s == 'pending')
@@ -856,8 +874,11 @@ class AppDb {
     return getOrderById(orderId);
   }
 
+
   Map<String, dynamic> getOrderStats({String? date}) {
-    final where = date != null ? "WHERE DATE(created_at) = '$date'" : '';
+    final where = date != null
+        ? "WHERE status != 'cancelled' AND DATE(created_at) = '$date'"
+        : "WHERE status != 'cancelled'";
     final rows = _db.select(
       'SELECT COUNT(*) AS cnt, COALESCE(SUM(total), 0) AS rev '
       'FROM orders $where',

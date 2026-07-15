@@ -98,6 +98,25 @@ class OrderService extends ChangeNotifier {
     return order;
   }
 
+  /// Cancels an order — the server rejects this unless every item is still
+  /// "pending" (see [Order.canCancel]), and requires a non-empty [reason].
+  /// Throws on failure; relies on the /ws/orders echo (an `order_status`
+  /// message) to update local state.
+  Future<void> cancelOrder(int orderId, {required String reason}) async {
+    final client = ServerClient.instance;
+    final res = await http
+        .patch(
+          client.uri('/orders/$orderId/status'),
+          headers: client.headers,
+          body: jsonEncode({'status': 'cancelled', 'reason': reason}),
+        )
+        .timeout(const Duration(seconds: 10));
+    if (res.statusCode != 200) {
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      throw Exception(body['error'] as String? ?? 'Failed to cancel order');
+    }
+  }
+
   /// Loads order history from the server (replaces in-memory list).
   Future<void> loadFromServer({String? date}) async {
     final client = ServerClient.instance;
@@ -176,6 +195,23 @@ class OrderService extends ChangeNotifier {
         }
         if (incoming.orderNumber >= _nextNumber) {
           _nextNumber = incoming.orderNumber + 1;
+        }
+      case 'order_status':
+        final orderId = msg['orderId'] as int;
+        final newStatus = msg['status'] as String;
+        final i = _orders.indexWhere((o) => o.id == orderId);
+        if (i >= 0) {
+          final o = _orders[i];
+          _orders[i] = Order(
+            id: o.id,
+            orderNumber: o.orderNumber,
+            items: o.items,
+            createdAt: o.createdAt,
+            paymentMethod: o.paymentMethod,
+            amountPaid: o.amountPaid,
+            kitchenStatus: newStatus,
+            cancelReason: msg['cancelReason'] as String? ?? o.cancelReason,
+          );
         }
     }
     notifyListeners();

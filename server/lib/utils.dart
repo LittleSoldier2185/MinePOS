@@ -64,7 +64,8 @@ DbUser? verifyToken(String token, AppDb db, String jwtSecret, {String? role}) {
   final user = db.getUserById(id);
   if (user == null || !user.active || user.tokenVersion != ver) return null;
   if (role != null && user.role != role) return null;
-  PresenceTracker.instance.touch(user.id, user.username, user.role);
+  final deviceName = claims['dev'] as String? ?? 'Unknown device';
+  PresenceTracker.instance.touch(user.id, user.username, user.role, deviceName);
   return user;
 }
 

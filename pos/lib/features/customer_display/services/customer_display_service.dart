@@ -31,6 +31,14 @@ class CustomerDisplayService extends ChangeNotifier {
   double thankYouTotal = 0;
   double thankYouChange = 0;
 
+  /// Station names currently publishing carts (only meaningful for a
+  /// passive display connection — a publisher never receives this).
+  List<String> stations = const [];
+
+  /// Which station this display is currently mirroring; null means "not
+  /// picked yet" (or picked, then that station went offline).
+  String? selectedStation;
+
   WebSocketChannel? _channel;
   StreamSubscription? _sub;
   Timer? _reconnectTimer;
@@ -55,8 +63,15 @@ class CustomerDisplayService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final channel =
-          WebSocketChannel.connect(client.wsUri('/ws/customer-display'));
+      // A logged-in station (has a deviceName) connects as a publisher under
+      // that name; a passive customer-facing display (no login, no
+      // deviceName) connects with no station and picks one after seeing the
+      // live list (see `selectStation`).
+      final station = client.deviceName;
+      final channel = WebSocketChannel.connect(client.wsUri(
+        '/ws/customer-display',
+        query: station != null ? {'station': station} : null,
+      ));
       _channel = channel;
       _sub = channel.stream.listen(
         _onMessage,
@@ -74,6 +89,16 @@ class CustomerDisplayService extends ChangeNotifier {
   void _onMessage(dynamic raw) {
     final msg = jsonDecode(raw as String) as Map<String, dynamic>;
     switch (msg['type']) {
+      case 'stations':
+        stations = (msg['stations'] as List).cast<String>();
+        // The station this display was mirroring went offline (cashier
+        // logged out/closed the app) — fall back to the picker rather than
+        // leave a stale cart on screen forever.
+        if (selectedStation != null && !stations.contains(selectedStation)) {
+          selectedStation = null;
+          items = const [];
+          state = CustomerDisplayState.idle;
+        }
       case 'cart':
         final incomingItems = (msg['items'] as List)
             .map((j) => OrderItem.fromJson(j as Map<String, dynamic>))
@@ -131,6 +156,19 @@ class CustomerDisplayService extends ChangeNotifier {
     _send({'type': 'thank_you', 'total': total, 'change': change});
   }
 
+  /// Called by a passive display to start (or stop, with null) mirroring a
+  /// station's cart. Only meaningful for a subscriber connection — a
+  /// publisher (a cashier register) never calls this.
+  void selectStation(String? station) {
+    selectedStation = station;
+    if (station == null) {
+      items = const [];
+      state = CustomerDisplayState.idle;
+    }
+    _send({'type': 'select_station', 'station': station});
+    notifyListeners();
+  }
+
   void _send(Map<String, dynamic> message) {
     _channel?.sink.add(jsonEncode(message));
   }
@@ -147,6 +185,8 @@ class CustomerDisplayService extends ChangeNotifier {
     _channel = null;
     items = const [];
     state = CustomerDisplayState.idle;
+    stations = const [];
+    selectedStation = null;
     connectionState = CustomerDisplayConnectionState.disconnected;
     notifyListeners();
   }

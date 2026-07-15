@@ -74,7 +74,7 @@ class KitchenService extends ChangeNotifier {
       case 'order_status':
         final orderId = msg['orderId'] as int;
         final newStatus = msg['status'] as String;
-        if (newStatus == 'completed') {
+        if (newStatus == 'completed' || newStatus == 'cancelled') {
           _orders = _orders.where((o) => o.id != orderId).toList();
         } else {
           _orders = _orders

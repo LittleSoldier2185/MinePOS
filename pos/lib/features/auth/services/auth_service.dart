@@ -13,7 +13,7 @@ class AuthResult {
 }
 
 class AuthService {
-  Future<AuthResult> login(String username, String password) async {
+  Future<AuthResult> login(String username, String password, String deviceName) async {
     final client = ServerClient.instance;
     if (!client.isConnected) {
       return const AuthResult(success: false);
@@ -27,6 +27,7 @@ class AuthService {
             body: jsonEncode({
               'username': username.trim(),
               'password': password,
+              'deviceName': deviceName.trim(),
             }),
           )
           .timeout(const Duration(seconds: 10));
@@ -34,6 +35,35 @@ class AuthService {
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body) as Map<String, dynamic>;
         client.token = data['token'] as String;
+        client.deviceName = deviceName.trim();
+        return AuthResult(
+          success: true,
+          role: data['role'] as String?,
+          username: data['username'] as String?,
+          id: data['id'] as int?,
+        );
+      }
+      return const AuthResult(success: false);
+    } catch (_) {
+      return const AuthResult(success: false);
+    }
+  }
+
+  /// Validates whatever token is already on [ServerClient.instance] (set
+  /// from a remembered session) and refreshes role/username/id — used for
+  /// silent auto-login at startup instead of re-sending a password. Fails if
+  /// the token expired or the account was deactivated/removed since.
+  Future<AuthResult> me() async {
+    final client = ServerClient.instance;
+    if (!client.isConnected || client.token == null) {
+      return const AuthResult(success: false);
+    }
+    try {
+      final res = await http
+          .get(client.uri('/auth/me'), headers: client.headers)
+          .timeout(const Duration(seconds: 10));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
         return AuthResult(
           success: true,
           role: data['role'] as String?,

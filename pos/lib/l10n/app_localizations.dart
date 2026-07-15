@@ -428,6 +428,36 @@ abstract class AppLocalizations {
   /// **'Username / Email'**
   String get usernameOrEmailLabel;
 
+  /// No description provided for @deviceNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Device Name'**
+  String get deviceNameLabel;
+
+  /// No description provided for @deviceNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Register 1, Front Counter'**
+  String get deviceNameHint;
+
+  /// No description provided for @deviceNameRequiredValidator.
+  ///
+  /// In en, this message translates to:
+  /// **'Device name is required'**
+  String get deviceNameRequiredValidator;
+
+  /// No description provided for @defaultDeviceNameOnSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Main Register'**
+  String get defaultDeviceNameOnSetup;
+
+  /// No description provided for @rememberMeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Remember me'**
+  String get rememberMeLabel;
+
   /// No description provided for @loginForgotPasswordLink.
   ///
   /// In en, this message translates to:
@@ -1226,6 +1256,18 @@ abstract class AppLocalizations {
   /// **'Your order will appear here'**
   String get orderWillAppearMessage;
 
+  /// No description provided for @selectStationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a Station'**
+  String get selectStationTitle;
+
+  /// No description provided for @noStationsOnlineMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'No stations are online yet. Open a register and start an order.'**
+  String get noStationsOnlineMessage;
+
   /// No description provided for @customerDisplayOrderLabel.
   ///
   /// In en, this message translates to:
@@ -1556,6 +1598,36 @@ abstract class AppLocalizations {
   /// **'Custom…'**
   String get customRange;
 
+  /// No description provided for @startTimeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Start time'**
+  String get startTimeLabel;
+
+  /// No description provided for @endTimeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'End time'**
+  String get endTimeLabel;
+
+  /// No description provided for @customRangeDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom Range'**
+  String get customRangeDialogTitle;
+
+  /// No description provided for @applyButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get applyButton;
+
+  /// No description provided for @endBeforeStartError.
+  ///
+  /// In en, this message translates to:
+  /// **'End must be after start'**
+  String get endBeforeStartError;
+
   /// No description provided for @reportsOrdersLabel.
   ///
   /// In en, this message translates to:
@@ -1567,6 +1639,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'ORDERS'**
   String get ordersColumnHeader;
+
+  /// No description provided for @topSellingItemsHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'TOP SELLING ITEMS'**
+  String get topSellingItemsHeader;
+
+  /// No description provided for @salesTrendHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'SALES TREND'**
+  String get salesTrendHeader;
+
+  /// No description provided for @soldSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **'sold'**
+  String get soldSuffix;
 
   /// No description provided for @exportCSVButton.
   ///
@@ -1597,6 +1687,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Export failed: {error}'**
   String exportFailedSnackbar(String error);
+
+  /// No description provided for @cancelOrderLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel Order'**
+  String get cancelOrderLabel;
+
+  /// No description provided for @cancelOrderDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel this order?'**
+  String get cancelOrderDialogTitle;
+
+  /// No description provided for @cancelOrderSnackbar.
+  ///
+  /// In en, this message translates to:
+  /// **'Order cancelled'**
+  String get cancelOrderSnackbar;
+
+  /// No description provided for @cancelOrderFailedSnackbar.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t cancel: {error}'**
+  String cancelOrderFailedSnackbar(String error);
+
+  /// No description provided for @cancelledOrderBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get cancelledOrderBadge;
+
+  /// No description provided for @cancelReasonPromptLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Why are you cancelling this order?'**
+  String get cancelReasonPromptLabel;
+
+  /// No description provided for @cancelReasonCustomerChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer changed their mind'**
+  String get cancelReasonCustomerChanged;
+
+  /// No description provided for @cancelReasonDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate order'**
+  String get cancelReasonDuplicate;
+
+  /// No description provided for @cancelReasonWrongItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong item entered'**
+  String get cancelReasonWrongItem;
+
+  /// No description provided for @cancelReasonOutOfStock.
+  ///
+  /// In en, this message translates to:
+  /// **'Item out of stock'**
+  String get cancelReasonOutOfStock;
+
+  /// No description provided for @cancelReasonOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get cancelReasonOther;
+
+  /// No description provided for @cancelReasonExtraHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Additional details (optional)'**
+  String get cancelReasonExtraHint;
+
+  /// No description provided for @cancelReasonRequiredError.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select a reason'**
+  String get cancelReasonRequiredError;
 
   /// No description provided for @staffManagementTitle.
   ///
@@ -1969,6 +2137,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'List View'**
   String get listViewTooltip;
+
+  /// No description provided for @extraDisplaySectionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'EXTRA DISPLAY'**
+  String get extraDisplaySectionLabel;
+
+  /// No description provided for @openExtraDisplayButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Extra Display'**
+  String get openExtraDisplayButton;
+
+  /// No description provided for @openExtraDisplayHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Opens in a new window, already signed in — drag it to a second monitor.'**
+  String get openExtraDisplayHint;
+
+  /// No description provided for @openExtraDisplayFailedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open the extra display window'**
+  String get openExtraDisplayFailedMessage;
 
   /// No description provided for @serverSectionLabel.
   ///

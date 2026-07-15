@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/services/app_settings_service.dart';
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_text_field.dart';
@@ -31,16 +32,27 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _deviceNameController = TextEditingController();
   final _authService = AuthService();
 
   bool _obscurePassword = true;
   bool _signingIn = false;
+  bool _rememberMe = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    AppSettingsService.instance.getDeviceName().then((name) {
+      if (mounted && name != null) _deviceNameController.text = name;
+    });
+  }
 
   @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
+    _deviceNameController.dispose();
     super.dispose();
   }
 
@@ -52,9 +64,11 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
 
+    final deviceName = _deviceNameController.text.trim();
     final result = await _authService.login(
       _usernameController.text,
       _passwordController.text,
+      deviceName,
     );
 
     if (!mounted) return;
@@ -64,6 +78,21 @@ class _LoginScreenState extends State<LoginScreen> {
       ServerClient.instance.role = result.role;
       ServerClient.instance.username = result.username;
       ServerClient.instance.userId = result.id;
+      await AppSettingsService.instance.setDeviceName(deviceName);
+
+      if (_rememberMe) {
+        await AppSettingsService.instance.saveSession(
+          baseUrl: ServerClient.instance.baseUrl!,
+          token: ServerClient.instance.token!,
+          deviceName: deviceName,
+          purpose: widget.purpose.name,
+        );
+      } else {
+        // Guards against a stale remembered session (a different account,
+        // or this same one from before "Remember me" was unchecked) still
+        // silently auto-logging in next launch.
+        await AppSettingsService.instance.clearSession();
+      }
 
       // Both services start out seeded with local-only defaults/empty state
       // — without this, every screen would show stale placeholder data (or
@@ -105,6 +134,15 @@ class _LoginScreenState extends State<LoginScreen> {
     return Column(
       children: [
         AppTextField(
+          label: l10n.deviceNameLabel,
+          hintText: l10n.deviceNameHint,
+          controller: _deviceNameController,
+          validator: (v) => (v == null || v.trim().isEmpty)
+              ? l10n.deviceNameRequiredValidator
+              : null,
+        ),
+        const SizedBox(height: 14),
+        AppTextField(
           label: l10n.usernameOrEmailLabel,
           controller: _usernameController,
           validator: (v) => (v == null || v.trim().isEmpty)
@@ -125,6 +163,18 @@ class _LoginScreenState extends State<LoginScreen> {
             onPressed: () =>
                 setState(() => _obscurePassword = !_obscurePassword),
           ),
+        ),
+        Row(
+          children: [
+            Checkbox(
+              value: _rememberMe,
+              onChanged: (v) => setState(() => _rememberMe = v ?? false),
+            ),
+            GestureDetector(
+              onTap: () => setState(() => _rememberMe = !_rememberMe),
+              child: Text(l10n.rememberMeLabel, style: const TextStyle(fontSize: 13)),
+            ),
+          ],
         ),
         Align(
           alignment: Alignment.centerLeft,

@@ -190,6 +190,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get usernameOrEmailLabel => 'Username / Email';
 
   @override
+  String get deviceNameLabel => 'Device Name';
+
+  @override
+  String get deviceNameHint => 'e.g. Register 1, Front Counter';
+
+  @override
+  String get deviceNameRequiredValidator => 'Device name is required';
+
+  @override
+  String get defaultDeviceNameOnSetup => 'Main Register';
+
+  @override
+  String get rememberMeLabel => 'Remember me';
+
+  @override
   String get loginForgotPasswordLink => 'Forgot Password';
 
   @override
@@ -645,6 +660,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get orderWillAppearMessage => 'Your order will appear here';
 
   @override
+  String get selectStationTitle => 'Select a Station';
+
+  @override
+  String get noStationsOnlineMessage =>
+      'No stations are online yet. Open a register and start an order.';
+
+  @override
   String get customerDisplayOrderLabel => 'Your Order';
 
   @override
@@ -823,10 +845,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get customRange => 'Custom…';
 
   @override
+  String get startTimeLabel => 'Start time';
+
+  @override
+  String get endTimeLabel => 'End time';
+
+  @override
+  String get customRangeDialogTitle => 'Custom Range';
+
+  @override
+  String get applyButton => 'Apply';
+
+  @override
+  String get endBeforeStartError => 'End must be after start';
+
+  @override
   String get reportsOrdersLabel => 'Orders';
 
   @override
   String get ordersColumnHeader => 'ORDERS';
+
+  @override
+  String get topSellingItemsHeader => 'TOP SELLING ITEMS';
+
+  @override
+  String get salesTrendHeader => 'SALES TREND';
+
+  @override
+  String get soldSuffix => 'sold';
 
   @override
   String get exportCSVButton => 'Export CSV';
@@ -846,6 +892,47 @@ class AppLocalizationsEn extends AppLocalizations {
   String exportFailedSnackbar(String error) {
     return 'Export failed: $error';
   }
+
+  @override
+  String get cancelOrderLabel => 'Cancel Order';
+
+  @override
+  String get cancelOrderDialogTitle => 'Cancel this order?';
+
+  @override
+  String get cancelOrderSnackbar => 'Order cancelled';
+
+  @override
+  String cancelOrderFailedSnackbar(String error) {
+    return 'Couldn\'t cancel: $error';
+  }
+
+  @override
+  String get cancelledOrderBadge => 'Cancelled';
+
+  @override
+  String get cancelReasonPromptLabel => 'Why are you cancelling this order?';
+
+  @override
+  String get cancelReasonCustomerChanged => 'Customer changed their mind';
+
+  @override
+  String get cancelReasonDuplicate => 'Duplicate order';
+
+  @override
+  String get cancelReasonWrongItem => 'Wrong item entered';
+
+  @override
+  String get cancelReasonOutOfStock => 'Item out of stock';
+
+  @override
+  String get cancelReasonOther => 'Other';
+
+  @override
+  String get cancelReasonExtraHint => 'Additional details (optional)';
+
+  @override
+  String get cancelReasonRequiredError => 'Please select a reason';
 
   @override
   String get staffManagementTitle => 'Staff Management';
@@ -1044,6 +1131,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get listViewTooltip => 'List View';
+
+  @override
+  String get extraDisplaySectionLabel => 'EXTRA DISPLAY';
+
+  @override
+  String get openExtraDisplayButton => 'Open Extra Display';
+
+  @override
+  String get openExtraDisplayHint =>
+      'Opens in a new window, already signed in — drag it to a second monitor.';
+
+  @override
+  String get openExtraDisplayFailedMessage =>
+      'Couldn\'t open the extra display window';
 
   @override
   String get serverSectionLabel => 'SERVER';

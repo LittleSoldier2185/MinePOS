@@ -33,6 +33,15 @@ class OrderHub {
     _broadcast({'type': 'order_created', 'order': order.toJson()});
   }
 
+  void broadcastOrderStatus(DbOrder order) {
+    _broadcast({
+      'type': 'order_status',
+      'orderId': order.id,
+      'status': order.status,
+      'cancelReason': order.cancelReason,
+    });
+  }
+
   void _broadcast(Map<String, dynamic> message) {
     final encoded = jsonEncode(message);
     for (final channel in _channels) {

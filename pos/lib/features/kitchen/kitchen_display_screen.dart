@@ -10,6 +10,7 @@ import '../cashier/models/order.dart';
 import '../cashier/models/order_item.dart';
 import '../cashier/services/menu_service.dart';
 import '../cashier/services/order_service.dart';
+import '../cashier/widgets/cancel_order_dialog.dart';
 import '../home/mobile_bottom_nav.dart';
 import '../manager/services/shop_config_service.dart';
 import '../welcome/welcome_screen.dart';
@@ -135,6 +136,24 @@ class _KitchenDisplayScreenState extends State<KitchenDisplayScreen>
     }
   }
 
+  Future<void> _cancel(Order order) async {
+    final l10n = AppLocalizations.of(context)!;
+    final reason = await showCancelOrderDialog(context);
+    if (reason == null || !mounted) return;
+    try {
+      await OrderService.instance.cancelOrder(order.id!, reason: reason);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.cancelOrderSnackbar)));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(l10n.cancelOrderFailedSnackbar('$e')),
+            backgroundColor: AppColors.terracottaDark),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -153,6 +172,7 @@ class _KitchenDisplayScreenState extends State<KitchenDisplayScreen>
         color: AppColors.terracottaDark,
         orders: pending,
         onItemTap: _advanceItem,
+        onCancel: _cancel,
       ),
       _KitchenColumn(
         title: l10n.preparingColumnTitle,
@@ -264,6 +284,7 @@ class _KitchenColumn extends StatelessWidget {
     required this.onItemTap,
     this.completeLabel,
     this.onComplete,
+    this.onCancel,
   });
   final String title;
   final Color color;
@@ -274,6 +295,10 @@ class _KitchenColumn extends StatelessWidget {
   /// once every item on a card reads 'ready'.
   final String? completeLabel;
   final ValueChanged<Order>? onComplete;
+
+  /// Only set for the NEW column — cancel is only safe before any item has
+  /// started prep, i.e. exactly the orders that live in this column.
+  final ValueChanged<Order>? onCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -318,6 +343,7 @@ class _KitchenColumn extends StatelessWidget {
                       completeLabel: completeLabel,
                       onComplete:
                           onComplete == null ? null : () => onComplete!(orders[i]),
+                      onCancel: onCancel == null ? null : () => onCancel!(orders[i]),
                     ),
                   ),
           ),
@@ -333,11 +359,13 @@ class _OrderCard extends StatelessWidget {
     required this.onItemTap,
     this.completeLabel,
     this.onComplete,
+    this.onCancel,
   });
   final Order order;
   final ValueChanged<OrderItem> onItemTap;
   final String? completeLabel;
   final VoidCallback? onComplete;
+  final VoidCallback? onCancel;
 
   String _elapsed(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -375,13 +403,26 @@ class _OrderCard extends StatelessWidget {
               Text(order.formattedNumber,
                   style: const TextStyle(
                       fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.primary)),
-              Text(
-                _elapsed(context),
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: urgent ? FontWeight.w700 : FontWeight.w500,
-                  color: urgent ? AppColors.terracottaDark : AppColors.muted,
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _elapsed(context),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: urgent ? FontWeight.w700 : FontWeight.w500,
+                      color: urgent ? AppColors.terracottaDark : AppColors.muted,
+                    ),
+                  ),
+                  if (onCancel != null)
+                    IconButton(
+                      icon: const Icon(Icons.cancel_outlined, size: 16, color: AppColors.terracottaDark),
+                      tooltip: AppLocalizations.of(context)!.cancelOrderLabel,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                      onPressed: onCancel,
+                    ),
+                ],
               ),
             ],
           ),

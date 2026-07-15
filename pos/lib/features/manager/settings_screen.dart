@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:unified_esc_pos_printer/unified_esc_pos_printer.dart';
 
 import '../../core/services/app_settings_service.dart';
+import '../../core/services/extra_display_launcher.dart';
 import '../../core/services/locale_controller.dart';
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
@@ -143,6 +144,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _language = language);
     await _svc.setLanguage(language);
     LocaleController.instance.setLanguage(language);
+  }
+
+  Future<void> _openExtraDisplay() async {
+    final l10n = AppLocalizations.of(context)!;
+    final mode = await showDialog<ExtraDisplayMode>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: Text(l10n.openExtraDisplayButton),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, ExtraDisplayMode.customer),
+            child: Row(
+              children: [
+                const Icon(Icons.tv_outlined, size: 18, color: AppColors.primary),
+                const SizedBox(width: 12),
+                Text(l10n.roleSelectionCustomerTitle),
+              ],
+            ),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, ExtraDisplayMode.kitchen),
+            child: Row(
+              children: [
+                const Icon(Icons.soup_kitchen_outlined, size: 18, color: AppColors.primary),
+                const SizedBox(width: 12),
+                Text(l10n.roleSelectionKitchenTitle),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+    if (mode == null || !mounted) return;
+    final ok = await ExtraDisplayLauncher.open(mode);
+    if (!mounted || ok) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(AppLocalizations.of(context)!.openExtraDisplayFailedMessage)),
+    );
   }
 
   Future<void> _disconnect() async {
@@ -460,6 +499,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ],
                       ),
                     ),
+                    if (isWindowsDesktop) ...[
+                      const SizedBox(height: 20),
+                      _SectionLabel(l10n.extraDisplaySectionLabel),
+                      _Card(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: _openExtraDisplay,
+                                icon: const Icon(Icons.open_in_new, size: 16),
+                                label: Text(l10n.openExtraDisplayButton),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              l10n.openExtraDisplayHint,
+                              style: const TextStyle(color: AppColors.muted, fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     if (client.isOwner &&
                         isWindowsDesktop &&
                         (client.baseUrl?.startsWith('127.0.0.1') ?? false)) ...[

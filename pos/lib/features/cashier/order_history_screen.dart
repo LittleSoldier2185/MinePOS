@@ -8,6 +8,7 @@ import '../home/mobile_bottom_nav.dart';
 import 'models/order.dart';
 import 'models/order_item.dart';
 import 'services/order_service.dart';
+import 'widgets/cancel_order_dialog.dart';
 
 class OrderHistoryScreen extends StatefulWidget {
   const OrderHistoryScreen({super.key});
@@ -145,12 +146,33 @@ class _OrderTileState extends State<_OrderTile> {
     return '$name (${item.sweetness!.label(AppLocalizations.of(context)!)})';
   }
 
+  Future<void> _confirmCancel(Order o) async {
+    final l10n = AppLocalizations.of(context)!;
+    final reason = await showCancelOrderDialog(context);
+    if (reason == null || !mounted) return;
+    try {
+      await OrderService.instance.cancelOrder(o.id!, reason: reason);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.cancelOrderSnackbar)));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(l10n.cancelOrderFailedSnackbar('$e')),
+            backgroundColor: AppColors.terracottaDark),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final o = widget.order;
+    final l10n = AppLocalizations.of(context)!;
     final methodLabel = o.paymentMethod == PaymentMethod.cash
         ? AppLocalizations.of(context)!.cash
         : AppLocalizations.of(context)!.promptpay;
+    final canCancel = o.canCancel && o.id != null;
+    final cancelled = o.kitchenStatus == 'cancelled';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -188,6 +210,26 @@ class _OrderTileState extends State<_OrderTile> {
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (cancelled)
+                Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.terracottaLight,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(l10n.cancelledOrderBadge,
+                      style: const TextStyle(
+                          fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.terracottaDark)),
+                ),
+              if (canCancel)
+                IconButton(
+                  icon: const Icon(Icons.cancel_outlined, size: 18, color: AppColors.terracottaDark),
+                  tooltip: l10n.cancelOrderLabel,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  onPressed: () => _confirmCancel(o),
+                ),
               Text(
                 widget.baht(o.total),
                 style: const TextStyle(
@@ -238,6 +280,13 @@ class _OrderTileState extends State<_OrderTile> {
                     ),
                   ),
                 ),
+                if (o.kitchenStatus == 'cancelled' && o.cancelReason != null) ...[
+                  const Divider(height: 16),
+                  Text(
+                    '${AppLocalizations.of(context)!.cancelledOrderBadge}: ${o.cancelReason}',
+                    style: const TextStyle(fontSize: 12, color: AppColors.terracottaDark),
+                  ),
+                ],
                 if (o.paymentMethod == PaymentMethod.cash) ...[
                   const Divider(height: 16),
                   Row(
@@ -280,3 +329,4 @@ class _OrderTileState extends State<_OrderTile> {
     );
   }
 }
+

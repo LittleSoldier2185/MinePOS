@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/services/app_settings_service.dart';
 import '../../core/services/local_server_launcher.dart';
 import '../../core/services/mobile_server_launcher.dart';
 import '../../core/services/server_client.dart';
@@ -139,8 +140,13 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
       await ShopSetupService().createShop(_data, targetAddress);
 
       ServerClient.instance.baseUrl = targetAddress;
-      final result =
-          await AuthService().login(_data.adminUsername, _data.adminPassword);
+      // This device is signing in for the first time as the shop's own
+      // owner — no login screen (and so no device-name field) is involved,
+      // so seed a sensible default the owner can rename on any later login.
+      final deviceName =
+          await AppSettingsService.instance.getDeviceName() ?? l10n.defaultDeviceNameOnSetup;
+      final result = await AuthService()
+          .login(_data.adminUsername, _data.adminPassword, deviceName);
       if (!result.success) {
         throw Exception(
             'Shop was created but automatic sign-in failed — sign in manually.');
@@ -148,6 +154,7 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
       ServerClient.instance.role = result.role;
       ServerClient.instance.username = result.username;
       ServerClient.instance.userId = result.id;
+      await AppSettingsService.instance.setDeviceName(deviceName);
 
       // Mirrors login_screen.dart's post-login sync — without it this
       // screen would carry over whatever menu/orders/shop config were

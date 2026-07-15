@@ -13,6 +13,7 @@ class Order {
     required this.paymentMethod,
     this.amountPaid,
     this.kitchenStatus = 'pending',
+    this.cancelReason,
   }) : status = OrderStatus.paid;
 
   /// Server-assigned primary key — null until synced (used for kitchen
@@ -25,8 +26,17 @@ class Order {
   final PaymentMethod paymentMethod;
   final double? amountPaid;
 
-  /// Kitchen prep state: "pending" | "preparing" | "ready" | "completed".
+  /// Kitchen prep state: "pending" | "preparing" | "ready" | "completed" | "cancelled".
   final String kitchenStatus;
+
+  /// Set only when [kitchenStatus] is "cancelled" — the reason chosen (plus
+  /// any free-text detail) at cancel time.
+  final String? cancelReason;
+
+  /// Cancelling is only safe while no item has started prep — once the
+  /// order moves off "pending" (server-derived from item statuses), the
+  /// kitchen may already be acting on it.
+  bool get canCancel => kitchenStatus == 'pending';
 
   double get total => items.fold(0.0, (s, i) => s + i.subtotal);
 
@@ -60,5 +70,6 @@ class Order {
         : PaymentMethod.cash,
     amountPaid: (json['amountPaid'] as num?)?.toDouble(),
     kitchenStatus: json['status'] as String? ?? 'pending',
+    cancelReason: json['cancelReason'] as String?,
   );
 }

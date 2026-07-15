@@ -189,6 +189,21 @@ class AppLocalizationsTh extends AppLocalizations {
   String get usernameOrEmailLabel => 'ชื่อผู้ใช้ / อีเมล';
 
   @override
+  String get deviceNameLabel => 'ชื่ออุปกรณ์';
+
+  @override
+  String get deviceNameHint => 'เช่น เครื่องที่ 1, เคาน์เตอร์หน้าร้าน';
+
+  @override
+  String get deviceNameRequiredValidator => 'กรุณากรอกชื่ออุปกรณ์';
+
+  @override
+  String get defaultDeviceNameOnSetup => 'เครื่องหลัก';
+
+  @override
+  String get rememberMeLabel => 'จดจำฉันไว้';
+
+  @override
   String get loginForgotPasswordLink => 'ลืมรหัสผ่าน';
 
   @override
@@ -639,6 +654,13 @@ class AppLocalizationsTh extends AppLocalizations {
   String get orderWillAppearMessage => 'ออร์เดอร์ของคุณจะแสดงที่นี่';
 
   @override
+  String get selectStationTitle => 'เลือกเครื่อง';
+
+  @override
+  String get noStationsOnlineMessage =>
+      'ยังไม่มีเครื่องออนไลน์ กรุณาเปิดเครื่องขายและเริ่มออร์เดอร์';
+
+  @override
   String get customerDisplayOrderLabel => 'ออร์เดอร์ของคุณ';
 
   @override
@@ -816,10 +838,34 @@ class AppLocalizationsTh extends AppLocalizations {
   String get customRange => 'กำหนดเอง…';
 
   @override
+  String get startTimeLabel => 'เวลาเริ่มต้น';
+
+  @override
+  String get endTimeLabel => 'เวลาสิ้นสุด';
+
+  @override
+  String get customRangeDialogTitle => 'ช่วงเวลาที่กำหนดเอง';
+
+  @override
+  String get applyButton => 'ใช้';
+
+  @override
+  String get endBeforeStartError => 'เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่มต้น';
+
+  @override
   String get reportsOrdersLabel => 'ออร์เดอร์';
 
   @override
   String get ordersColumnHeader => 'ออร์เดอร์';
+
+  @override
+  String get topSellingItemsHeader => 'สินค้าขายดี';
+
+  @override
+  String get salesTrendHeader => 'แนวโน้มยอดขาย';
+
+  @override
+  String get soldSuffix => 'ขายแล้ว';
 
   @override
   String get exportCSVButton => 'ส่งออก CSV';
@@ -839,6 +885,47 @@ class AppLocalizationsTh extends AppLocalizations {
   String exportFailedSnackbar(String error) {
     return 'ส่งออกไม่สำเร็จ: $error';
   }
+
+  @override
+  String get cancelOrderLabel => 'ยกเลิกออร์เดอร์';
+
+  @override
+  String get cancelOrderDialogTitle => 'ยกเลิกออร์เดอร์นี้หรือไม่?';
+
+  @override
+  String get cancelOrderSnackbar => 'ยกเลิกออร์เดอร์แล้ว';
+
+  @override
+  String cancelOrderFailedSnackbar(String error) {
+    return 'ยกเลิกไม่สำเร็จ: $error';
+  }
+
+  @override
+  String get cancelledOrderBadge => 'ยกเลิกแล้ว';
+
+  @override
+  String get cancelReasonPromptLabel => 'ทำไมถึงยกเลิกออร์เดอร์นี้?';
+
+  @override
+  String get cancelReasonCustomerChanged => 'ลูกค้าเปลี่ยนใจ';
+
+  @override
+  String get cancelReasonDuplicate => 'ออร์เดอร์ซ้ำ';
+
+  @override
+  String get cancelReasonWrongItem => 'กรอกรายการผิด';
+
+  @override
+  String get cancelReasonOutOfStock => 'สินค้าหมด';
+
+  @override
+  String get cancelReasonOther => 'อื่นๆ';
+
+  @override
+  String get cancelReasonExtraHint => 'รายละเอียดเพิ่มเติม (ถ้ามี)';
+
+  @override
+  String get cancelReasonRequiredError => 'กรุณาเลือกเหตุผล';
 
   @override
   String get staffManagementTitle => 'จัดการพนักงาน';
@@ -1037,6 +1124,20 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get listViewTooltip => 'มุมมองรายการ';
+
+  @override
+  String get extraDisplaySectionLabel => 'จอแสดงผลเพิ่มเติม';
+
+  @override
+  String get openExtraDisplayButton => 'เปิดจอแสดงผลเพิ่มเติม';
+
+  @override
+  String get openExtraDisplayHint =>
+      'เปิดในหน้าต่างใหม่ พร้อมลงชื่อเข้าใช้แล้ว — ลากไปที่จอที่สอง';
+
+  @override
+  String get openExtraDisplayFailedMessage =>
+      'ไม่สามารถเปิดหน้าต่างจอแสดงผลเพิ่มเติมได้';
 
   @override
   String get serverSectionLabel => 'เซิร์ฟเวอร์';

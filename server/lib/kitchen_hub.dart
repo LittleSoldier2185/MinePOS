@@ -38,6 +38,7 @@ class KitchenHub {
       'type': 'order_status',
       'orderId': order.id,
       'status': order.status,
+      'cancelReason': order.cancelReason,
     });
   }
 

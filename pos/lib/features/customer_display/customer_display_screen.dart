@@ -96,6 +96,26 @@ class _CustomerDisplayScreenState extends State<CustomerDisplayScreen> {
               right: 16,
               child: _ConnectionDot(state: _svc.connectionState),
             ),
+            if (_svc.selectedStation != null)
+              Positioned(
+                top: 12,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: GestureDetector(
+                    onTap: () => _svc.selectStation(null),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.tv_outlined, size: 12, color: Colors.white38),
+                        const SizedBox(width: 4),
+                        Text(_svc.selectedStation!,
+                            style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -103,6 +123,9 @@ class _CustomerDisplayScreenState extends State<CustomerDisplayScreen> {
   }
 
   Widget _buildBody() {
+    if (_svc.selectedStation == null) {
+      return _StationPickerView(svc: _svc);
+    }
     switch (_svc.state) {
       case CustomerDisplayState.cart:
         return _CartView(svc: _svc, baht: _baht);
@@ -111,6 +134,57 @@ class _CustomerDisplayScreenState extends State<CustomerDisplayScreen> {
       case CustomerDisplayState.idle:
         return const _IdleView();
     }
+  }
+}
+
+class _StationPickerView extends StatelessWidget {
+  const _StationPickerView({required this.svc});
+  final CustomerDisplayService svc;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.tv_outlined, color: AppColors.primaryLight, size: 56),
+            const SizedBox(height: 20),
+            Text(
+              l10n.selectStationTitle,
+              style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 24),
+            if (svc.stations.isEmpty)
+              Text(
+                l10n.noStationsOnlineMessage,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white54, fontSize: 14),
+              )
+            else
+              ...svc.stations.map(
+                (s) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: SizedBox(
+                    width: 260,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(color: Colors.white24),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      onPressed: () => svc.selectStation(s),
+                      child: Text(s, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

@@ -4,13 +4,74 @@ import 'package:window_manager/window_manager.dart';
 
 import 'core/services/app_settings_service.dart';
 import 'core/services/locale_controller.dart';
+import 'core/services/server_client.dart';
 import 'core/theme/app_theme.dart';
 import 'core/window/custom_title_bar.dart';
 import 'core/window/platform_window.dart';
+import 'features/auth/services/auth_service.dart';
+import 'features/cashier/services/menu_service.dart';
+import 'features/cashier/services/order_service.dart';
+import 'features/customer_display/customer_display_screen.dart';
+import 'features/home/home_placeholder_screen.dart';
+import 'features/kitchen/kitchen_display_screen.dart';
+import 'features/manager/services/shop_config_service.dart';
 import 'features/welcome/welcome_screen.dart';
 import 'l10n/app_localizations.dart';
 
-Future<void> main() async {
+/// Silently restores a "remember me" session saved at login, so the app can
+/// skip Welcome/Connect/Login on launch. Returns null (falling back to the
+/// normal flow) if nothing was remembered, or the remembered token turns out
+/// to be expired/revoked — [AuthService.me] is what tells the two apart from
+/// a stale/garbage session, so we don't strand the user on a blank screen.
+Future<Widget?> _tryAutoLogin() async {
+  final remembered = await AppSettingsService.instance.getSession();
+  if (remembered == null) return null;
+
+  ServerClient.instance.baseUrl = remembered.baseUrl;
+  ServerClient.instance.token = remembered.token;
+  ServerClient.instance.deviceName = remembered.deviceName;
+
+  final result = await AuthService().me();
+  if (!result.success) {
+    ServerClient.instance.clear();
+    return null;
+  }
+  ServerClient.instance.role = result.role;
+  ServerClient.instance.username = result.username;
+  ServerClient.instance.userId = result.id;
+
+  // Mirrors login_screen.dart's post-login sync (see its comment for why) —
+  // skipped for a remembered kitchen-only station the same way a fresh
+  // kitchen-only sign-in skips it.
+  final isKitchenOnly = remembered.purpose == 'kitchenOnly';
+  if (!isKitchenOnly) {
+    await Future.wait([
+      MenuService.instance.fetchFromServer(),
+      OrderService.instance.loadFromServer(),
+      ShopConfigService.instance.fetch(),
+    ]);
+    MenuService.instance.connect();
+    OrderService.instance.connect();
+  }
+  return isKitchenOnly ? const KitchenDisplayScreen(standalone: true) : const HomePlaceholderScreen();
+}
+
+/// Parses the flags a second, detached OS process is launched with (see
+/// `ExtraDisplayLauncher`) to open straight into a display screen instead of
+/// the normal Welcome/Connect/Login flow, reusing the launching session's
+/// server address and auth token — same device/login, just another window.
+({String mode, String address, String token})? _extraDisplayArgs(List<String> args) {
+  String? mode, address, token;
+  for (final arg in args) {
+    if (arg.startsWith('--extra-display=')) mode = arg.substring('--extra-display='.length);
+    if (arg.startsWith('--address=')) address = arg.substring('--address='.length);
+    if (arg.startsWith('--token=')) token = arg.substring('--token='.length);
+  }
+  if (mode == null || address == null || token == null) return null;
+  return (mode: mode, address: address, token: token);
+}
+
+Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final language = await AppSettingsService.instance.getLanguage();
@@ -31,11 +92,26 @@ Future<void> main() async {
     );
   }
 
-  runApp(const MinePosApp());
+  final extraDisplay = _extraDisplayArgs(args);
+  if (extraDisplay != null) {
+    ServerClient.instance.baseUrl = extraDisplay.address;
+    ServerClient.instance.token = extraDisplay.token;
+    runApp(MinePosApp(
+      home: extraDisplay.mode == 'kitchen'
+          ? const KitchenDisplayScreen(standalone: true)
+          : const CustomerDisplayScreen(),
+    ));
+    return;
+  }
+
+  final autoLoginHome = await _tryAutoLogin();
+  runApp(MinePosApp(home: autoLoginHome ?? const WelcomeScreen()));
 }
 
 class MinePosApp extends StatefulWidget {
-  const MinePosApp({super.key});
+  const MinePosApp({super.key, this.home = const WelcomeScreen()});
+
+  final Widget home;
 
   @override
   State<MinePosApp> createState() => _MinePosAppState();
@@ -79,7 +155,7 @@ class _MinePosAppState extends State<MinePosApp> {
           ],
         );
       },
-      home: const WelcomeScreen(),
+      home: widget.home,
     );
   }
 }

@@ -90,7 +90,9 @@ Future<Response> _createOrder(
   return jsonOk(order.toJson(), status: 201);
 }
 
-// PATCH /orders/:id/status  { status: "pending"|"preparing"|"ready"|"completed" }
+// PATCH /orders/:id/status  { status: "pending"|"preparing"|"ready"|"completed"|"cancelled", reason? }
+// `reason` is required when status is "cancelled" — the chosen common reason,
+// optionally with free-text detail appended (composed client-side).
 Future<Response> _updateStatus(
     Request req, String id, AppDb db, ServerConfig config) async {
   if (requireAuth(req, db, config.jwtSecret) == null) return unauthorized();
@@ -104,9 +106,28 @@ Future<Response> _updateStatus(
     return jsonError('status must be one of $kOrderStatuses');
   }
 
-  final updated = db.updateOrderStatus(orderId, status);
+  String? reason;
+  // A cancel is only safe while every item is still untouched — once the
+  // kitchen has started (or finished) prep, the order's status has already
+  // moved off 'pending' and cancelling would silently drop real work.
+  if (status == 'cancelled') {
+    final existing = db.getOrderById(orderId);
+    if (existing == null) return notFound('Order not found');
+    if (existing.status != 'pending') {
+      return jsonError(
+          'Order can only be cancelled while all items are still pending',
+          status: 409);
+    }
+    reason = (body?['reason'] as String?)?.trim();
+    if (reason == null || reason.isEmpty) {
+      return jsonError('reason is required to cancel an order');
+    }
+  }
+
+  final updated = db.updateOrderStatus(orderId, status, reason: reason);
   if (updated == null) return notFound('Order not found');
   KitchenHub.instance.broadcastOrderStatus(updated);
+  OrderHub.instance.broadcastOrderStatus(updated);
   return jsonOk(updated.toJson());
 }
 

@@ -299,6 +299,15 @@ class _ServerStatusScreenState extends State<ServerStatusScreen> {
                           Text('(${u['role']})',
                               style: const TextStyle(
                                   fontSize: 12, color: AppColors.muted)),
+                          if ((u['deviceName'] as String?)?.isNotEmpty ?? false) ...[
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text('· ${u['deviceName']}',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                      fontSize: 12, color: AppColors.muted)),
+                            ),
+                          ],
                         ],
                       ),
                     ),

@@ -10,13 +10,25 @@ import '../utils.dart';
 
 void registerAuthRoutes(Router router, AppDb db, ServerConfig config) {
   router.post('/auth/login', (Request req) => _login(req, db, config));
+  router.get('/auth/me', (Request req) => _me(req, db, config));
   router.post('/auth/request-otp', (Request req) => _requestOtp(req, db));
   router.post('/auth/verify-otp', (Request req) => _verifyOtp(req, db));
   router.post('/auth/reset-password',
       (Request req) => _resetPassword(req, db, config));
 }
 
-// POST /auth/login  { username, password }
+// GET /auth/me — validates the bearer token (signature, active flag,
+// token_version) and returns the current user, same shape as /auth/login's
+// response minus the token itself. Lets a client silently confirm a
+// remembered session is still good (not expired/deactivated) before
+// committing to auto-login, without needing to re-send a password.
+Response _me(Request req, AppDb db, ServerConfig config) {
+  final user = requireAuth(req, db, config.jwtSecret);
+  if (user == null) return unauthorized();
+  return jsonOk({'role': user.role, 'username': user.username, 'id': user.id});
+}
+
+// POST /auth/login  { username, password, deviceName }
 Future<Response> _login(
     Request req, AppDb db, ServerConfig config) async {
   final body = await parseJsonBody(req);
@@ -24,8 +36,12 @@ Future<Response> _login(
 
   final username = (body['username'] as String?)?.trim().toLowerCase();
   final password = body['password'] as String?;
+  final deviceName = (body['deviceName'] as String?)?.trim();
   if (username == null || username.isEmpty || password == null || password.isEmpty) {
     return jsonError('username and password are required');
+  }
+  if (deviceName == null || deviceName.isEmpty) {
+    return jsonError('deviceName is required');
   }
 
   final user = db.getUserByUsername(username);
@@ -39,8 +55,18 @@ Future<Response> _login(
   final ttl = user.role == 'owner'
       ? const Duration(days: 30)
       : const Duration(hours: 8);
+  // 'dev' identifies which physical station this login is for — lets two
+  // devices signed in as the same account show up as distinct entries in
+  // presence tracking instead of one clobbering the other (see
+  // PresenceTracker) and lets a cashier station tag its customer-display
+  // broadcasts so a display can pick which station to mirror.
   final token = JWT(
-    {'sub': user.id.toString(), 'role': user.role, 'ver': user.tokenVersion},
+    {
+      'sub': user.id.toString(),
+      'role': user.role,
+      'ver': user.tokenVersion,
+      'dev': deviceName,
+    },
   ).sign(SecretKey(config.jwtSecret), expiresIn: ttl);
 
   return jsonOk({

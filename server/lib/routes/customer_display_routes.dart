@@ -11,10 +11,17 @@ void registerCustomerDisplayRoutes(
     Router router, AppDb db, ServerConfig config) {
   // Cart contents aren't sensitive and this is LAN-only, so unlike
   // /ws/kitchen this channel doesn't require a token — a customer-facing
-  // device shouldn't need to log in at all.
+  // device shouldn't need to log in at all. A `station` query param marks a
+  // connection as a cashier register publishing under that name instead of a
+  // passive display; see CustomerDisplayHub.
   router.get('/ws/customer-display', (Request req) {
+    final station = req.url.queryParameters['station'];
     return webSocketHandler((WebSocketChannel channel, String? protocol) {
-      CustomerDisplayHub.instance.add(channel);
+      if (station != null && station.isNotEmpty) {
+        CustomerDisplayHub.instance.addPublisher(channel, station);
+      } else {
+        CustomerDisplayHub.instance.addSubscriber(channel);
+      }
     })(req);
   });
 }

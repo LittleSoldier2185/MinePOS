@@ -28,13 +28,18 @@ const _kSidebarMuted = Color(0xFF7A7850);
 const _kSidebarHighlight = Color(0xFF2E2F18);
 
 class HomePlaceholderScreen extends StatelessWidget {
-  const HomePlaceholderScreen({super.key, required this.title});
-  final String title;
+  const HomePlaceholderScreen({super.key, this.title});
+
+  /// Defaults to the localized welcome message when null — lets a caller
+  /// with no BuildContext yet (auto-login at app startup, before the widget
+  /// tree exists) land here without needing to pre-compute a title string.
+  final String? title;
 
   @override
   Widget build(BuildContext context) {
+    final displayTitle = title ?? AppLocalizations.of(context)!.loginWelcomeMessage;
     final isWide = MediaQuery.sizeOf(context).width >= Breakpoints.mobile;
-    return isWide ? _Desktop(title: title) : _Mobile(title: title);
+    return isWide ? _Desktop(title: displayTitle) : _Mobile(title: displayTitle);
   }
 }
 

@@ -1,3 +1,5 @@
+import 'app_settings_service.dart';
+
 /// Singleton that stores the connected server address and auth token.
 /// Set [baseUrl] when a connection test passes; set [token] after login.
 /// Call [clear] on logout.
@@ -10,6 +12,13 @@ class ServerClient {
   String? role; // "owner" | "manager" | "worker"
   String? username;
   int? userId;
+
+  /// This station's name, set at login (e.g. "Register 1") — lets two
+  /// devices signed in as the same account show up as distinct stations in
+  /// presence tracking, and lets the customer display pick which register's
+  /// cart to mirror. Null on a device that never logged in (e.g. a
+  /// customer-display-only connection).
+  String? deviceName;
 
   bool get isConnected => baseUrl != null;
   bool get isOwner => role == 'owner';
@@ -27,14 +36,26 @@ class ServerClient {
 
   /// Browsers can't set custom headers on a WebSocket handshake, so the
   /// token travels as a query param here instead of the usual header.
-  Uri wsUri(String path) =>
-      Uri.parse('ws://$baseUrl$path${token != null ? '?token=$token' : ''}');
+  /// [query] adds further params (e.g. the customer-display station name).
+  Uri wsUri(String path, {Map<String, String>? query}) {
+    final params = <String, String>{...?query};
+    if (token != null) params['token'] = token!;
+    final qs = params.entries
+        .map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}')
+        .join('&');
+    return Uri.parse('ws://$baseUrl$path${qs.isEmpty ? '' : '?$qs'}');
+  }
 
+  /// Every call site of this is some form of "sign out" (logout, disconnect,
+  /// remove shop) — so it also drops any remembered "stay signed in" session
+  /// here, once, rather than relying on each call site to remember to do it.
   void clear() {
     baseUrl = null;
     token = null;
     role = null;
     username = null;
     userId = null;
+    deviceName = null;
+    AppSettingsService.instance.clearSession();
   }
 }
