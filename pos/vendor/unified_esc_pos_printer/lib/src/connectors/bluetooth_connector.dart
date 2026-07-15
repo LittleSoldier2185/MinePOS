@@ -17,15 +17,24 @@ import 'printer_connector.dart';
 /// **Discovery:** Returns paired devices immediately via bonded device query,
 /// then streams additional devices found during discovery.
 ///
-/// **Writing:** Data is chunked into [chunkSize] byte blocks.
+/// **Writing:** Data is chunked into [chunkSize] byte blocks, paced by
+/// [chunkDelay] between writes so slow/small-buffer printers don't drop
+/// bytes they have no room for.
 ///
 /// **Permissions:** Automatically requests Bluetooth permissions when
 /// scanning or connecting. Throws [PrinterPermissionException] if denied.
 class BluetoothConnector extends PrinterConnector<BluetoothPrinterDevice> {
-  BluetoothConnector({this.chunkSize = kDefaultBtChunkSize});
+  BluetoothConnector({
+    this.chunkSize = kDefaultBtChunkSize,
+    this.chunkDelay = const Duration(milliseconds: kDefaultBtChunkDelayMs),
+  });
 
   /// Maximum bytes per Bluetooth write operation.
   final int chunkSize;
+
+  /// Pacing delay awaited between chunks so the printer's receive buffer
+  /// can drain instead of silently dropping bytes it has no room for.
+  final Duration chunkDelay;
 
   final BluetoothPlatformChannel _platform = BluetoothPlatformChannel.instance;
   StreamSubscription<Map<String, dynamic>>? _connectionSub;
@@ -250,6 +259,9 @@ class BluetoothConnector extends PrinterConnector<BluetoothPrinterDevice> {
         await _platform.btWrite(
           data: Uint8List.fromList(bytes.sublist(i, end)),
         );
+        if (end < bytes.length && chunkDelay > Duration.zero) {
+          await Future<void>.delayed(chunkDelay);
+        }
       }
 
       _setState(PrinterConnectionState.connected);

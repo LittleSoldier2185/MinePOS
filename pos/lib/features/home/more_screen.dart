@@ -41,6 +41,7 @@ class MoreScreen extends StatelessWidget {
         foregroundColor: AppColors.ink,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
+        automaticallyImplyLeading: false,
       ),
       floatingActionButton: const MobileNewOrderFab(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,

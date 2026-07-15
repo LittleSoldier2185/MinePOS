@@ -176,6 +176,10 @@ class PrinterService {
         text: order.formattedNumber,
         flex: 1,
         align: PrintAlign.right,
+        // A bit bigger than the rest of the header so the order number is
+        // the one thing a customer can spot at a glance when comparing
+        // their receipt to what's called out at pickup.
+        style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
       ),
     ]);
     await ticket.rowRaster([

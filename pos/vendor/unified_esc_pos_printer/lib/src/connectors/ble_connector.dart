@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import '../core/commands.dart';
 import '../exceptions/printer_exception.dart';
 import '../models/printer_connection_state.dart';
 import '../models/printer_device.dart';
@@ -220,6 +221,14 @@ class BleConnector extends PrinterConnector<BlePrinterDevice> {
           data: Uint8List.fromList(bytes.sublist(i, end)),
           withoutResponse: _writeWithoutResponse,
         );
+        // Writes with a response are naturally paced by the GATT ack; writes
+        // without one have no flow control, so add a small delay to avoid
+        // overrunning the printer's receive buffer.
+        if (_writeWithoutResponse && end < bytes.length) {
+          await Future<void>.delayed(
+            const Duration(milliseconds: kDefaultBtChunkDelayMs),
+          );
+        }
       }
 
       _setState(PrinterConnectionState.connected);

@@ -49,6 +49,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
         foregroundColor: AppColors.ink,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
+        automaticallyImplyLeading: !isMobile,
       ),
       floatingActionButton: isMobile ? const MobileNewOrderFab() : null,
       floatingActionButtonLocation: isMobile ? FloatingActionButtonLocation.centerDocked : null,

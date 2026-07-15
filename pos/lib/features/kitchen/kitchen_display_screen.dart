@@ -177,6 +177,7 @@ class _KitchenDisplayScreenState extends State<KitchenDisplayScreen>
         foregroundColor: AppColors.ink,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
+        automaticallyImplyLeading: !showMobileNav,
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),

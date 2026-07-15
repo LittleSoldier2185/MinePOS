@@ -137,3 +137,11 @@ const int kScanSubnetTimeoutMs = 500;
 
 /// Default chunk size for Bluetooth Classic writes (bytes)
 const int kDefaultBtChunkSize = 512;
+
+/// Default pacing delay between Bluetooth Classic write chunks (milliseconds).
+///
+/// Cheap ESC/POS thermal printers have small receive buffers and no
+/// flow control over SPP; writing chunks back-to-back as fast as the radio
+/// allows can overrun that buffer, silently dropping the remainder of the
+/// ticket. A small delay between chunks lets the printer drain its buffer.
+const int kDefaultBtChunkDelayMs = 20;
