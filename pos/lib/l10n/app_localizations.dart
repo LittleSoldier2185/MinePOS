@@ -758,6 +758,162 @@ abstract class AppLocalizations {
   /// **'Faces the customer, mirrors the live order — no sign-in.'**
   String get roleSelectionCustomerSubtitle;
 
+  /// No description provided for @shopSetupChoiceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'SET UP THIS DEVICE'**
+  String get shopSetupChoiceTitle;
+
+  /// No description provided for @shopSetupChoiceInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Start a brand-new shop, or bring an existing one over from another device.'**
+  String get shopSetupChoiceInstructions;
+
+  /// No description provided for @shopSetupChoiceFreshTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Fresh'**
+  String get shopSetupChoiceFreshTitle;
+
+  /// No description provided for @shopSetupChoiceFreshSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up a brand-new shop from scratch.'**
+  String get shopSetupChoiceFreshSubtitle;
+
+  /// No description provided for @shopSetupChoiceRestoreTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore from Backup'**
+  String get shopSetupChoiceRestoreTitle;
+
+  /// No description provided for @shopSetupChoiceRestoreSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bring an existing shop\'s data onto this device.'**
+  String get shopSetupChoiceRestoreSubtitle;
+
+  /// No description provided for @restoreShopAppBarTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore Shop'**
+  String get restoreShopAppBarTitle;
+
+  /// No description provided for @restoreShopFileTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup File'**
+  String get restoreShopFileTab;
+
+  /// No description provided for @restoreShopTransferTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Another Device'**
+  String get restoreShopTransferTab;
+
+  /// No description provided for @restoreShopFileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore from a backup file'**
+  String get restoreShopFileTitle;
+
+  /// No description provided for @restoreShopFileInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a backup file exported from Settings on the old device.'**
+  String get restoreShopFileInstructions;
+
+  /// No description provided for @restoreShopChooseFileButton.
+  ///
+  /// In en, this message translates to:
+  /// **'CHOOSE BACKUP FILE'**
+  String get restoreShopChooseFileButton;
+
+  /// No description provided for @restoreShopInvalidFileError.
+  ///
+  /// In en, this message translates to:
+  /// **'That file doesn\'t look like a MinePOS backup. Pick a different file.'**
+  String get restoreShopInvalidFileError;
+
+  /// No description provided for @restoreShopFoundShopLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Found shop: {shopName}'**
+  String restoreShopFoundShopLabel(String shopName);
+
+  /// No description provided for @restoreShopConfirmButton.
+  ///
+  /// In en, this message translates to:
+  /// **'RESTORE THIS SHOP'**
+  String get restoreShopConfirmButton;
+
+  /// No description provided for @restoreShopTransferTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore from another device'**
+  String get restoreShopTransferTitle;
+
+  /// No description provided for @restoreShopTransferInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the address of the server currently running the shop you want to move here.'**
+  String get restoreShopTransferInstructions;
+
+  /// No description provided for @restoreShopOldOwnerLoginLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in as the owner of that shop to continue.'**
+  String get restoreShopOldOwnerLoginLabel;
+
+  /// No description provided for @restoreShopTransferButton.
+  ///
+  /// In en, this message translates to:
+  /// **'SIGN IN & TRANSFER'**
+  String get restoreShopTransferButton;
+
+  /// No description provided for @restoreShopTransferFieldsRequiredError.
+  ///
+  /// In en, this message translates to:
+  /// **'Device name, username, and password are all required.'**
+  String get restoreShopTransferFieldsRequiredError;
+
+  /// No description provided for @restoreShopTransferLoginError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t sign in to that server. Check the username and password.'**
+  String get restoreShopTransferLoginError;
+
+  /// No description provided for @restoreDestinationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'WHERE DO YOU WANT TO RESTORE THIS?'**
+  String get restoreDestinationTitle;
+
+  /// No description provided for @restoreDestinationLocalOption.
+  ///
+  /// In en, this message translates to:
+  /// **'This Device (Local Storage)'**
+  String get restoreDestinationLocalOption;
+
+  /// No description provided for @restoreDestinationLocalUnavailableNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Not available — either this platform can\'t self-host, or this device already has a shop.'**
+  String get restoreDestinationLocalUnavailableNote;
+
+  /// No description provided for @restoreDestinationServerOption.
+  ///
+  /// In en, this message translates to:
+  /// **'Another Server (by IP)'**
+  String get restoreDestinationServerOption;
+
+  /// No description provided for @restoreDestinationServerHasShopError.
+  ///
+  /// In en, this message translates to:
+  /// **'That server already has a shop set up. Restore only works on a server that\'s never been set up before.'**
+  String get restoreDestinationServerHasShopError;
+
   /// No description provided for @createShopAppBarTitle.
   ///
   /// In en, this message translates to:
@@ -2059,6 +2215,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'ภาษาไทย (Thai)'**
   String get thaiOption;
+
+  /// No description provided for @backupSectionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'BACKUP'**
+  String get backupSectionLabel;
+
+  /// No description provided for @exportBackupButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Backup'**
+  String get exportBackupButton;
+
+  /// No description provided for @exportBackupHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Save a copy of your shop\'s data — accounts, menu, and orders — to move it to another device.'**
+  String get exportBackupHint;
+
+  /// No description provided for @exportBackupSavedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup saved.'**
+  String get exportBackupSavedMessage;
+
+  /// No description provided for @exportBackupCancelledMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup cancelled.'**
+  String get exportBackupCancelledMessage;
+
+  /// No description provided for @exportBackupFailedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t export the backup. Try again.'**
+  String get exportBackupFailedMessage;
 
   /// No description provided for @dangerZoneSectionLabel.
   ///

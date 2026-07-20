@@ -15,6 +15,7 @@ class AppTextField extends StatelessWidget {
     this.validator,
     this.suffixIcon,
     this.onChanged,
+    this.enabled = true,
   });
 
   final String label;
@@ -25,6 +26,7 @@ class AppTextField extends StatelessWidget {
   final String? Function(String?)? validator;
   final Widget? suffixIcon;
   final void Function(String)? onChanged;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +51,7 @@ class AppTextField extends StatelessWidget {
           keyboardType: keyboardType,
           validator: validator,
           onChanged: onChanged,
+          enabled: enabled,
           decoration: InputDecoration(
             hintText: hintText,
             filled: true,

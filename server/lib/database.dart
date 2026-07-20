@@ -282,6 +282,16 @@ class AppDb {
   /// first, or the old native handle leaks for the life of the process.
   void close() => _db.dispose();
 
+  /// Writes a consistent, defragmented snapshot of the whole database to
+  /// [path] via SQLite's own `VACUUM INTO` — an atomic hot-backup mechanism
+  /// that's safe to run while the live server keeps serving reads/writes
+  /// (unlike copying the raw .db file's bytes, which could catch a write
+  /// mid-transaction). Used by `GET /admin/backup` to produce a snapshot for
+  /// moving the shop to a new device. [path] must not already exist.
+  void exportSnapshotTo(String path) {
+    _db.execute('VACUUM INTO ?', [path]);
+  }
+
   void _migrate() {
     _db.execute('''
       CREATE TABLE IF NOT EXISTS users (

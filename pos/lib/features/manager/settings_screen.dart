@@ -14,6 +14,7 @@ import '../cashier/services/order_service.dart';
 import '../cashier/services/printer_service.dart';
 import '../welcome/welcome_screen.dart';
 import 'server_status_screen.dart';
+import 'services/backup_service.dart';
 import 'services/shop_config_service.dart';
 import 'services/shop_service.dart';
 
@@ -40,6 +41,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _shopLoaded = false;
   bool _savingShop = false;
   String? _shopError;
+  bool _exportingBackup = false;
 
   @override
   void initState() {
@@ -215,6 +217,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
         MaterialPageRoute(builder: (_) => const WelcomeScreen()),
         (route) => false,
       );
+    }
+  }
+
+  Future<void> _exportBackup() async {
+    final l10n = AppLocalizations.of(context)!;
+    setState(() => _exportingBackup = true);
+    try {
+      final path = await BackupService().exportBackupToFile(
+        ShopConfigService.instance.shopName,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            path == null ? l10n.exportBackupCancelledMessage : l10n.exportBackupSavedMessage,
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.exportBackupFailedMessage)),
+      );
+    } finally {
+      if (mounted) setState(() => _exportingBackup = false);
     }
   }
 
@@ -540,6 +567,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             icon: const Icon(Icons.dns_outlined, size: 16),
                             label: Text(l10n.serverStatusButton),
                           ),
+                        ),
+                      ),
+                    ],
+                    if (client.isOwner) ...[
+                      const SizedBox(height: 20),
+                      _SectionLabel(l10n.backupSectionLabel),
+                      _Card(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: _exportingBackup ? null : _exportBackup,
+                                icon: _exportingBackup
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      )
+                                    : const Icon(Icons.download_outlined, size: 16),
+                                label: Text(l10n.exportBackupButton),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              l10n.exportBackupHint,
+                              style: const TextStyle(color: AppColors.muted, fontSize: 11),
+                            ),
+                          ],
                         ),
                       ),
                     ],

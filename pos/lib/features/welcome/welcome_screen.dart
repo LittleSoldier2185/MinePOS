@@ -8,7 +8,7 @@ import '../../core/window/platform_window.dart';
 import '../../l10n/app_localizations.dart';
 import '../auth/login_screen.dart';
 import '../connect/connect_screen.dart';
-import '../shop_setup/create_shop_screen.dart';
+import '../shop_setup/shop_setup_choice_screen.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -171,7 +171,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                                   ? null
                                   : () => Navigator.of(context).push(
                                         MaterialPageRoute(
-                                            builder: (_) => const CreateShopScreen()),
+                                            builder: (_) => const ShopSetupChoiceScreen()),
                                       ),
                             ),
                           ),

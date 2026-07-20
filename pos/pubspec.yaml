@@ -63,6 +63,12 @@ dependencies:
   # want to force onto the already-verified Windows server path). Revisit
   # once the server package is deliberately upgraded to sqlite3 3.x.
   sqlite3_flutter_libs: ^0.5.42
+  # Dart API for sqlite3 (native binaries come from sqlite3_flutter_libs
+  # above) — same constraint as server/pubspec.yaml, since it's already
+  # resolved transitively through the minepos_server path dependency; kept
+  # here as a direct dependency instead since restore_shop_screen.dart
+  # imports it to validate a picked backup file.
+  sqlite3: ^2.7.5
   path_provider: ^2.1.6
   path: ^1.9.1
 

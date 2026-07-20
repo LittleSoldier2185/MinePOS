@@ -373,6 +373,97 @@ class AppLocalizationsEn extends AppLocalizations {
       'Faces the customer, mirrors the live order — no sign-in.';
 
   @override
+  String get shopSetupChoiceTitle => 'SET UP THIS DEVICE';
+
+  @override
+  String get shopSetupChoiceInstructions =>
+      'Start a brand-new shop, or bring an existing one over from another device.';
+
+  @override
+  String get shopSetupChoiceFreshTitle => 'Start Fresh';
+
+  @override
+  String get shopSetupChoiceFreshSubtitle =>
+      'Set up a brand-new shop from scratch.';
+
+  @override
+  String get shopSetupChoiceRestoreTitle => 'Restore from Backup';
+
+  @override
+  String get shopSetupChoiceRestoreSubtitle =>
+      'Bring an existing shop\'s data onto this device.';
+
+  @override
+  String get restoreShopAppBarTitle => 'Restore Shop';
+
+  @override
+  String get restoreShopFileTab => 'Backup File';
+
+  @override
+  String get restoreShopTransferTab => 'Another Device';
+
+  @override
+  String get restoreShopFileTitle => 'Restore from a backup file';
+
+  @override
+  String get restoreShopFileInstructions =>
+      'Pick a backup file exported from Settings on the old device.';
+
+  @override
+  String get restoreShopChooseFileButton => 'CHOOSE BACKUP FILE';
+
+  @override
+  String get restoreShopInvalidFileError =>
+      'That file doesn\'t look like a MinePOS backup. Pick a different file.';
+
+  @override
+  String restoreShopFoundShopLabel(String shopName) {
+    return 'Found shop: $shopName';
+  }
+
+  @override
+  String get restoreShopConfirmButton => 'RESTORE THIS SHOP';
+
+  @override
+  String get restoreShopTransferTitle => 'Restore from another device';
+
+  @override
+  String get restoreShopTransferInstructions =>
+      'Enter the address of the server currently running the shop you want to move here.';
+
+  @override
+  String get restoreShopOldOwnerLoginLabel =>
+      'Sign in as the owner of that shop to continue.';
+
+  @override
+  String get restoreShopTransferButton => 'SIGN IN & TRANSFER';
+
+  @override
+  String get restoreShopTransferFieldsRequiredError =>
+      'Device name, username, and password are all required.';
+
+  @override
+  String get restoreShopTransferLoginError =>
+      'Couldn\'t sign in to that server. Check the username and password.';
+
+  @override
+  String get restoreDestinationTitle => 'WHERE DO YOU WANT TO RESTORE THIS?';
+
+  @override
+  String get restoreDestinationLocalOption => 'This Device (Local Storage)';
+
+  @override
+  String get restoreDestinationLocalUnavailableNote =>
+      'Not available — either this platform can\'t self-host, or this device already has a shop.';
+
+  @override
+  String get restoreDestinationServerOption => 'Another Server (by IP)';
+
+  @override
+  String get restoreDestinationServerHasShopError =>
+      'That server already has a shop set up. Restore only works on a server that\'s never been set up before.';
+
+  @override
   String get createShopAppBarTitle => 'Create Shop';
 
   @override
@@ -1090,6 +1181,26 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get thaiOption => 'ภาษาไทย (Thai)';
+
+  @override
+  String get backupSectionLabel => 'BACKUP';
+
+  @override
+  String get exportBackupButton => 'Export Backup';
+
+  @override
+  String get exportBackupHint =>
+      'Save a copy of your shop\'s data — accounts, menu, and orders — to move it to another device.';
+
+  @override
+  String get exportBackupSavedMessage => 'Backup saved.';
+
+  @override
+  String get exportBackupCancelledMessage => 'Backup cancelled.';
+
+  @override
+  String get exportBackupFailedMessage =>
+      'Couldn\'t export the backup. Try again.';
 
   @override
   String get dangerZoneSectionLabel => 'DANGER ZONE';

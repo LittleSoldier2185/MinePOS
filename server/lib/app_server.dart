@@ -9,6 +9,7 @@ import 'database.dart';
 import 'mdns_service.dart';
 import 'routes/admin_routes.dart';
 import 'routes/auth_routes.dart';
+import 'routes/backup_routes.dart';
 import 'routes/customer_display_routes.dart';
 import 'routes/health_route.dart';
 import 'routes/kitchen_routes.dart';
@@ -48,6 +49,7 @@ Future<RunningServer> startMinePosServer({
   InternetAddress? bindAddress,
   bool enableMdns = true,
   void Function()? onRestartRequested,
+  void Function(List<int> bytes)? onRestoreRequested,
 }) async {
   ServerLog.open(config.dataDir);
   final db = await AppDb.open(config);
@@ -63,6 +65,7 @@ Future<RunningServer> startMinePosServer({
   registerSetupRoutes(router, db, config);
   registerShopRoutes(router, db, config);
   registerAdminRoutes(router, db, config, onRestart: onRestartRequested);
+  registerBackupRoutes(router, db, config, onRestoreRequested: onRestoreRequested);
 
   final handler = Pipeline()
       .addMiddleware(logRequests(

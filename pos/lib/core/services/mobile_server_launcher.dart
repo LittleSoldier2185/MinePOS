@@ -35,9 +35,32 @@ class MobileServerLauncher {
   /// answering this should never have the side effect of spawning the
   /// background isolate.
   Future<bool> hasLocalShop() async {
-    final supportDir = await getApplicationSupportDirectory();
-    final dbFile = File(p.join(supportDir.path, 'minepos', 'minepos.db'));
+    final dbFile = await _dbFile();
     return dbFile.existsSync();
+  }
+
+  /// Writes [bytes] (a snapshot pulled from `GET /admin/backup`, or read
+  /// straight off a picked backup file) into place as this device's own
+  /// `minepos.db`, ahead of the first [ensureRunning] call — used by
+  /// `RestoreShopScreen` to set this device up from another shop's data
+  /// instead of the normal Create Shop wizard. Re-checks [hasLocalShop]
+  /// itself rather than trusting the caller, since this overwrites whatever
+  /// is at that path.
+  Future<void> writeRestoredDatabase(List<int> bytes) async {
+    if (await hasLocalShop()) {
+      throw StateError('This device already has a shop — cannot restore over it.');
+    }
+    final dbFile = await _dbFile();
+    await dbFile.parent.create(recursive: true);
+    await dbFile.writeAsBytes(bytes, flush: true);
+  }
+
+  /// Where this device's `minepos.db` lives (or would live), inside the
+  /// app's sandboxed Application Support directory — same path
+  /// [_isolateEntryPoint] resolves via `dataDir`.
+  Future<File> _dbFile() async {
+    final supportDir = await getApplicationSupportDirectory();
+    return File(p.join(supportDir.path, 'minepos', 'minepos.db'));
   }
 
   Future<bool> _isHealthy() async {

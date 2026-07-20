@@ -77,9 +77,37 @@ class LocalServerLauncher {
   /// also the honest answer in dev (`flutter run`), where no bundled exe —
   /// and therefore no fixed data dir to check — exists yet.
   bool hasLocalShop() {
+    final db = _dbFile();
+    return db != null && db.existsSync();
+  }
+
+  /// Writes [bytes] (a snapshot pulled from `GET /admin/backup`, or read
+  /// straight off a picked backup file) into place as this device's own
+  /// `minepos.db`, ahead of the first [ensureRunning] call — used by
+  /// `RestoreShopScreen` to set this device up from another shop's data
+  /// instead of the normal Create Shop wizard. Re-checks [hasLocalShop]
+  /// itself rather than trusting the caller, since this overwrites whatever
+  /// is at that path; throws if a shop already exists here, or if the
+  /// bundled server exe (and therefore its fixed data dir) can't be found.
+  Future<void> writeRestoredDatabase(List<int> bytes) async {
+    if (hasLocalShop()) {
+      throw StateError('This device already has a shop — cannot restore over it.');
+    }
+    final db = _dbFile();
+    if (db == null) {
+      throw StateError('Bundled server executable not found.');
+    }
+    await db.parent.create(recursive: true);
+    await db.writeAsBytes(bytes, flush: true);
+  }
+
+  /// Where this device's `minepos.db` lives (or would live), next to the
+  /// bundled server exe — null if that exe can't be found (e.g. `flutter
+  /// run` in dev, same standing limitation as [hasLocalShop]).
+  File? _dbFile() {
     final exe = _findServerExecutable();
-    if (exe == null) return false;
-    return File('${exe.parent.path}\\data\\minepos.db').existsSync();
+    if (exe == null) return null;
+    return File('${exe.parent.path}\\data\\minepos.db');
   }
 
   /// The compiled server executable ships in a `server/` folder next to the

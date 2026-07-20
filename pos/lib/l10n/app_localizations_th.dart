@@ -371,6 +371,96 @@ class AppLocalizationsTh extends AppLocalizations {
       'หันหน้าเข้าหาลูกค้า แสดงออร์เดอร์แบบสด — ไม่ต้องเข้าสู่ระบบ';
 
   @override
+  String get shopSetupChoiceTitle => 'ตั้งค่าอุปกรณ์นี้';
+
+  @override
+  String get shopSetupChoiceInstructions =>
+      'เริ่มร้านใหม่ทั้งหมด หรือย้ายร้านเดิมจากอุปกรณ์อื่นมาที่นี่';
+
+  @override
+  String get shopSetupChoiceFreshTitle => 'เริ่มใหม่';
+
+  @override
+  String get shopSetupChoiceFreshSubtitle => 'ตั้งค่าร้านใหม่ทั้งหมดตั้งแต่ต้น';
+
+  @override
+  String get shopSetupChoiceRestoreTitle => 'กู้คืนจากไฟล์สำรอง';
+
+  @override
+  String get shopSetupChoiceRestoreSubtitle =>
+      'นำข้อมูลร้านเดิมมาไว้ที่อุปกรณ์นี้';
+
+  @override
+  String get restoreShopAppBarTitle => 'กู้คืนร้าน';
+
+  @override
+  String get restoreShopFileTab => 'ไฟล์สำรอง';
+
+  @override
+  String get restoreShopTransferTab => 'อุปกรณ์อื่น';
+
+  @override
+  String get restoreShopFileTitle => 'กู้คืนจากไฟล์สำรอง';
+
+  @override
+  String get restoreShopFileInstructions =>
+      'เลือกไฟล์สำรองที่ส่งออกจากเมนูตั้งค่าบนอุปกรณ์เดิม';
+
+  @override
+  String get restoreShopChooseFileButton => 'เลือกไฟล์สำรอง';
+
+  @override
+  String get restoreShopInvalidFileError =>
+      'ไฟล์นี้ไม่ใช่ไฟล์สำรองของ MinePOS กรุณาเลือกไฟล์อื่น';
+
+  @override
+  String restoreShopFoundShopLabel(String shopName) {
+    return 'พบร้าน: $shopName';
+  }
+
+  @override
+  String get restoreShopConfirmButton => 'กู้คืนร้านนี้';
+
+  @override
+  String get restoreShopTransferTitle => 'กู้คืนจากอุปกรณ์อื่น';
+
+  @override
+  String get restoreShopTransferInstructions =>
+      'กรอกที่อยู่เซิร์ฟเวอร์ที่กำลังใช้งานร้านที่ต้องการย้ายมาที่นี่';
+
+  @override
+  String get restoreShopOldOwnerLoginLabel =>
+      'เข้าสู่ระบบในฐานะเจ้าของร้านนั้นเพื่อดำเนินการต่อ';
+
+  @override
+  String get restoreShopTransferButton => 'เข้าสู่ระบบและย้ายข้อมูล';
+
+  @override
+  String get restoreShopTransferFieldsRequiredError =>
+      'ต้องกรอกชื่ออุปกรณ์ ชื่อผู้ใช้ และรหัสผ่านให้ครบ';
+
+  @override
+  String get restoreShopTransferLoginError =>
+      'เข้าสู่ระบบเซิร์ฟเวอร์นั้นไม่สำเร็จ กรุณาตรวจสอบชื่อผู้ใช้และรหัสผ่าน';
+
+  @override
+  String get restoreDestinationTitle => 'ต้องการกู้คืนไปที่ไหน?';
+
+  @override
+  String get restoreDestinationLocalOption => 'อุปกรณ์นี้ (จัดเก็บในเครื่อง)';
+
+  @override
+  String get restoreDestinationLocalUnavailableNote =>
+      'ไม่สามารถใช้งานได้ — แพลตฟอร์มนี้โฮสต์เองไม่ได้ หรืออุปกรณ์นี้มีร้านอยู่แล้ว';
+
+  @override
+  String get restoreDestinationServerOption => 'เซิร์ฟเวอร์อื่น (ระบุ IP)';
+
+  @override
+  String get restoreDestinationServerHasShopError =>
+      'เซิร์ฟเวอร์นั้นมีร้านตั้งค่าไว้แล้ว การกู้คืนใช้ได้เฉพาะเซิร์ฟเวอร์ที่ยังไม่เคยตั้งค่ามาก่อน';
+
+  @override
   String get createShopAppBarTitle => 'สร้างร้านใหม่';
 
   @override
@@ -1083,6 +1173,26 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get thaiOption => 'ภาษาไทย (Thai)';
+
+  @override
+  String get backupSectionLabel => 'สำรองข้อมูล';
+
+  @override
+  String get exportBackupButton => 'ส่งออกไฟล์สำรอง';
+
+  @override
+  String get exportBackupHint =>
+      'บันทึกสำเนาข้อมูลร้าน — บัญชี เมนู และออร์เดอร์ — เพื่อย้ายไปยังอุปกรณ์อื่น';
+
+  @override
+  String get exportBackupSavedMessage => 'บันทึกไฟล์สำรองแล้ว';
+
+  @override
+  String get exportBackupCancelledMessage => 'ยกเลิกการสำรองข้อมูล';
+
+  @override
+  String get exportBackupFailedMessage =>
+      'ส่งออกไฟล์สำรองไม่สำเร็จ กรุณาลองใหม่';
 
   @override
   String get dangerZoneSectionLabel => 'โซนอันตราย';
