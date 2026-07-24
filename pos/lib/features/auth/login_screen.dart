@@ -78,6 +78,8 @@ class _LoginScreenState extends State<LoginScreen> {
       ServerClient.instance.role = result.role;
       ServerClient.instance.username = result.username;
       ServerClient.instance.userId = result.id;
+      ServerClient.instance.name = result.name;
+      ServerClient.instance.avatarBase64 = result.avatarBase64;
       await AppSettingsService.instance.setDeviceName(deviceName);
 
       if (_rememberMe) {

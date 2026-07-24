@@ -724,6 +724,15 @@ class _StaffFormBodyState extends State<_StaffFormBody> {
           avatarBase64: _avatarBase64,
         );
       }
+      // Editing your own profile changes what the sidebar/app-bar user card
+      // shows (name, avatar) — update the already-known values in place
+      // rather than waiting for the next login to pick them up.
+      if (_isSelfEdit) {
+        ServerClient.instance.updateOwnProfile(
+          name: name.isEmpty ? null : name,
+          avatarBase64: _avatarBase64,
+        );
+      }
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       setState(() {

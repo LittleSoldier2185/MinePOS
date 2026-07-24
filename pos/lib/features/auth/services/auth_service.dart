@@ -5,11 +5,28 @@ import 'package:http/http.dart' as http;
 import '../../../core/services/server_client.dart';
 
 class AuthResult {
-  const AuthResult({required this.success, this.role, this.username, this.id});
+  const AuthResult({
+    required this.success,
+    this.role,
+    this.username,
+    this.id,
+    this.name,
+    this.avatarBase64,
+    this.unreachable = false,
+  });
   final bool success;
   final String? role;
   final String? username;
   final int? id;
+  final String? name;
+  final String? avatarBase64;
+
+  /// True only for [AuthService.me] when the server couldn't be reached at
+  /// all (connection refused, timeout) — as opposed to a definite rejection
+  /// (401: expired/deactivated/revoked token). Callers use this to decide
+  /// whether a remembered "stay signed in" session should be kept for a
+  /// retry next launch (unreachable) or dropped for good (rejected).
+  final bool unreachable;
 }
 
 class AuthService {
@@ -41,6 +58,8 @@ class AuthService {
           role: data['role'] as String?,
           username: data['username'] as String?,
           id: data['id'] as int?,
+          name: data['name'] as String?,
+          avatarBase64: data['avatarBase64'] as String?,
         );
       }
       return const AuthResult(success: false);
@@ -69,11 +88,19 @@ class AuthService {
           role: data['role'] as String?,
           username: data['username'] as String?,
           id: data['id'] as int?,
+          name: data['name'] as String?,
+          avatarBase64: data['avatarBase64'] as String?,
         );
       }
+      // A real, definite rejection (401: expired/deactivated/revoked) — the
+      // token itself is no good, not just momentarily unreachable.
       return const AuthResult(success: false);
     } catch (_) {
-      return const AuthResult(success: false);
+      // Connection refused / timed out / DNS failure — the server (or, for
+      // a self-hosted shop, the local server process) simply isn't up yet.
+      // Distinct from a genuine rejection so callers don't discard a still
+      // possibly-valid remembered session over a transient hiccup.
+      return const AuthResult(success: false, unreachable: true);
     }
   }
 }

@@ -3,6 +3,7 @@ import 'package:unified_esc_pos_printer/unified_esc_pos_printer.dart';
 
 import '../../core/services/app_settings_service.dart';
 import '../../core/services/extra_display_launcher.dart';
+import '../../core/services/local_server_launcher.dart';
 import '../../core/services/locale_controller.dart';
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
@@ -42,12 +43,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _savingShop = false;
   String? _shopError;
   bool _exportingBackup = false;
+  bool _localServerRunning = false;
 
   @override
   void initState() {
     super.initState();
     _load();
     _loadShopDetails();
+    _checkLocalServer();
   }
 
   @override
@@ -87,6 +90,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _shopFooterController.text = shop.receiptFooter ?? '';
       _shopLoaded = true;
     });
+  }
+
+  /// Whether this device itself is running a MinePOS server right now —
+  /// checked live via loopback (see [LocalServerLauncher.isRunningLocally])
+  /// rather than just looking at what address `ServerClient` happens to be
+  /// connected through, so the Server section still shows up for an owner
+  /// who reached their own host machine by its LAN IP instead of 127.0.0.1.
+  Future<void> _checkLocalServer() async {
+    if (!isWindowsDesktop || !ServerClient.instance.isOwner) return;
+    final running = await LocalServerLauncher.instance.isRunningLocally();
+    if (!mounted) return;
+    setState(() => _localServerRunning = running);
   }
 
   Future<void> _saveShopDetails() async {
@@ -550,9 +565,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                     ],
-                    if (client.isOwner &&
-                        isWindowsDesktop &&
-                        (client.baseUrl?.startsWith('127.0.0.1') ?? false)) ...[
+                    if (client.isOwner && isWindowsDesktop && _localServerRunning) ...[
                       const SizedBox(height: 20),
                       _SectionLabel(l10n.serverSectionLabel),
                       _Card(

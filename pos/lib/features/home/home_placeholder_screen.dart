@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../core/responsive/breakpoints.dart';
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/user_avatar.dart';
 import '../../l10n/app_localizations.dart';
 import '../cashier/models/order.dart';
 import '../cashier/order_history_screen.dart';
@@ -312,28 +313,66 @@ class _Sidebar extends StatelessWidget {
             child: _ConnectionStatus(mutedColor: _kSidebarMuted),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 6, 18, 13),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  ServerClient.instance.username ??
-                      AppLocalizations.of(context)!.defaultAdminUsername,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: _kSidebarText,
+            padding: const EdgeInsets.fromLTRB(14, 6, 14, 13),
+            // Listens for ServerClient.updateOwnProfile — editing your own
+            // name/avatar in Staff Management should refresh this card right
+            // away rather than waiting for the next login, since Home stays
+            // mounted underneath that screen the whole time.
+            child: ListenableBuilder(
+              listenable: ServerClient.instance,
+              builder: (context, _) => Row(
+                children: [
+                  UserAvatar(
+                    avatarBase64: ServerClient.instance.avatarBase64,
+                    displayName: ServerClient.instance.name ??
+                        ServerClient.instance.username ??
+                        AppLocalizations.of(context)!.defaultAdminUsername,
+                    radius: 16,
+                    badgeBorderColor: _kSidebarBg,
                   ),
-                ),
-                GestureDetector(
-                  onTap: () => _confirmLogout(context),
-                  child: const Icon(
-                    Icons.logout,
-                    size: 16,
-                    color: _kSidebarMuted,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          ServerClient.instance.name ??
+                              ServerClient.instance.username ??
+                              AppLocalizations.of(context)!.defaultAdminUsername,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: _kSidebarText,
+                          ),
+                        ),
+                        if (ServerClient.instance.name != null &&
+                            ServerClient.instance.username != null)
+                          Text(
+                            '@${ServerClient.instance.username}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: _kSidebarMuted,
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 6),
+                  GestureDetector(
+                    onTap: () => _confirmLogout(context),
+                    child: const Icon(
+                      Icons.logout,
+                      size: 16,
+                      color: _kSidebarMuted,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -484,8 +523,24 @@ class _Mobile extends StatelessWidget {
         automaticallyImplyLeading: false,
         actions: [
           const Padding(
-            padding: EdgeInsets.only(right: 4),
+            padding: EdgeInsets.only(right: 10),
             child: Center(child: _ConnectionStatus()),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: Center(
+              child: ListenableBuilder(
+                listenable: ServerClient.instance,
+                builder: (context, _) => UserAvatar(
+                  avatarBase64: ServerClient.instance.avatarBase64,
+                  displayName: ServerClient.instance.name ??
+                      ServerClient.instance.username ??
+                      AppLocalizations.of(context)!.defaultAdminUsername,
+                  radius: 13,
+                  style: UserAvatarStatusStyle.ring,
+                ),
+              ),
+            ),
           ),
           // Menu/Reports/Staff/Settings used to live in an AppBar overflow
           // (⋮) popup here; moved to the "More" bottom-nav tab (MoreScreen)

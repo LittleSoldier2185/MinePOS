@@ -3,7 +3,9 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'core/services/app_settings_service.dart';
+import 'core/services/local_server_launcher.dart';
 import 'core/services/locale_controller.dart';
+import 'core/services/mobile_server_launcher.dart';
 import 'core/services/server_client.dart';
 import 'core/theme/app_theme.dart';
 import 'core/window/custom_title_bar.dart';
@@ -27,18 +29,47 @@ Future<Widget?> _tryAutoLogin() async {
   final remembered = await AppSettingsService.instance.getSession();
   if (remembered == null) return null;
 
+  // A self-hosted shop's server isn't guaranteed to already be running when
+  // the app relaunches: on Windows it's a detached process that only
+  // survives a full reboot; on mobile it's an in-process isolate that dies
+  // with the app every single time. Relaunch/re-attach it first, same as
+  // "Open Register" does, or /auth/me below would fail every time on mobile.
+  if (remembered.baseUrl.startsWith('127.0.0.1')) {
+    final ready = isWindowsDesktop
+        ? await LocalServerLauncher.instance.ensureRunning()
+        : isMobile
+            ? await MobileServerLauncher.instance.ensureRunning()
+            : false;
+    if (!ready) return null; // Leave the session intact — retry next launch.
+  }
+
   ServerClient.instance.baseUrl = remembered.baseUrl;
   ServerClient.instance.token = remembered.token;
   ServerClient.instance.deviceName = remembered.deviceName;
 
   final result = await AuthService().me();
   if (!result.success) {
-    ServerClient.instance.clear();
+    // Only drop the *persisted* remembered session on a definite rejection
+    // (expired, deactivated, revoked). A connection-level failure just means
+    // the server (or a self-hosted install still finishing its own startup)
+    // isn't reachable *this instant* — wiping it over that would have
+    // silently defeated "remember me" on its very first hiccup. Either way,
+    // reset the runtime ServerClient fields so a half-populated session
+    // doesn't leak into the WelcomeScreen fallback below.
+    if (result.unreachable) {
+      ServerClient.instance.baseUrl = null;
+      ServerClient.instance.token = null;
+      ServerClient.instance.deviceName = null;
+    } else {
+      ServerClient.instance.clear();
+    }
     return null;
   }
   ServerClient.instance.role = result.role;
   ServerClient.instance.username = result.username;
   ServerClient.instance.userId = result.id;
+  ServerClient.instance.name = result.name;
+  ServerClient.instance.avatarBase64 = result.avatarBase64;
 
   // Mirrors login_screen.dart's post-login sync (see its comment for why) —
   // skipped for a remembered kitchen-only station the same way a fresh

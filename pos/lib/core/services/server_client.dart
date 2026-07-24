@@ -1,9 +1,17 @@
+import 'package:flutter/foundation.dart';
+
 import 'app_settings_service.dart';
 
 /// Singleton that stores the connected server address and auth token.
 /// Set [baseUrl] when a connection test passes; set [token] after login.
 /// Call [clear] on logout.
-class ServerClient {
+///
+/// Extends [ChangeNotifier] solely so [updateOwnProfile] can tell an
+/// already-mounted screen (the sidebar/app-bar user card) to refresh
+/// immediately — every other field is still just set directly by callers
+/// (login, auto-login) since those always happen right before a fresh
+/// widget tree is built anyway and don't need a live-update signal.
+class ServerClient extends ChangeNotifier {
   ServerClient._();
   static final instance = ServerClient._();
 
@@ -12,6 +20,22 @@ class ServerClient {
   String? role; // "owner" | "manager" | "worker"
   String? username;
   int? userId;
+
+  /// The signed-in user's display name/avatar, shown in the sidebar/app bar
+  /// user card — null falls back to [username]/an initial-letter avatar.
+  /// Set at login and refreshed whenever the user edits their own profile in
+  /// Staff Management (see `staff_management_screen.dart`).
+  String? name;
+  String? avatarBase64;
+
+  /// Updates the signed-in user's own display name/avatar and notifies
+  /// listeners, so the sidebar/app-bar user card reflects a self-edit made
+  /// in Staff Management right away instead of waiting for the next login.
+  void updateOwnProfile({String? name, String? avatarBase64}) {
+    this.name = name;
+    this.avatarBase64 = avatarBase64;
+    notifyListeners();
+  }
 
   /// This station's name, set at login (e.g. "Register 1") — lets two
   /// devices signed in as the same account show up as distinct stations in
@@ -55,6 +79,8 @@ class ServerClient {
     role = null;
     username = null;
     userId = null;
+    name = null;
+    avatarBase64 = null;
     deviceName = null;
     AppSettingsService.instance.clearSession();
   }

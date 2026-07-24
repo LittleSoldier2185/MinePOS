@@ -25,7 +25,13 @@ void registerAuthRoutes(Router router, AppDb db, ServerConfig config) {
 Response _me(Request req, AppDb db, ServerConfig config) {
   final user = requireAuth(req, db, config.jwtSecret);
   if (user == null) return unauthorized();
-  return jsonOk({'role': user.role, 'username': user.username, 'id': user.id});
+  return jsonOk({
+    'role': user.role,
+    'username': user.username,
+    'id': user.id,
+    'name': user.name,
+    'avatarBase64': user.avatarBase64,
+  });
 }
 
 // POST /auth/login  { username, password, deviceName }
@@ -74,6 +80,8 @@ Future<Response> _login(
     'role': user.role,
     'username': user.username,
     'id': user.id,
+    'name': user.name,
+    'avatarBase64': user.avatarBase64,
   });
 }
 

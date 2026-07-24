@@ -33,6 +33,19 @@ class LocalServerLauncher {
     }
   }
 
+  /// Whether *this device* is currently running a MinePOS server, checked
+  /// live via loopback — independent of what address the app's own
+  /// `ServerClient` is actually connected through right now. An owner who
+  /// reaches their own host machine via its LAN IP (typed manually, or via
+  /// "Connect to Server" instead of "Open Register") is still self-hosting
+  /// in every way that matters (Settings' Server Status/Restart/Logs act on
+  /// this machine's own process either way); a plain `baseUrl == 127.0.0.1`
+  /// check would miss that and hide the section for no real reason.
+  Future<bool> isRunningLocally() async {
+    if (!Platform.isWindows) return false;
+    return _isHealthy();
+  }
+
   /// Returns true once a server answers /health at [_localAddress], either
   /// because one was already running or because this call started it.
   Future<bool> ensureRunning({Duration timeout = const Duration(seconds: 10)}) async {
