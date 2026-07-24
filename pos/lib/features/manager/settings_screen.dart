@@ -20,7 +20,13 @@ import 'services/shop_config_service.dart';
 import 'services/shop_service.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  const SettingsScreen({super.key, this.embedded = false});
+
+  /// True when shown inside a floating [Dialog] (desktop sidebar's gear
+  /// icon) instead of pushed as a full page — drops the outer [Scaffold]/
+  /// [AppBar] in favor of a compact title row with its own close button,
+  /// since a [Dialog] has no app bar of its own. Same body/state either way.
+  final bool embedded;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -44,6 +50,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String? _shopError;
   bool _exportingBackup = false;
   bool _localServerRunning = false;
+
+  /// Which category is showing in the embedded (desktop dialog) two-pane
+  /// layout — meaningless in full-page mode, where every section is just
+  /// stacked in one scrolling list instead.
+  int _selectedCategory = 0;
 
   @override
   void initState() {
@@ -284,10 +295,473 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Widget _accountCard(ServerClient client, AppLocalizations l10n) => _Card(
+        child: Column(
+          children: [
+            _InfoRow(
+              label: l10n.signedInAsLabel,
+              value: client.username ?? l10n.emDash,
+            ),
+            const Divider(height: 20),
+            _InfoRow(
+              label: l10n.roleLabel,
+              value:
+                  (client.role == 'worker'
+                          ? l10n.employeeRoleDisplay
+                          : (client.role == 'manager'
+                                ? l10n.managerRoleDisplay
+                                : l10n.ownerRoleDisplay))
+                      .toUpperCase(),
+            ),
+          ],
+        ),
+      );
+
+  Widget _shopDetailsCard(AppLocalizations l10n) => _Card(
+        child: Form(
+          key: _shopFormKey,
+          child: Column(
+            children: [
+              AppTextField(
+                label: l10n.shopNameFieldLabel,
+                controller: _shopNameController,
+                hintText: l10n.shopNameFieldHint,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? l10n.shopNameValidatorError
+                    : null,
+              ),
+              const SizedBox(height: 14),
+              AppTextField(
+                label: l10n.emailFieldLabel,
+                controller: _shopEmailController,
+                hintText: l10n.emailFieldHint,
+                keyboardType: TextInputType.emailAddress,
+              ),
+              const SizedBox(height: 14),
+              AppTextField(
+                label: l10n.addressFieldLabel,
+                controller: _shopAddressController,
+                hintText: l10n.optionalHint,
+              ),
+              const SizedBox(height: 14),
+              AppTextField(
+                label: l10n.taxIdFieldLabel,
+                controller: _shopTaxIdController,
+                hintText: l10n.optionalHint,
+              ),
+              const SizedBox(height: 14),
+              AppTextField(
+                label: l10n.receiptFooterFieldLabel,
+                controller: _shopFooterController,
+                hintText: l10n.receiptFooterFieldHint,
+              ),
+              if (_shopError != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _shopError!,
+                  style: const TextStyle(
+                    color: AppColors.terracottaDark,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _savingShop ? null : _saveShopDetails,
+                  child: _savingShop
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(l10n.saveChangesButton),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+
+  Widget _connectionCard(ServerClient client, AppLocalizations l10n) => _Card(
+        child: Column(
+          children: [
+            _InfoRow(
+              label: l10n.settingsServerAddressLabel,
+              value: client.baseUrl ?? l10n.emDash,
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _disconnect,
+                icon: const Icon(Icons.link_off, size: 16),
+                label: Text(l10n.disconnectLabel),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.terracottaDark,
+                  side: const BorderSide(color: AppColors.terracottaDark),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+
+  Widget _printerCard(AppLocalizations l10n) => _Card(
+        child: Column(
+          children: [
+            _ChoiceRow(
+              icon: Icons.bluetooth,
+              label: l10n.bluetooth,
+              selected: _printer == PrinterChoice.bluetooth,
+              onTap: () => _setPrinter(PrinterChoice.bluetooth),
+            ),
+            const SizedBox(height: 8),
+            _ChoiceRow(
+              icon: Icons.usb,
+              label: l10n.usb,
+              selected: _printer == PrinterChoice.usb,
+              onTap: () => _setPrinter(PrinterChoice.usb),
+            ),
+            const SizedBox(height: 8),
+            _ChoiceRow(
+              icon: Icons.block,
+              label: l10n.noPrinterOption,
+              selected: _printer == PrinterChoice.skip,
+              onTap: () => _setPrinter(PrinterChoice.skip),
+            ),
+            if (_printer != PrinterChoice.skip) ...[
+              const Divider(height: 24),
+              _InfoRow(
+                label: l10n.selectedPrinterLabel,
+                value: _printerDeviceName ?? l10n.printerNotSelectedValue,
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _selectPrinterDevice,
+                  icon: const Icon(Icons.search, size: 16),
+                  label: Text(
+                    _printerDeviceName == null
+                        ? l10n.selectPrinterButton
+                        : l10n.changePrinterButton,
+                  ),
+                ),
+              ),
+              const Divider(height: 24),
+              Text(
+                l10n.paperSizeLabel,
+                style: const TextStyle(fontSize: 12, color: AppColors.muted),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: _ChoiceRow(
+                      icon: Icons.receipt_long,
+                      label: l10n.paperSize58,
+                      selected: _paperSize == ReceiptPaperSize.mm58,
+                      onTap: () => _setPaperSize(ReceiptPaperSize.mm58),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _ChoiceRow(
+                      icon: Icons.receipt_long,
+                      label: l10n.paperSize80,
+                      selected: _paperSize == ReceiptPaperSize.mm80,
+                      onTap: () => _setPaperSize(ReceiptPaperSize.mm80),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 10),
+            Text(
+              l10n.printerDiscoveryNote,
+              style: const TextStyle(
+                color: AppColors.muted,
+                fontSize: 11,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
+      );
+
+  Widget _languageCard(AppLocalizations l10n) => _Card(
+        child: Column(
+          children: [
+            _ChoiceRow(
+              icon: Icons.language,
+              label: l10n.englishOption,
+              selected: _language == AppLanguage.english,
+              onTap: () => _setLanguage(AppLanguage.english),
+            ),
+            const SizedBox(height: 8),
+            _ChoiceRow(
+              icon: Icons.language,
+              label: l10n.thaiOption,
+              selected: _language == AppLanguage.thai,
+              onTap: () => _setLanguage(AppLanguage.thai),
+            ),
+          ],
+        ),
+      );
+
+  Widget _extraDisplayCard(AppLocalizations l10n) => _Card(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _openExtraDisplay,
+                icon: const Icon(Icons.open_in_new, size: 16),
+                label: Text(l10n.openExtraDisplayButton),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l10n.openExtraDisplayHint,
+              style: const TextStyle(color: AppColors.muted, fontSize: 11),
+            ),
+          ],
+        ),
+      );
+
+  Widget _serverCard(BuildContext context, AppLocalizations l10n) => _Card(
+        child: SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ServerStatusScreen()),
+            ),
+            icon: const Icon(Icons.dns_outlined, size: 16),
+            label: Text(l10n.serverStatusButton),
+          ),
+        ),
+      );
+
+  Widget _backupCard(AppLocalizations l10n) => _Card(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _exportingBackup ? null : _exportBackup,
+                icon: _exportingBackup
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.download_outlined, size: 16),
+                label: Text(l10n.exportBackupButton),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l10n.exportBackupHint,
+              style: const TextStyle(color: AppColors.muted, fontSize: 11),
+            ),
+          ],
+        ),
+      );
+
+  Widget _dangerZoneCard(AppLocalizations l10n) => _Card(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.removeShopWarningText,
+              style: const TextStyle(color: AppColors.muted, fontSize: 12),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _removeShop,
+                icon: const Icon(Icons.delete_forever, size: 16),
+                label: Text(l10n.removeShopButton),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.terracottaDark,
+                  side: const BorderSide(color: AppColors.terracottaDark),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+
+  Widget _embeddedShell(BuildContext context, AppLocalizations l10n, Widget body) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.settingsLabel,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.ink,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, size: 20),
+                onPressed: () => Navigator.of(context).pop(),
+                tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(child: Container(color: AppColors.background, child: body)),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final client = ServerClient.instance;
     final l10n = AppLocalizations.of(context)!;
+
+    if (_printer == null || _language == null || _paperSize == null) {
+      const loading = Center(child: CircularProgressIndicator());
+      return widget.embedded
+          ? _embeddedShell(context, l10n, loading)
+          : Scaffold(
+              appBar: AppBar(
+                title: Text(l10n.settingsLabel),
+                backgroundColor: Colors.white,
+                foregroundColor: AppColors.ink,
+                elevation: 0,
+                surfaceTintColor: Colors.transparent,
+              ),
+              backgroundColor: AppColors.background,
+              body: loading,
+            );
+    }
+
+    // Same sections either way — only how they're presented differs: one
+    // long scrolling list on a full page (phone), a Discord-style category
+    // sidebar + single-section content pane when embedded in the desktop
+    // dialog (see build()'s two branches below).
+    final sections = <_SettingsSection>[
+      _SettingsSection(
+        label: l10n.settingsAccountSectionLabel,
+        icon: Icons.person_outline,
+        builder: () => _accountCard(client, l10n),
+      ),
+      if (client.canManageShop && _shopLoaded)
+        _SettingsSection(
+          label: l10n.shopDetailsSectionLabel,
+          icon: Icons.storefront_outlined,
+          builder: () => _shopDetailsCard(l10n),
+        ),
+      _SettingsSection(
+        label: l10n.connectionSectionLabel,
+        icon: Icons.wifi,
+        builder: () => _connectionCard(client, l10n),
+      ),
+      _SettingsSection(
+        label: l10n.printerSectionLabel,
+        icon: Icons.print_outlined,
+        builder: () => _printerCard(l10n),
+      ),
+      _SettingsSection(
+        label: l10n.languageSectionLabel,
+        icon: Icons.language,
+        builder: () => _languageCard(l10n),
+      ),
+      if (isWindowsDesktop)
+        _SettingsSection(
+          label: l10n.extraDisplaySectionLabel,
+          icon: Icons.open_in_new,
+          builder: () => _extraDisplayCard(l10n),
+        ),
+      if (client.isOwner && isWindowsDesktop && _localServerRunning)
+        _SettingsSection(
+          label: l10n.serverSectionLabel,
+          icon: Icons.dns_outlined,
+          builder: () => _serverCard(context, l10n),
+        ),
+      if (client.isOwner)
+        _SettingsSection(
+          label: l10n.backupSectionLabel,
+          icon: Icons.backup_outlined,
+          builder: () => _backupCard(l10n),
+        ),
+      if (client.isOwner)
+        _SettingsSection(
+          label: l10n.dangerZoneSectionLabel,
+          icon: Icons.warning_amber_outlined,
+          builder: () => _dangerZoneCard(l10n),
+        ),
+    ];
+
+    if (widget.embedded) {
+      final selected = _selectedCategory.clamp(0, sections.length - 1);
+      return _embeddedShell(
+        context,
+        l10n,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              width: 180,
+              child: ListView(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                children: [
+                  for (var i = 0; i < sections.length; i++)
+                    _SettingsCategoryTile(
+                      icon: sections[i].icon,
+                      label: sections[i].label,
+                      selected: i == selected,
+                      onTap: () => setState(() => _selectedCategory = i),
+                    ),
+                ],
+              ),
+            ),
+            const VerticalDivider(width: 1),
+            Expanded(
+              child: Container(
+                color: AppColors.background,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        sections[selected].label,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      sections[selected].builder(),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.settingsLabel),
@@ -297,362 +771,86 @@ class _SettingsScreenState extends State<SettingsScreen> {
         surfaceTintColor: Colors.transparent,
       ),
       backgroundColor: AppColors.background,
-      body: (_printer == null || _language == null || _paperSize == null)
-          ? const Center(child: CircularProgressIndicator())
-          : Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 560),
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    _SectionLabel(l10n.settingsAccountSectionLabel),
-                    _Card(
-                      child: Column(
-                        children: [
-                          _InfoRow(
-                            label: l10n.signedInAsLabel,
-                            value: client.username ?? l10n.emDash,
-                          ),
-                          const Divider(height: 20),
-                          _InfoRow(
-                            label: l10n.roleLabel,
-                            value:
-                                (client.role == 'worker'
-                                        ? l10n.employeeRoleDisplay
-                                        : (client.role == 'manager'
-                                              ? l10n.managerRoleDisplay
-                                              : l10n.ownerRoleDisplay))
-                                    .toUpperCase(),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (client.canManageShop && _shopLoaded) ...[
-                      const SizedBox(height: 20),
-                      _SectionLabel(l10n.shopDetailsSectionLabel),
-                      _Card(
-                        child: Form(
-                          key: _shopFormKey,
-                          child: Column(
-                            children: [
-                              AppTextField(
-                                label: l10n.shopNameFieldLabel,
-                                controller: _shopNameController,
-                                hintText: l10n.shopNameFieldHint,
-                                validator: (v) => (v == null || v.trim().isEmpty)
-                                    ? l10n.shopNameValidatorError
-                                    : null,
-                              ),
-                              const SizedBox(height: 14),
-                              AppTextField(
-                                label: l10n.emailFieldLabel,
-                                controller: _shopEmailController,
-                                hintText: l10n.emailFieldHint,
-                                keyboardType: TextInputType.emailAddress,
-                              ),
-                              const SizedBox(height: 14),
-                              AppTextField(
-                                label: l10n.addressFieldLabel,
-                                controller: _shopAddressController,
-                                hintText: l10n.optionalHint,
-                              ),
-                              const SizedBox(height: 14),
-                              AppTextField(
-                                label: l10n.taxIdFieldLabel,
-                                controller: _shopTaxIdController,
-                                hintText: l10n.optionalHint,
-                              ),
-                              const SizedBox(height: 14),
-                              AppTextField(
-                                label: l10n.receiptFooterFieldLabel,
-                                controller: _shopFooterController,
-                                hintText: l10n.receiptFooterFieldHint,
-                              ),
-                              if (_shopError != null) ...[
-                                const SizedBox(height: 12),
-                                Text(
-                                  _shopError!,
-                                  style: const TextStyle(
-                                    color: AppColors.terracottaDark,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                              const SizedBox(height: 14),
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton(
-                                  onPressed: _savingShop ? null : _saveShopDetails,
-                                  child: _savingShop
-                                      ? const SizedBox(
-                                          width: 18,
-                                          height: 18,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.white,
-                                          ),
-                                        )
-                                      : Text(l10n.saveChangesButton),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 20),
-                    _SectionLabel(l10n.connectionSectionLabel),
-                    _Card(
-                      child: Column(
-                        children: [
-                          _InfoRow(
-                            label: l10n.settingsServerAddressLabel,
-                            value: client.baseUrl ?? l10n.emDash,
-                          ),
-                          const SizedBox(height: 14),
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              onPressed: _disconnect,
-                              icon: const Icon(Icons.link_off, size: 16),
-                              label: Text(l10n.disconnectLabel),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.terracottaDark,
-                                side: const BorderSide(
-                                  color: AppColors.terracottaDark,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    _SectionLabel(l10n.printerSectionLabel),
-                    _Card(
-                      child: Column(
-                        children: [
-                          _ChoiceRow(
-                            icon: Icons.bluetooth,
-                            label: l10n.bluetooth,
-                            selected: _printer == PrinterChoice.bluetooth,
-                            onTap: () => _setPrinter(PrinterChoice.bluetooth),
-                          ),
-                          const SizedBox(height: 8),
-                          _ChoiceRow(
-                            icon: Icons.usb,
-                            label: l10n.usb,
-                            selected: _printer == PrinterChoice.usb,
-                            onTap: () => _setPrinter(PrinterChoice.usb),
-                          ),
-                          const SizedBox(height: 8),
-                          _ChoiceRow(
-                            icon: Icons.block,
-                            label: l10n.noPrinterOption,
-                            selected: _printer == PrinterChoice.skip,
-                            onTap: () => _setPrinter(PrinterChoice.skip),
-                          ),
-                          if (_printer != PrinterChoice.skip) ...[
-                            const Divider(height: 24),
-                            _InfoRow(
-                              label: l10n.selectedPrinterLabel,
-                              value:
-                                  _printerDeviceName ??
-                                  l10n.printerNotSelectedValue,
-                            ),
-                            const SizedBox(height: 10),
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton.icon(
-                                onPressed: _selectPrinterDevice,
-                                icon: const Icon(Icons.search, size: 16),
-                                label: Text(
-                                  _printerDeviceName == null
-                                      ? l10n.selectPrinterButton
-                                      : l10n.changePrinterButton,
-                                ),
-                              ),
-                            ),
-                            const Divider(height: 24),
-                            Text(
-                              l10n.paperSizeLabel,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.muted,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _ChoiceRow(
-                                    icon: Icons.receipt_long,
-                                    label: l10n.paperSize58,
-                                    selected:
-                                        _paperSize == ReceiptPaperSize.mm58,
-                                    onTap: () =>
-                                        _setPaperSize(ReceiptPaperSize.mm58),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: _ChoiceRow(
-                                    icon: Icons.receipt_long,
-                                    label: l10n.paperSize80,
-                                    selected:
-                                        _paperSize == ReceiptPaperSize.mm80,
-                                    onTap: () =>
-                                        _setPaperSize(ReceiptPaperSize.mm80),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                          const SizedBox(height: 10),
-                          Text(
-                            l10n.printerDiscoveryNote,
-                            style: const TextStyle(
-                              color: AppColors.muted,
-                              fontSize: 11,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    _SectionLabel(l10n.languageSectionLabel),
-                    _Card(
-                      child: Column(
-                        children: [
-                          _ChoiceRow(
-                            icon: Icons.language,
-                            label: l10n.englishOption,
-                            selected: _language == AppLanguage.english,
-                            onTap: () => _setLanguage(AppLanguage.english),
-                          ),
-                          const SizedBox(height: 8),
-                          _ChoiceRow(
-                            icon: Icons.language,
-                            label: l10n.thaiOption,
-                            selected: _language == AppLanguage.thai,
-                            onTap: () => _setLanguage(AppLanguage.thai),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (isWindowsDesktop) ...[
-                      const SizedBox(height: 20),
-                      _SectionLabel(l10n.extraDisplaySectionLabel),
-                      _Card(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton.icon(
-                                onPressed: _openExtraDisplay,
-                                icon: const Icon(Icons.open_in_new, size: 16),
-                                label: Text(l10n.openExtraDisplayButton),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              l10n.openExtraDisplayHint,
-                              style: const TextStyle(color: AppColors.muted, fontSize: 11),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                    if (client.isOwner && isWindowsDesktop && _localServerRunning) ...[
-                      const SizedBox(height: 20),
-                      _SectionLabel(l10n.serverSectionLabel),
-                      _Card(
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const ServerStatusScreen(),
-                              ),
-                            ),
-                            icon: const Icon(Icons.dns_outlined, size: 16),
-                            label: Text(l10n.serverStatusButton),
-                          ),
-                        ),
-                      ),
-                    ],
-                    if (client.isOwner) ...[
-                      const SizedBox(height: 20),
-                      _SectionLabel(l10n.backupSectionLabel),
-                      _Card(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton.icon(
-                                onPressed: _exportingBackup ? null : _exportBackup,
-                                icon: _exportingBackup
-                                    ? const SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: CircularProgressIndicator(strokeWidth: 2),
-                                      )
-                                    : const Icon(Icons.download_outlined, size: 16),
-                                label: Text(l10n.exportBackupButton),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              l10n.exportBackupHint,
-                              style: const TextStyle(color: AppColors.muted, fontSize: 11),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                    if (client.isOwner) ...[
-                      const SizedBox(height: 20),
-                      _SectionLabel(l10n.dangerZoneSectionLabel),
-                      _Card(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              l10n.removeShopWarningText,
-                              style: const TextStyle(
-                                color: AppColors.muted,
-                                fontSize: 12,
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton.icon(
-                                onPressed: _removeShop,
-                                icon: const Icon(
-                                  Icons.delete_forever,
-                                  size: 16,
-                                ),
-                                label: Text(l10n.removeShopButton),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: AppColors.terracottaDark,
-                                  side: const BorderSide(
-                                    color: AppColors.terracottaDark,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              for (var i = 0; i < sections.length; i++) ...[
+                if (i > 0) const SizedBox(height: 20),
+                _SectionLabel(sections[i].label),
+                sections[i].builder(),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One category in the embedded desktop dialog's sidebar — `builder` is
+/// deferred (not a plain `Widget`) purely so the full-page list can share
+/// the exact same section definitions without constructing every card's
+/// widget tree up front when only one is ever shown at a time in that mode.
+class _SettingsSection {
+  const _SettingsSection({
+    required this.label,
+    required this.icon,
+    required this.builder,
+  });
+  final String label;
+  final IconData icon;
+  final Widget Function() builder;
+}
+
+class _SettingsCategoryTile extends StatelessWidget {
+  const _SettingsCategoryTile({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary.withValues(alpha: 0.12) : null,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: selected ? AppColors.primary : AppColors.muted,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: selected ? AppColors.primary : AppColors.ink,
                 ),
               ),
             ),
+          ],
+        ),
+      ),
     );
   }
 }

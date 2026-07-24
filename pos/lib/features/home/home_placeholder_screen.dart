@@ -120,10 +120,31 @@ void _openReports(BuildContext context) {
   ).push(MaterialPageRoute(builder: (_) => const ReportsScreen()));
 }
 
+// Desktop-only entry point (the sidebar footer's gear icon) — floats
+// Settings over the dashboard so the sidebar stays visible/usable instead of
+// being replaced by a full page. Mobile still reaches Settings as a full
+// page from the "More" tab (more_screen.dart), unchanged.
 void _openSettings(BuildContext context) {
-  Navigator.of(
-    context,
-  ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
+  showDialog<void>(
+    context: context,
+    builder: (_) => const Dialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(16)),
+      ),
+      // Without this, the shape's rounded outline is only what gets painted
+      // as the dialog's background — the rectangular content on top of it
+      // (sidebar list, content pane) isn't actually clipped to match, so it
+      // overflows square into every corner the shape doesn't happen to show
+      // through unobstructed (in practice, just the top here).
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        width: 720,
+        height: 560,
+        child: SettingsScreen(embedded: true),
+      ),
+    ),
+  );
 }
 
 void _openStaff(BuildContext context) {
@@ -297,11 +318,6 @@ class _Sidebar extends StatelessWidget {
                       label: AppLocalizations.of(context)!.staffLabel,
                       onTap: () => _openStaff(context),
                     ),
-                  _SideNavItem(
-                    icon: Icons.settings_outlined,
-                    label: AppLocalizations.of(context)!.settingsLabel,
-                    onTap: () => _openSettings(context),
-                  ),
                 ],
               ),
             ),
@@ -363,6 +379,15 @@ class _Sidebar extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 6),
+                  GestureDetector(
+                    onTap: () => _openSettings(context),
+                    child: const Icon(
+                      Icons.settings_outlined,
+                      size: 16,
+                      color: _kSidebarMuted,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   GestureDetector(
                     onTap: () => _confirmLogout(context),
                     child: const Icon(
