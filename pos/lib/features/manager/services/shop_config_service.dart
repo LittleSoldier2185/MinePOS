@@ -24,6 +24,8 @@ class ShopConfigService {
   String? taxId;
   String? email;
   String? receiptFooter;
+  String? promptPayId;
+  String? promptPayLabel;
 
   /// Drops any in-memory config from a previous shop's session. Call
   /// whenever leaving a shop (logout, delete shop).
@@ -33,6 +35,8 @@ class ShopConfigService {
     taxId = null;
     email = null;
     receiptFooter = null;
+    promptPayId = null;
+    promptPayLabel = null;
   }
 
   Future<void> fetch() async {
@@ -49,6 +53,8 @@ class ShopConfigService {
         taxId = data['taxId'] as String?;
         email = data['email'] as String?;
         receiptFooter = data['receiptFooter'] as String?;
+        promptPayId = data['promptPayId'] as String?;
+        promptPayLabel = data['promptPayLabel'] as String?;
       }
     } catch (_) {}
   }
@@ -59,6 +65,8 @@ class ShopConfigService {
     String? taxId,
     String? email,
     String? receiptFooter,
+    String? promptPayId,
+    String? promptPayLabel,
   }) async {
     final client = ServerClient.instance;
     if (!client.isConnected) {
@@ -77,6 +85,8 @@ class ShopConfigService {
               'taxId': taxId?.trim(),
               'email': email?.trim(),
               'receiptFooter': receiptFooter?.trim(),
+              'promptPayId': promptPayId?.trim(),
+              'promptPayLabel': promptPayLabel?.trim(),
             }),
           )
           .timeout(const Duration(seconds: 10));
@@ -91,6 +101,8 @@ class ShopConfigService {
       this.taxId = data['taxId'] as String?;
       this.email = data['email'] as String?;
       this.receiptFooter = data['receiptFooter'] as String?;
+      this.promptPayId = data['promptPayId'] as String?;
+      this.promptPayLabel = data['promptPayLabel'] as String?;
       return;
     }
     throw ShopConfigServiceException(_errorMessage(res));

@@ -49,10 +49,17 @@ Response _getStats(Request req, AppDb db, ServerConfig config) {
 
 // POST /orders
 // Body: { paymentMethod, amountPaid?, items: [{ menuItemId, menuItemName,
-//          menuItemCategory, price, quantity }] }
+//          menuItemCategory, price, quantity, discountAmount? }],
+//         promotions?: [{ promotionId, discountAmount, codeUsed?,
+//          approvedByUserId? }] }
+// `promotions` mirrors `PromotionService.evaluate()`'s output client-side —
+// same trust model as `items`' prices: the client already computed the
+// discount, this just persists it (into `order_promotions`, incrementing
+// any code's `used_count`) for the receipt/reports/audit trail.
 Future<Response> _createOrder(
     Request req, AppDb db, ServerConfig config) async {
-  if (requireAuth(req, db, config.jwtSecret) == null) return unauthorized();
+  final actor = requireAuth(req, db, config.jwtSecret);
+  if (actor == null) return unauthorized();
 
   final body = await parseJsonBody(req);
   if (body == null) return jsonError('Invalid JSON body');
@@ -79,11 +86,23 @@ Future<Response> _createOrder(
     }
   }
 
+  final rawPromotions = body['promotions'];
+  final promotions =
+      rawPromotions is List ? rawPromotions.cast<Map<String, dynamic>>() : const <Map<String, dynamic>>[];
+  for (final promo in promotions) {
+    if (promo['promotionId'] == null || promo['discountAmount'] == null) {
+      return jsonError('Each promotion requires promotionId, discountAmount');
+    }
+  }
+
   final amountPaid = (body['amountPaid'] as num?)?.toDouble();
   final order = db.createOrder(
     paymentMethod: paymentMethod,
     amountPaid: amountPaid,
     items: items,
+    promotions: promotions,
+    createdByUserId: actor.id,
+    createdByName: (actor.name?.isNotEmpty ?? false) ? actor.name! : actor.username,
   );
   KitchenHub.instance.broadcastOrderCreated(order);
   OrderHub.instance.broadcastOrderCreated(order);

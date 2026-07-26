@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'core/services/app_settings_service.dart';
@@ -104,6 +105,9 @@ Future<Widget?> _tryAutoLogin() async {
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+  // One-time global init for the customer display's ad-slideshow video
+  // playback (see customer_display_screen.dart's _AdSlideshowView).
+  MediaKit.ensureInitialized();
 
   final language = await AppSettingsService.instance.getLanguage();
   LocaleController.instance.setLanguage(language);

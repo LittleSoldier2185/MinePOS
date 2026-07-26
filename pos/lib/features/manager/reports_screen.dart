@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
@@ -9,7 +10,7 @@ import '../cashier/models/order.dart';
 import 'services/csv_export.dart';
 import 'services/reports_service.dart';
 
-enum _QuickRange { today, yesterday, last7, last30, all, custom }
+enum _QuickRange { today, yesterday, last7, last30, all, month, custom }
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -22,6 +23,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   late Future<List<Order>> _future;
   _QuickRange _range = _QuickRange.today;
   DateTimeRange? _customRange;
+  DateTime? _selectedMonth;
   bool _exporting = false;
 
   @override
@@ -51,6 +53,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
             end: today.add(const Duration(days: 1)));
       case _QuickRange.all:
         return DateTimeRange(start: DateTime(2000), end: today.add(const Duration(days: 1)));
+      case _QuickRange.month:
+        final m = _selectedMonth ?? DateTime(now.year, now.month);
+        return DateTimeRange(start: DateTime(m.year, m.month, 1), end: DateTime(m.year, m.month + 1, 1));
       case _QuickRange.custom:
         return _customRange ??
             DateTimeRange(start: today, end: today.add(const Duration(days: 1)));
@@ -77,6 +82,26 @@ class _ReportsScreenState extends State<ReportsScreen> {
     });
   }
 
+  // Flutter's built-in date picker has no dedicated "month only" mode, so
+  // this reuses it as-is and just ignores whatever day the user lands
+  // on — the year+month is all `_resolveRange`'s `month` case reads.
+  Future<void> _pickMonth() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedMonth ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      initialDatePickerMode: DatePickerMode.year,
+    );
+    if (picked == null) return;
+    setState(() {
+      _range = _QuickRange.month;
+      _selectedMonth = DateTime(picked.year, picked.month);
+    });
+  }
+
+  String _formatMonth(DateTime m) => DateFormat.yMMMM().format(m);
+
   String _baht(double v) => '฿${v.toStringAsFixed(0)}';
 
   String _formatCustomRange(DateTimeRange r) {
@@ -90,7 +115,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     setState(() => _exporting = true);
     try {
       final buffer = StringBuffer()
-        ..writeln('Order,Date,Time,Item,Quantity,Unit Price,Subtotal,Payment Method,Order Total');
+        ..writeln('Order,Date,Time,Item,Quantity,Unit Price,Subtotal,Payment Method,Discount,Order Total');
       for (final o in orders) {
         final method = o.paymentMethod == PaymentMethod.cash ? 'Cash' : 'PromptPay';
         for (final item in o.items) {
@@ -103,6 +128,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             item.menuItem.price.toStringAsFixed(2),
             item.subtotal.toStringAsFixed(2),
             method,
+            o.discountTotal.toStringAsFixed(2),
             o.total.toStringAsFixed(2),
           ].join(','));
         }
@@ -174,6 +200,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           final revenue = orders.fold(0.0, (s, o) => s + o.total);
           final avg = orders.isNotEmpty ? revenue / orders.length : 0.0;
           final cashCount = orders.where((o) => o.paymentMethod == PaymentMethod.cash).length;
+          final totalDiscounted = orders.fold(0.0, (s, o) => s + o.discountTotal);
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -181,9 +208,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
               _RangeChips(
                 selected: _range,
                 customLabel: _customRange == null ? null : _formatCustomRange(_customRange!),
+                monthLabel: _selectedMonth == null ? null : _formatMonth(_selectedMonth!),
                 onSelect: (r) {
                   if (r == _QuickRange.custom) {
                     _pickCustomRange();
+                  } else if (r == _QuickRange.month) {
+                    _pickMonth();
                   } else {
                     setState(() => _range = r);
                   }
@@ -211,6 +241,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           _StatCard(label: l10n.cash, value: '$cashCount'),
                           const SizedBox(width: 10),
                           _StatCard(label: l10n.promptpay, value: '${orders.length - cashCount}'),
+                          const SizedBox(width: 10),
+                          _StatCard(label: l10n.totalDiscountedLabel, value: _baht(totalDiscounted)),
                         ],
                       ),
                       if (orders.isNotEmpty) ...[
@@ -218,6 +250,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         _SalesTrendChart(orders: orders, range: _resolveRange(), l10n: l10n, baht: _baht),
                         const SizedBox(height: 16),
                         _TopItemsCard(orders: orders, l10n: l10n, baht: _baht),
+                        const SizedBox(height: 16),
+                        _StaffSalesCard(orders: orders, l10n: l10n, baht: _baht),
+                        if (totalDiscounted > 0) ...[
+                          const SizedBox(height: 16),
+                          _PromotionBreakdownCard(orders: orders, l10n: l10n, baht: _baht),
+                        ],
                       ],
                       const SizedBox(height: 16),
                       Row(
@@ -323,10 +361,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
 }
 
 class _RangeChips extends StatelessWidget {
-  const _RangeChips({required this.selected, required this.onSelect, this.customLabel});
+  const _RangeChips({required this.selected, required this.onSelect, this.customLabel, this.monthLabel});
   final _QuickRange selected;
   final ValueChanged<_QuickRange> onSelect;
   final String? customLabel;
+  final String? monthLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -337,6 +376,7 @@ class _RangeChips extends StatelessWidget {
       _QuickRange.last7: l10n.last7Range,
       _QuickRange.last30: l10n.last30Range,
       _QuickRange.all: l10n.allTimeRange,
+      _QuickRange.month: l10n.monthRange,
       _QuickRange.custom: l10n.customRange,
     };
     return SizedBox(
@@ -349,8 +389,11 @@ class _RangeChips extends StatelessWidget {
         itemBuilder: (_, i) {
           final range = labels.keys.elementAt(i);
           final sel = range == selected;
-          final label =
-              (range == _QuickRange.custom && sel && customLabel != null) ? customLabel! : labels[range]!;
+          final label = (range == _QuickRange.custom && sel && customLabel != null)
+              ? customLabel!
+              : (range == _QuickRange.month && sel && monthLabel != null)
+                  ? monthLabel!
+                  : labels[range]!;
           return GestureDetector(
             onTap: () => onSelect(range),
             child: AnimatedContainer(
@@ -681,6 +724,143 @@ class _TopItemsCard extends StatelessWidget {
                     const SizedBox(width: 10),
                     Text(baht(revenue),
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StaffSalesCard extends StatelessWidget {
+  const _StaffSalesCard({required this.orders, required this.l10n, required this.baht});
+  final List<Order> orders;
+  final AppLocalizations l10n;
+  final String Function(double) baht;
+
+  @override
+  Widget build(BuildContext context) {
+    final totals = <String, (int count, double revenue)>{};
+    for (final o in orders) {
+      final name = o.createdByName ?? l10n.staffSalesUnknownLabel;
+      final prev = totals[name] ?? (0, 0.0);
+      totals[name] = (prev.$1 + 1, prev.$2 + o.total);
+    }
+    final ranked = totals.entries.toList()..sort((a, b) => b.value.$2.compareTo(a.value.$2));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(l10n.staffSalesHeader,
+            style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.3,
+                color: AppColors.muted)),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.terracottaLight),
+          ),
+          child: Column(
+            children: ranked.asMap().entries.map((e) {
+              final isLast = e.key == ranked.length - 1;
+              final name = e.value.key;
+              final (count, revenue) = e.value.value;
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  border: isLast
+                      ? null
+                      : const Border(
+                          bottom: BorderSide(color: AppColors.terracottaLight, width: 0.5)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(name,
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                    Text('$count ${l10n.ordersSuffix}',
+                        style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+                    const SizedBox(width: 10),
+                    Text(baht(revenue),
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PromotionBreakdownCard extends StatelessWidget {
+  const _PromotionBreakdownCard({required this.orders, required this.l10n, required this.baht});
+  final List<Order> orders;
+  final AppLocalizations l10n;
+  final String Function(double) baht;
+
+  @override
+  Widget build(BuildContext context) {
+    final totals = <String, (int uses, double discounted)>{};
+    for (final o in orders) {
+      for (final promo in o.appliedPromotions) {
+        final prev = totals[promo.name] ?? (0, 0.0);
+        totals[promo.name] = (prev.$1 + 1, prev.$2 + promo.discountAmount);
+      }
+    }
+    final ranked = totals.entries.toList()..sort((a, b) => b.value.$2.compareTo(a.value.$2));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(l10n.promotionBreakdownHeader,
+            style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.3,
+                color: AppColors.muted)),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.terracottaLight),
+          ),
+          child: Column(
+            children: ranked.asMap().entries.map((e) {
+              final isLast = e.key == ranked.length - 1;
+              final name = e.value.key;
+              final (uses, discounted) = e.value.value;
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  border: isLast
+                      ? null
+                      : const Border(
+                          bottom: BorderSide(color: AppColors.terracottaLight, width: 0.5)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(name,
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                    Text('$uses ${l10n.usedSuffix}',
+                        style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+                    const SizedBox(width: 10),
+                    Text('-${baht(discounted)}',
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
                   ],
                 ),
               );

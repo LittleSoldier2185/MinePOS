@@ -48,6 +48,8 @@ dependencies:
   bonsoir: ^5.1.9
   # HTTP client for real API calls to the MinePOS backend.
   http: ^1.2.2
+  # Renders the PromptPay QR payload (see features/cashier/services/promptpay_qr.dart).
+  qr_flutter: ^4.1.0
   file_picker: ^11.0.2
   shared_preferences: ^2.5.5
   web_socket_channel: ^3.0.3
@@ -71,6 +73,15 @@ dependencies:
   sqlite3: ^2.7.5
   path_provider: ^2.1.6
   path: ^1.9.1
+  # Video playback for the customer-display advertising slideshow. The
+  # official video_player package doesn't support Windows at all (only
+  # Android/iOS/web) — media_kit does, via a bundled libmpv, and its native
+  # libs are pulled in as a normal Flutter plugin (media_kit_libs_video), so
+  # `flutter build windows` bundles them automatically like
+  # sqlite3_flutter_libs already does for the main app.
+  media_kit: ^1.1.11
+  media_kit_video: ^1.2.5
+  media_kit_libs_video: ^1.0.5
 
 # usb_serial 0.5.2 (pulled in transitively by unified_esc_pos_printer for
 # Android USB printer support) calls the long-dead jcenter() repository in

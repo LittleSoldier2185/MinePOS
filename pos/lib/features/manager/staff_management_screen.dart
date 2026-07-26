@@ -102,7 +102,9 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
     });
   }
 
-  void _reload() => setState(() { _future = _svc.fetchAll(); });
+  void _reload() => setState(() {
+    _future = _svc.fetchAll();
+  });
 
   void _setGridView(bool value) {
     setState(() => _isGridView = value);
@@ -126,6 +128,13 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
     if (saved == true) _reload();
   }
 
+  void _showStaffDetail(StaffMember m) {
+    showDialog(
+      context: context,
+      builder: (_) => _StaffDetailDialog(member: m),
+    );
+  }
+
   Future<void> _toggleActive(StaffMember m) async {
     try {
       await _svc.setActive(m.id, !m.active);
@@ -140,7 +149,11 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
       await _svc.forceLogout(m.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context)!.signedOutSnackbar(m.username))),
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.signedOutSnackbar(m.username),
+            ),
+          ),
         );
       }
     } catch (e) {
@@ -162,8 +175,10 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text(l10n.remove,
-                style: const TextStyle(color: AppColors.terracottaDark)),
+            child: Text(
+              l10n.remove,
+              style: const TextStyle(color: AppColors.terracottaDark),
+            ),
           ),
         ],
       ),
@@ -214,15 +229,19 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.error_outline,
-                        size: 32, color: AppColors.muted),
+                    const Icon(
+                      Icons.error_outline,
+                      size: 32,
+                      color: AppColors.muted,
+                    ),
                     const SizedBox(height: 8),
-                    Text('${snapshot.error}',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: AppColors.muted)),
+                    Text(
+                      '${snapshot.error}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: AppColors.muted),
+                    ),
                     const SizedBox(height: 12),
-                    OutlinedButton(
-                        onPressed: _reload, child: Text(l10n.retry)),
+                    OutlinedButton(onPressed: _reload, child: Text(l10n.retry)),
                   ],
                 ),
               ),
@@ -237,12 +256,16 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                 // space allows) fits better than a fixed column count.
                 ? GridView.builder(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 480,
-                      mainAxisExtent: 128,
-                      mainAxisSpacing: 10,
-                      crossAxisSpacing: 10,
-                    ),
+                    // CR80 ID card ratio (~85.6mm x 53.98mm, the size of a
+                    // real driver's license/badge) instead of an arbitrary
+                    // rectangle, per the card-view redesign.
+                    gridDelegate:
+                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 340,
+                          childAspectRatio: 1.586,
+                          mainAxisSpacing: 10,
+                          crossAxisSpacing: 10,
+                        ),
                     itemCount: staff.length,
                     itemBuilder: (_, i) => _StaffGridCard(
                       member: staff[i],
@@ -251,6 +274,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                       onToggleActive: () => _toggleActive(staff[i]),
                       onForceLogout: () => _forceLogout(staff[i]),
                       onDelete: () => _confirmDelete(staff[i]),
+                      onViewDetail: () => _showStaffDetail(staff[i]),
                     ),
                   )
                 : ListView.separated(
@@ -264,6 +288,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                       onToggleActive: () => _toggleActive(staff[i]),
                       onForceLogout: () => _forceLogout(staff[i]),
                       onDelete: () => _confirmDelete(staff[i]),
+                      onViewDetail: () => _showStaffDetail(staff[i]),
                     ),
                   ),
           );
@@ -283,6 +308,7 @@ class _StaffRow extends StatelessWidget {
     required this.onToggleActive,
     required this.onForceLogout,
     required this.onDelete,
+    required this.onViewDetail,
   });
   final StaffMember member;
   final bool isSelf;
@@ -290,6 +316,7 @@ class _StaffRow extends StatelessWidget {
   final VoidCallback onToggleActive;
   final VoidCallback onForceLogout;
   final VoidCallback onDelete;
+  final VoidCallback onViewDetail;
 
   @override
   Widget build(BuildContext context) {
@@ -304,71 +331,97 @@ class _StaffRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            _avatar(member, radius: 16),
-            const SizedBox(width: 12),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        member.displayName,
-                        style: const TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.w600),
+              child: InkWell(
+                onTap: onViewDetail,
+                borderRadius: BorderRadius.circular(8),
+                child: Row(
+                  children: [
+                    _avatar(member, radius: 16),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                member.displayName,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              if (isSelf) ...[
+                                const SizedBox(width: 6),
+                                Text(
+                                  AppLocalizations.of(context)!.youLabel,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.muted,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          if (member.name != null && member.name!.isNotEmpty)
+                            Text(
+                              '@${member.username}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.muted,
+                              ),
+                            ),
+                          const SizedBox(height: 3),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _roleColor(
+                                member.role,
+                              ).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              _roleLabel(context, member.role).toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.3,
+                                color: _roleColor(member.role),
+                              ),
+                            ),
+                          ),
+                          if (member.email != null || member.phone != null) ...[
+                            const SizedBox(height: 4),
+                            if (member.email != null)
+                              Text(
+                                member.email!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.muted,
+                                ),
+                              ),
+                            if (member.phone != null)
+                              Text(
+                                member.phone!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.muted,
+                                ),
+                              ),
+                          ],
+                        ],
                       ),
-                      if (isSelf) ...[
-                        const SizedBox(width: 6),
-                        Text(AppLocalizations.of(context)!.youLabel,
-                            style: const TextStyle(
-                                fontSize: 11, color: AppColors.muted)),
-                      ],
-                    ],
-                  ),
-                  if (member.name != null && member.name!.isNotEmpty)
-                    Text(
-                      '@${member.username}',
-                      style: const TextStyle(
-                          fontSize: 11, color: AppColors.muted),
                     ),
-                  const SizedBox(height: 3),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 6, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: _roleColor(member.role).withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      _roleLabel(context, member.role).toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.3,
-                        color: _roleColor(member.role),
-                      ),
-                    ),
-                  ),
-                  if (member.email != null || member.phone != null) ...[
-                    const SizedBox(height: 4),
-                    if (member.email != null)
-                      Text(
-                        member.email!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontSize: 11, color: AppColors.muted),
-                      ),
-                    if (member.phone != null)
-                      Text(
-                        member.phone!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontSize: 11, color: AppColors.muted),
-                      ),
                   ],
-                ],
+                ),
               ),
             ),
             IconButton(
@@ -395,7 +448,9 @@ class _StaffRow extends StatelessWidget {
               icon: const Icon(Icons.delete_outline, size: 18),
               onPressed: isSelf ? null : onDelete,
               visualDensity: VisualDensity.compact,
-              color: isSelf ? AppColors.muted.withValues(alpha: 0.4) : AppColors.terracottaDark,
+              color: isSelf
+                  ? AppColors.muted.withValues(alpha: 0.4)
+                  : AppColors.terracottaDark,
             ),
           ],
         ),
@@ -414,6 +469,7 @@ class _StaffGridCard extends StatelessWidget {
     required this.onToggleActive,
     required this.onForceLogout,
     required this.onDelete,
+    required this.onViewDetail,
   });
   final StaffMember member;
   final bool isSelf;
@@ -421,6 +477,7 @@ class _StaffGridCard extends StatelessWidget {
   final VoidCallback onToggleActive;
   final VoidCallback onForceLogout;
   final VoidCallback onDelete;
+  final VoidCallback onViewDetail;
 
   @override
   Widget build(BuildContext context) {
@@ -445,75 +502,91 @@ class _StaffGridCard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                _avatar(member, radius: 24),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              member.displayName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  fontSize: 15, fontWeight: FontWeight.w700),
+            InkWell(
+              onTap: onViewDetail,
+              borderRadius: BorderRadius.circular(8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _avatar(member, radius: 24),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                member.displayName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            if (isSelf) ...[
+                              const SizedBox(width: 6),
+                              Text(
+                                l10n.youLabel,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.muted,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        // Discord-style stacked subtitle: @handle, then a
+                        // contact line underneath, like a status line.
+                        if (member.name != null && member.name!.isNotEmpty)
+                          Text(
+                            '@${member.username}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.muted,
                             ),
                           ),
-                          if (isSelf) ...[
-                            const SizedBox(width: 6),
-                            Text(l10n.youLabel,
-                                style: const TextStyle(
-                                    fontSize: 11, color: AppColors.muted)),
-                          ],
-                        ],
-                      ),
-                      // Discord-style stacked subtitle: @handle, then a
-                      // contact line underneath, like a status line.
-                      if (member.name != null && member.name!.isNotEmpty)
-                        Text(
-                          '@${member.username}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              fontSize: 12, color: AppColors.muted),
-                        ),
-                      if (contactLine != null)
-                        Text(
-                          contactLine,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              fontSize: 11, color: AppColors.muted),
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: _roleColor(member.role).withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    _roleLabel(context, member.role).toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.3,
-                      color: _roleColor(member.role),
+                        if (contactLine != null)
+                          Text(
+                            contactLine,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.muted,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _roleColor(member.role).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      _roleLabel(context, member.role).toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.3,
+                        color: _roleColor(member.role),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -555,6 +628,147 @@ class _StaffGridCard extends StatelessWidget {
   }
 }
 
+// ── Staff detail dialog (read-only — join date + tenure) ────────────────────
+
+class _StaffDetailDialog extends StatelessWidget {
+  const _StaffDetailDialog({required this.member});
+  final StaffMember member;
+
+  String _formatDate(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  /// Whichever unit is most meaningful: days under a month, months under a
+  /// year, otherwise years (plus a leftover-months remainder, e.g. "2 years
+  /// 3 months") — computed from calendar months so it accounts for
+  /// different month lengths rather than a naive `Duration ~/ 30`.
+  String _tenure(AppLocalizations l10n, DateTime since) {
+    final now = DateTime.now();
+    var months = (now.year - since.year) * 12 + (now.month - since.month);
+    if (now.day < since.day) months -= 1;
+    if (months < 1) {
+      final days = now.difference(since).inDays;
+      return l10n.tenureDaysLabel(days < 0 ? 0 : days);
+    }
+    final years = months ~/ 12;
+    final remainderMonths = months % 12;
+    if (years < 1) return l10n.tenureMonthsLabel(months);
+    return remainderMonths == 0
+        ? l10n.tenureYearsLabel(years)
+        : '${l10n.tenureYearsLabel(years)} ${l10n.tenureMonthsLabel(remainderMonths)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Dialog(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 20),
+                  tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            Center(child: _avatar(member, radius: 36)),
+            const SizedBox(height: 12),
+            Center(
+              child: Text(
+                member.displayName,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Center(
+              child: Text(
+                '@${member.username}',
+                style: const TextStyle(fontSize: 13, color: AppColors.muted),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: _roleColor(member.role).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  _roleLabel(context, member.role).toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: _roleColor(member.role),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Divider(),
+            const SizedBox(height: 12),
+            _StaffDetailRow(
+              label: l10n.staffJoinedLabel,
+              value: _formatDate(member.createdAt),
+            ),
+            const SizedBox(height: 8),
+            _StaffDetailRow(
+              label: l10n.staffTenureLabel,
+              value: _tenure(l10n, member.createdAt),
+            ),
+            if (member.email != null) ...[
+              const SizedBox(height: 8),
+              _StaffDetailRow(
+                label: l10n.emailFieldLabel,
+                value: member.email!,
+              ),
+            ],
+            if (member.phone != null) ...[
+              const SizedBox(height: 8),
+              _StaffDetailRow(
+                label: l10n.phoneFieldLabel,
+                value: member.phone!,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StaffDetailRow extends StatelessWidget {
+  const _StaffDetailRow({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 13, color: AppColors.muted),
+        ),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        ),
+      ],
+    );
+  }
+}
+
 // ── Add / edit staff: full-page (phone) / floating dialog (tablet+desktop) ──
 
 /// Full-page version, pushed via Navigator on phone — no room to float a
@@ -569,7 +783,9 @@ class _StaffFormScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(existing == null ? l10n.addStaffLabel : l10n.editStaffLabel),
+        title: Text(
+          existing == null ? l10n.addStaffLabel : l10n.editStaffLabel,
+        ),
         backgroundColor: Colors.white,
         foregroundColor: AppColors.ink,
         elevation: 0,
@@ -608,7 +824,10 @@ class _StaffFormDialog extends StatelessWidget {
               children: [
                 Text(
                   existing == null ? l10n.addStaffLabel : l10n.editStaffLabel,
-                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 20),
                 _StaffFormBody(existing: existing),
@@ -633,7 +852,8 @@ class _StaffFormBody extends StatefulWidget {
 
 class _StaffFormBodyState extends State<_StaffFormBody> {
   bool get _isEdit => widget.existing != null;
-  bool get _isSelfEdit => _isEdit && widget.existing!.id == ServerClient.instance.userId;
+  bool get _isSelfEdit =>
+      _isEdit && widget.existing!.id == ServerClient.instance.userId;
   bool get _usernameChanged =>
       _isEdit && _usernameCtrl.text.trim() != widget.existing!.username;
 
@@ -827,14 +1047,16 @@ class _StaffFormBodyState extends State<_StaffFormBody> {
               obscureText: true,
               decoration: InputDecoration(
                 labelText: l10n.staffPasswordLabel,
-                hintText: _isEdit ? l10n.staffPasswordEditHint : l10n.staffPasswordHint,
+                hintText: _isEdit
+                    ? l10n.staffPasswordEditHint
+                    : l10n.staffPasswordHint,
                 border: const OutlineInputBorder(),
               ),
               validator: (v) => (_isEdit && (v == null || v.isEmpty))
                   ? null
                   : (v == null || v.length < 8)
-                      ? l10n.staffPasswordTooShort
-                      : null,
+                  ? l10n.staffPasswordTooShort
+                  : null,
             ),
             const SizedBox(height: 16),
             TextFormField(
@@ -861,28 +1083,40 @@ class _StaffFormBodyState extends State<_StaffFormBody> {
               ),
             ),
             const SizedBox(height: 14),
-            Text(l10n.roleLabel,
-                style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+            Text(
+              l10n.roleLabel,
+              style: const TextStyle(fontSize: 12, color: AppColors.muted),
+            ),
             const SizedBox(height: 6),
             Wrap(
               spacing: 6,
               children: _roles.map((r) {
                 final sel = _role == r;
                 return ChoiceChip(
-                  label: Text(_roleLabel(context, r), style: const TextStyle(fontSize: 12)),
+                  label: Text(
+                    _roleLabel(context, r),
+                    style: const TextStyle(fontSize: 12),
+                  ),
                   selected: sel,
-                  onSelected: _isSelfEdit ? null : (_) => setState(() => _role = r),
+                  onSelected: _isSelfEdit
+                      ? null
+                      : (_) => setState(() => _role = r),
                   selectedColor: AppColors.primary,
-                  labelStyle:
-                      TextStyle(color: sel ? AppColors.accent : AppColors.ink),
+                  labelStyle: TextStyle(
+                    color: sel ? AppColors.accent : AppColors.ink,
+                  ),
                 );
               }).toList(),
             ),
             if (_error != null) ...[
               const SizedBox(height: 12),
-              Text(_error!,
-                  style:
-                      const TextStyle(color: AppColors.terracottaDark, fontSize: 12)),
+              Text(
+                _error!,
+                style: const TextStyle(
+                  color: AppColors.terracottaDark,
+                  fontSize: 12,
+                ),
+              ),
             ],
             const SizedBox(height: 20),
             Row(
@@ -904,7 +1138,9 @@ class _StaffFormBodyState extends State<_StaffFormBody> {
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(
-                                strokeWidth: 2, color: AppColors.accent),
+                              strokeWidth: 2,
+                              color: AppColors.accent,
+                            ),
                           )
                         : Text(_isEdit ? l10n.saveChanges : l10n.addStaffLabel),
                   ),

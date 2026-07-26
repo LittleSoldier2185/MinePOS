@@ -522,6 +522,22 @@ class AppLocalizationsTh extends AppLocalizations {
   String get receiptFooterFieldHint => 'ไม่บังคับ เช่น \"ขอบคุณค่ะ!\"';
 
   @override
+  String get promptpayIdFieldLabel => 'หมายเลขพร้อมเพย์';
+
+  @override
+  String get promptpayIdFieldHint => 'เบอร์มือถือ หรือเลขประจำตัว 13 หลัก';
+
+  @override
+  String get promptpayIdValidatorError =>
+      'กรอกเบอร์มือถือ 10 หลัก หรือเลขประจำตัว 13 หลัก';
+
+  @override
+  String get promptpayLabelFieldLabel => 'ข้อความใต้ QR';
+
+  @override
+  String get promptpayLabelFieldHint => 'ไม่บังคับ เช่น ชื่อร้าน';
+
+  @override
   String get shopDetailsSectionLabel => 'ข้อมูลร้าน';
 
   @override
@@ -654,6 +670,9 @@ class AppLocalizationsTh extends AppLocalizations {
   @override
   String get promptpayConfigMessage =>
       'ตั้งค่าหมายเลขพร้อมเพย์\nในหน้าตั้งค่าเพื่อเปิดใช้งาน';
+
+  @override
+  String get tapToEnlargeQrMessage => 'แตะเพื่อขยาย';
 
   @override
   String get scanQrToPayMessage => 'สแกน QR เพื่อชำระเงิน';
@@ -925,6 +944,9 @@ class AppLocalizationsTh extends AppLocalizations {
   String get allTimeRange => 'ทั้งหมด';
 
   @override
+  String get monthRange => 'เลือกเดือน…';
+
+  @override
   String get customRange => 'กำหนดเอง…';
 
   @override
@@ -947,6 +969,24 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get ordersColumnHeader => 'ออร์เดอร์';
+
+  @override
+  String get totalDiscountedLabel => 'ส่วนลดรวม';
+
+  @override
+  String get staffSalesHeader => 'ยอดขายตามพนักงาน';
+
+  @override
+  String get staffSalesUnknownLabel => 'ไม่ทราบ';
+
+  @override
+  String get ordersSuffix => 'ออเดอร์';
+
+  @override
+  String get promotionBreakdownHeader => 'โปรโมชั่นที่ใช้';
+
+  @override
+  String get usedSuffix => 'ครั้ง';
 
   @override
   String get topSellingItemsHeader => 'สินค้าขายดี';
@@ -1193,6 +1233,266 @@ class AppLocalizationsTh extends AppLocalizations {
   @override
   String get exportBackupFailedMessage =>
       'ส่งออกไฟล์สำรองไม่สำเร็จ กรุณาลองใหม่';
+
+  @override
+  String get staffJoinedLabel => 'เข้าทำงานเมื่อ';
+
+  @override
+  String get staffTenureLabel => 'ทำงานที่นี่มาแล้ว';
+
+  @override
+  String tenureDaysLabel(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count วัน',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String tenureMonthsLabel(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count เดือน',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String tenureYearsLabel(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ปี',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get promotionsSectionLabel => 'โปรโมชั่น';
+
+  @override
+  String get promotionsEmptyMessage =>
+      'ยังไม่มีโปรโมชั่น เพิ่มส่วนลด ซื้อ 1 แถม 1 หรือโค้ดส่วนลดได้เลย';
+
+  @override
+  String get promotionsAddButton => 'เพิ่มโปรโมชั่น';
+
+  @override
+  String get promotionDeleteConfirmTitle => 'ลบโปรโมชั่นนี้หรือไม่?';
+
+  @override
+  String get promotionDeleteConfirmContent =>
+      'ไม่สามารถย้อนกลับได้ ออเดอร์เก่าที่เคยใช้โปรโมชั่นนี้จะยังคงมีประวัติอยู่เหมือนเดิม';
+
+  @override
+  String get promotionDeleteConfirmButton => 'ลบ';
+
+  @override
+  String get promotionEditorNewTitle => 'โปรโมชั่นใหม่';
+
+  @override
+  String get promotionEditorEditTitle => 'แก้ไขโปรโมชั่น';
+
+  @override
+  String get promotionNameLabel => 'ชื่อโปรโมชั่น';
+
+  @override
+  String get promotionNameHint => 'เช่น ลด 10% วันธรรมดา';
+
+  @override
+  String get promotionNameRequiredError => 'กรุณาระบุชื่อโปรโมชั่น';
+
+  @override
+  String get promotionActiveLabel => 'เปิดใช้งาน';
+
+  @override
+  String get promotionSavedMessage => 'บันทึกโปรโมชั่นแล้ว';
+
+  @override
+  String get promotionSaveButton => 'บันทึก';
+
+  @override
+  String get promotionTypeLabel => 'ประเภท';
+
+  @override
+  String get promotionTypePercent => 'ลดเปอร์เซ็นต์';
+
+  @override
+  String get promotionTypeFlat => 'ลดจำนวนเงินคงที่';
+
+  @override
+  String get promotionTypeBogo => 'ซื้อ 1 แถม 1';
+
+  @override
+  String get promotionTypeCode => 'โค้ดส่วนลด';
+
+  @override
+  String get promotionTypeCombo => 'ราคาชุด/คอมโบ';
+
+  @override
+  String get promotionTypeMinSpend => 'ยอดซื้อขั้นต่ำ';
+
+  @override
+  String get promotionTypeTiered => 'ราคาตามจำนวนซื้อ';
+
+  @override
+  String get promotionScopeLabel => 'ใช้ได้กับ';
+
+  @override
+  String get promotionScopeItem => 'เมนูเฉพาะรายการ';
+
+  @override
+  String get promotionScopeCategory => 'หมวดหมู่';
+
+  @override
+  String get promotionScopeShop => 'ทั้งร้าน';
+
+  @override
+  String get promotionExcludeItemsLabel => 'ยกเว้นสินค้าบางรายการ (ไม่บังคับ)';
+
+  @override
+  String get promotionPercentLabel => 'ลดกี่เปอร์เซ็นต์ (%)';
+
+  @override
+  String get promotionMaxCapLabel => 'ส่วนลดสูงสุดไม่เกิน (ไม่บังคับ)';
+
+  @override
+  String get promotionFlatAmountLabel => 'ลดจำนวนเงิน (฿)';
+
+  @override
+  String get promotionMinSpendLabel => 'ยอดสั่งซื้อขั้นต่ำ (฿)';
+
+  @override
+  String get promotionRewardPercent => 'ลดเปอร์เซ็นต์';
+
+  @override
+  String get promotionRewardFlat => 'ลดจำนวนเงินคงที่';
+
+  @override
+  String get promotionBogoBuyQtyLabel => 'จำนวนที่ต้องซื้อ';
+
+  @override
+  String get promotionBogoGetQtyLabel => 'จำนวนที่ได้รับส่วนลด';
+
+  @override
+  String get promotionBogoDiscountLabel =>
+      'ส่วนลดของชิ้นที่ได้รับ (%, 100 = ฟรี)';
+
+  @override
+  String get promotionComboPriceLabel => 'ราคาชุด (฿)';
+
+  @override
+  String get promotionComboItemsLabel => 'สินค้าที่รวมอยู่ในชุด';
+
+  @override
+  String get promotionTieredLabel => 'ระดับจำนวน / ราคา';
+
+  @override
+  String get promotionTieredQtyLabel => 'จำนวน';
+
+  @override
+  String get promotionTieredPriceLabel => 'ราคา (฿)';
+
+  @override
+  String get promotionTieredAddRow => 'เพิ่มระดับราคา';
+
+  @override
+  String get promotionScheduleLabel => 'ตั้งเวลา (ไม่บังคับ)';
+
+  @override
+  String get promotionStartDateLabel => 'วันที่เริ่ม';
+
+  @override
+  String get promotionEndDateLabel => 'วันที่สิ้นสุด';
+
+  @override
+  String get promotionDaysOfWeekLabel => 'วันในสัปดาห์ (เว้นว่างไว้ = ทุกวัน)';
+
+  @override
+  String get promotionTimeStartLabel => 'เวลาเริ่ม';
+
+  @override
+  String get promotionTimeEndLabel => 'เวลาสิ้นสุด';
+
+  @override
+  String get promotionApprovalLabel => 'ต้องมีการอนุมัติจากผู้จัดการ';
+
+  @override
+  String get promotionApprovalThresholdLabel =>
+      'เฉพาะเมื่อส่วนลดเกินจำนวนนี้ (ไม่บังคับ, ฿)';
+
+  @override
+  String get promotionCodesLabel => 'โค้ดส่วนลด';
+
+  @override
+  String promotionCodeUsageLabel(int usedCount, String maxUses) {
+    return 'ใช้ไปแล้ว $usedCount / $maxUses';
+  }
+
+  @override
+  String get promotionNewCodeLabel => 'โค้ดใหม่';
+
+  @override
+  String get promotionMaxUsesLabel => 'จำกัดจำนวนการใช้ (ไม่บังคับ)';
+
+  @override
+  String get promotionAddCodeButton => 'เพิ่มโค้ด';
+
+  @override
+  String get subtotalLabel => 'ยอดรวมก่อนหักส่วนลด';
+
+  @override
+  String get discountCodeFieldLabel => 'โค้ดส่วนลด';
+
+  @override
+  String get discountCodeFieldHint => 'กรอกโค้ด';
+
+  @override
+  String get applyCodeButton => 'ใช้โค้ด';
+
+  @override
+  String get invalidDiscountCodeError => 'โค้ดนี้ไม่ถูกต้องหรือถูกใช้ไปหมดแล้ว';
+
+  @override
+  String promotionNeedsApprovalLabel(String name) {
+    return '$name ต้องได้รับการอนุมัติจากผู้จัดการ';
+  }
+
+  @override
+  String get approveButton => 'อนุมัติ';
+
+  @override
+  String get managerApprovalDialogTitle => 'การอนุมัติจากผู้จัดการ';
+
+  @override
+  String get managerApprovalDialogContent =>
+      'ผู้จัดการหรือเจ้าของร้านต้องยืนยันตัวตนของตนเองเพื่ออนุมัติส่วนลดนี้';
+
+  @override
+  String get advertisingSectionLabel => 'โฆษณา';
+
+  @override
+  String get advertisingSectionHint =>
+      'ขนาดที่แนะนำ: 1920×1080 (16:9) รูปภาพ/GIF และวิดีโอจะถูกครอปให้เต็มหน้าจอ (เหมือนโฆษณาทีวี) ควรจัดเนื้อหาสำคัญไว้ตรงกลาง';
+
+  @override
+  String get advertisingEmptyMessage =>
+      'ยังไม่มีสไลด์ เพิ่มรูปภาพ, GIF หรือวิดีโอเพื่อเล่นบนหน้าจอลูกค้าเวลาที่ว่าง';
+
+  @override
+  String get advertisingAddSlideButton => 'เพิ่มสไลด์';
+
+  @override
+  String get advertisingDurationLabel => 'วินาที';
+
+  @override
+  String get advertisingPlaysUntilEndLabel => 'เล่นจนจบคลิป';
+
+  @override
+  String get advertisingDeleteSlideTooltip => 'ลบสไลด์';
 
   @override
   String get dangerZoneSectionLabel => 'โซนอันตราย';

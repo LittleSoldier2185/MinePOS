@@ -39,4 +39,20 @@ New-Item -ItemType Directory -Force -Path $serverDestDir | Out-Null
 Copy-Item (Join-Path $serverDir 'minepos_server.exe') $serverDestDir -Force
 Remove-Item (Join-Path $serverDir 'minepos_server.exe') -Force
 
+# The main app links sqlite3.dll via sqlite3_flutter_libs, which `flutter
+# build windows` already compiles and drops next to the app exe. The bundled
+# server.exe is a separate process needing its own copy in its own directory
+# (Windows DLL search order checks the exe's own dir first, not siblings).
+$sqliteDll = Join-Path $releaseDir 'sqlite3.dll'
+if (-not (Test-Path $sqliteDll)) {
+    throw "sqlite3.dll not found at $sqliteDll - flutter build windows should have produced it"
+}
+Copy-Item $sqliteDll $serverDestDir -Force
+
+Write-Host '== Zipping release bundle ==' -ForegroundColor Cyan
+$zipPath = Join-Path $posDir 'build\MinePOS-Windows.zip'
+if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+Compress-Archive -Path (Join-Path $releaseDir '*') -DestinationPath $zipPath
+
 Write-Host "== Done: $releaseDir ==" -ForegroundColor Green
+Write-Host "== Bundle zip: $zipPath ==" -ForegroundColor Green

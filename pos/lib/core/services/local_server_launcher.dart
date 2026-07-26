@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:sqlite3/sqlite3.dart';
 
 const _localAddress = '127.0.0.1:8080';
 
@@ -82,16 +83,30 @@ class LocalServerLauncher {
     return false;
   }
 
-  /// Whether this device has already been set up as a shop (the bundled
-  /// server's data dir has a database file) — checked directly off disk
-  /// rather than by starting the server and asking it, so viewing the
-  /// welcome screen never has the side effect of spinning up a background
-  /// server process just to answer this. False (not just "unset up") is
-  /// also the honest answer in dev (`flutter run`), where no bundled exe —
-  /// and therefore no fixed data dir to check — exists yet.
+  /// Whether this device has already been set up as a shop — checked by
+  /// opening the bundled server's own database file (read-only, closed
+  /// immediately) and looking for a `users` row, not just whether the file
+  /// exists: Settings → Danger Zone → Remove Shop wipes every table via
+  /// `AppDb.wipeShop` but leaves the file itself in place, so a bare
+  /// existence check would stay true forever and permanently disable
+  /// Create Shop. Never starts the server just to answer this. False (not
+  /// just "unset up") is also the honest answer in dev (`flutter run`),
+  /// where no bundled exe — and therefore no fixed data dir to check —
+  /// exists yet, and if the file is missing, unreadable, or pre-migration.
   bool hasLocalShop() {
     final db = _dbFile();
-    return db != null && db.existsSync();
+    if (db == null || !db.existsSync()) return false;
+    try {
+      final conn = sqlite3.open(db.path, mode: OpenMode.readOnly);
+      try {
+        final rows = conn.select('SELECT COUNT(*) AS c FROM users');
+        return (rows.first['c'] as int) > 0;
+      } finally {
+        conn.dispose();
+      }
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Writes [bytes] (a snapshot pulled from `GET /admin/backup`, or read

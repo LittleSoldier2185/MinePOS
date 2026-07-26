@@ -31,19 +31,36 @@ class MdnsService {
   RawDatagramSocket? _socket;
   Timer? _timer;
 
+  // Adapter names for VPN/virtual-networking software that commonly sits
+  // alongside a real LAN connection (Radmin VPN, ZeroTier, Hamachi, TAP/TUN,
+  // Windows' own Teredo tunnel). Their addresses are routable on the LAN in
+  // name only — a device on the same physical Wi-Fi/Ethernet can't reach
+  // them — so advertising one instead of the real adapter makes the shop
+  // "discoverable" but unreachable. Matched against real machines that hit
+  // this; extend the list if another VPN client shows up in the wild.
+  static final _virtualAdapterPattern = RegExp(
+    r'radmin|zerotier|zero tier|hamachi|tailscale|wireguard|openvpn|\btap\b|\btun\b|teredo|vethernet|virtualbox|vmware',
+    caseSensitive: false,
+  );
+
   static Future<MdnsService> create({
     required String serviceName,
     required int port,
   }) async {
     final hostname = Platform.localHostname.toLowerCase().replaceAll(' ', '-');
     final addresses = <InternetAddress>[];
+    final virtualAddresses = <InternetAddress>[];
     for (final iface in await NetworkInterface.list()) {
+      final isVirtual = _virtualAdapterPattern.hasMatch(iface.name);
       for (final addr in iface.addresses) {
         if (addr.type == InternetAddressType.IPv4 && !addr.isLoopback) {
-          addresses.add(addr);
+          (isVirtual ? virtualAddresses : addresses).add(addr);
         }
       }
     }
+    // Only fall back to a VPN/virtual adapter's address if there's truly
+    // nothing else — still better than advertising no address at all.
+    if (addresses.isEmpty) addresses.addAll(virtualAddresses);
     if (addresses.isEmpty) addresses.add(InternetAddress.loopbackIPv4);
 
     return MdnsService._(

@@ -214,6 +214,19 @@ class PrinterService {
     }
     ticket.separator();
 
+    if (order.appliedPromotions.isNotEmpty) {
+      await ticket.rowRaster([
+        PrintRasterColumn(text: l10n.subtotalLabel, flex: 1),
+        PrintRasterColumn(text: baht(order.subtotal), flex: 1, align: PrintAlign.right),
+      ]);
+      for (final promo in order.appliedPromotions) {
+        await ticket.rowRaster([
+          PrintRasterColumn(text: promo.name, flex: 3),
+          PrintRasterColumn(text: '-${baht(promo.discountAmount)}', flex: 1, align: PrintAlign.right),
+        ]);
+      }
+    }
+
     await ticket.rowRaster([
       PrintRasterColumn(
         text: l10n.total,

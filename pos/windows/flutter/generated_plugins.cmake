@@ -5,9 +5,12 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   bonsoir_windows
   file_selector_windows
+  media_kit_libs_windows_video
+  media_kit_video
   screen_retriever_windows
   sqlite3_flutter_libs
   unified_esc_pos_printer
+  volume_controller
   window_manager
 )
 

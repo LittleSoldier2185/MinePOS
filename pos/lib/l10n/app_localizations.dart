@@ -1028,6 +1028,36 @@ abstract class AppLocalizations {
   /// **'Optional, e.g. \"Thank you!\"'**
   String get receiptFooterFieldHint;
 
+  /// No description provided for @promptpayIdFieldLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'PromptPay ID'**
+  String get promptpayIdFieldLabel;
+
+  /// No description provided for @promptpayIdFieldHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Mobile number or 13-digit Tax/Citizen ID'**
+  String get promptpayIdFieldHint;
+
+  /// No description provided for @promptpayIdValidatorError.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a 10-digit phone number or 13-digit ID'**
+  String get promptpayIdValidatorError;
+
+  /// No description provided for @promptpayLabelFieldLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'QR Caption'**
+  String get promptpayLabelFieldLabel;
+
+  /// No description provided for @promptpayLabelFieldHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional text shown under the QR, e.g. shop name'**
+  String get promptpayLabelFieldHint;
+
   /// No description provided for @shopDetailsSectionLabel.
   ///
   /// In en, this message translates to:
@@ -1267,6 +1297,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Configure PromptPay ID\nin Settings to enable'**
   String get promptpayConfigMessage;
+
+  /// No description provided for @tapToEnlargeQrMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to enlarge'**
+  String get tapToEnlargeQrMessage;
 
   /// No description provided for @scanQrToPayMessage.
   ///
@@ -1748,6 +1784,12 @@ abstract class AppLocalizations {
   /// **'All Time'**
   String get allTimeRange;
 
+  /// No description provided for @monthRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Month…'**
+  String get monthRange;
+
   /// No description provided for @customRange.
   ///
   /// In en, this message translates to:
@@ -1795,6 +1837,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'ORDERS'**
   String get ordersColumnHeader;
+
+  /// No description provided for @totalDiscountedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Discounted'**
+  String get totalDiscountedLabel;
+
+  /// No description provided for @staffSalesHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'SALES BY STAFF'**
+  String get staffSalesHeader;
+
+  /// No description provided for @staffSalesUnknownLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get staffSalesUnknownLabel;
+
+  /// No description provided for @ordersSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **'orders'**
+  String get ordersSuffix;
+
+  /// No description provided for @promotionBreakdownHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'PROMOTIONS USED'**
+  String get promotionBreakdownHeader;
+
+  /// No description provided for @usedSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **'used'**
+  String get usedSuffix;
 
   /// No description provided for @topSellingItemsHeader.
   ///
@@ -2251,6 +2329,462 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t export the backup. Try again.'**
   String get exportBackupFailedMessage;
+
+  /// No description provided for @staffJoinedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Joined'**
+  String get staffJoinedLabel;
+
+  /// No description provided for @staffTenureLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Working here for'**
+  String get staffTenureLabel;
+
+  /// No description provided for @tenureDaysLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} day} other{{count} days}}'**
+  String tenureDaysLabel(int count);
+
+  /// No description provided for @tenureMonthsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} month} other{{count} months}}'**
+  String tenureMonthsLabel(int count);
+
+  /// No description provided for @tenureYearsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} year} other{{count} years}}'**
+  String tenureYearsLabel(int count);
+
+  /// No description provided for @promotionsSectionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'PROMOTIONS'**
+  String get promotionsSectionLabel;
+
+  /// No description provided for @promotionsEmptyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'No promotions yet. Add a discount, BOGO, or promo code.'**
+  String get promotionsEmptyMessage;
+
+  /// No description provided for @promotionsAddButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Promotion'**
+  String get promotionsAddButton;
+
+  /// No description provided for @promotionDeleteConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this promotion?'**
+  String get promotionDeleteConfirmTitle;
+
+  /// No description provided for @promotionDeleteConfirmContent.
+  ///
+  /// In en, this message translates to:
+  /// **'This can\'t be undone. Past orders that already used it keep their own record either way.'**
+  String get promotionDeleteConfirmContent;
+
+  /// No description provided for @promotionDeleteConfirmButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get promotionDeleteConfirmButton;
+
+  /// No description provided for @promotionEditorNewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New Promotion'**
+  String get promotionEditorNewTitle;
+
+  /// No description provided for @promotionEditorEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Promotion'**
+  String get promotionEditorEditTitle;
+
+  /// No description provided for @promotionNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get promotionNameLabel;
+
+  /// No description provided for @promotionNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Weekday 10% off'**
+  String get promotionNameHint;
+
+  /// No description provided for @promotionNameRequiredError.
+  ///
+  /// In en, this message translates to:
+  /// **'Name is required'**
+  String get promotionNameRequiredError;
+
+  /// No description provided for @promotionActiveLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get promotionActiveLabel;
+
+  /// No description provided for @promotionSavedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Promotion saved'**
+  String get promotionSavedMessage;
+
+  /// No description provided for @promotionSaveButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get promotionSaveButton;
+
+  /// No description provided for @promotionTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get promotionTypeLabel;
+
+  /// No description provided for @promotionTypePercent.
+  ///
+  /// In en, this message translates to:
+  /// **'Percent off'**
+  String get promotionTypePercent;
+
+  /// No description provided for @promotionTypeFlat.
+  ///
+  /// In en, this message translates to:
+  /// **'Flat amount off'**
+  String get promotionTypeFlat;
+
+  /// No description provided for @promotionTypeBogo.
+  ///
+  /// In en, this message translates to:
+  /// **'Buy one get one'**
+  String get promotionTypeBogo;
+
+  /// No description provided for @promotionTypeCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Discount code'**
+  String get promotionTypeCode;
+
+  /// No description provided for @promotionTypeCombo.
+  ///
+  /// In en, this message translates to:
+  /// **'Combo bundle'**
+  String get promotionTypeCombo;
+
+  /// No description provided for @promotionTypeMinSpend.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum spend'**
+  String get promotionTypeMinSpend;
+
+  /// No description provided for @promotionTypeTiered.
+  ///
+  /// In en, this message translates to:
+  /// **'Tiered pricing'**
+  String get promotionTypeTiered;
+
+  /// No description provided for @promotionScopeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Applies to'**
+  String get promotionScopeLabel;
+
+  /// No description provided for @promotionScopeItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Specific item(s)'**
+  String get promotionScopeItem;
+
+  /// No description provided for @promotionScopeCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get promotionScopeCategory;
+
+  /// No description provided for @promotionScopeShop.
+  ///
+  /// In en, this message translates to:
+  /// **'Whole shop'**
+  String get promotionScopeShop;
+
+  /// No description provided for @promotionExcludeItemsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Exclude specific items (optional)'**
+  String get promotionExcludeItemsLabel;
+
+  /// No description provided for @promotionPercentLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Percent off (%)'**
+  String get promotionPercentLabel;
+
+  /// No description provided for @promotionMaxCapLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Max discount amount (optional)'**
+  String get promotionMaxCapLabel;
+
+  /// No description provided for @promotionFlatAmountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount off (฿)'**
+  String get promotionFlatAmountLabel;
+
+  /// No description provided for @promotionMinSpendLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum order total (฿)'**
+  String get promotionMinSpendLabel;
+
+  /// No description provided for @promotionRewardPercent.
+  ///
+  /// In en, this message translates to:
+  /// **'Percent off'**
+  String get promotionRewardPercent;
+
+  /// No description provided for @promotionRewardFlat.
+  ///
+  /// In en, this message translates to:
+  /// **'Fixed amount off'**
+  String get promotionRewardFlat;
+
+  /// No description provided for @promotionBogoBuyQtyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Buy quantity'**
+  String get promotionBogoBuyQtyLabel;
+
+  /// No description provided for @promotionBogoGetQtyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Get quantity'**
+  String get promotionBogoGetQtyLabel;
+
+  /// No description provided for @promotionBogoDiscountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Discount on the \"get\" items (%, 100 = free)'**
+  String get promotionBogoDiscountLabel;
+
+  /// No description provided for @promotionComboPriceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Bundle price (฿)'**
+  String get promotionComboPriceLabel;
+
+  /// No description provided for @promotionComboItemsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Items included in the bundle'**
+  String get promotionComboItemsLabel;
+
+  /// No description provided for @promotionTieredLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Quantity / price tiers'**
+  String get promotionTieredLabel;
+
+  /// No description provided for @promotionTieredQtyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Qty'**
+  String get promotionTieredQtyLabel;
+
+  /// No description provided for @promotionTieredPriceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Price (฿)'**
+  String get promotionTieredPriceLabel;
+
+  /// No description provided for @promotionTieredAddRow.
+  ///
+  /// In en, this message translates to:
+  /// **'Add tier'**
+  String get promotionTieredAddRow;
+
+  /// No description provided for @promotionScheduleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule (optional)'**
+  String get promotionScheduleLabel;
+
+  /// No description provided for @promotionStartDateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Start date'**
+  String get promotionStartDateLabel;
+
+  /// No description provided for @promotionEndDateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'End date'**
+  String get promotionEndDateLabel;
+
+  /// No description provided for @promotionDaysOfWeekLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Days of week (leave empty for every day)'**
+  String get promotionDaysOfWeekLabel;
+
+  /// No description provided for @promotionTimeStartLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Start time'**
+  String get promotionTimeStartLabel;
+
+  /// No description provided for @promotionTimeEndLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'End time'**
+  String get promotionTimeEndLabel;
+
+  /// No description provided for @promotionApprovalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Requires manager approval'**
+  String get promotionApprovalLabel;
+
+  /// No description provided for @promotionApprovalThresholdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Only above this discount amount (optional, ฿)'**
+  String get promotionApprovalThresholdLabel;
+
+  /// No description provided for @promotionCodesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Codes'**
+  String get promotionCodesLabel;
+
+  /// No description provided for @promotionCodeUsageLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Used {usedCount} / {maxUses}'**
+  String promotionCodeUsageLabel(int usedCount, String maxUses);
+
+  /// No description provided for @promotionNewCodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'New code'**
+  String get promotionNewCodeLabel;
+
+  /// No description provided for @promotionMaxUsesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Max uses (optional)'**
+  String get promotionMaxUsesLabel;
+
+  /// No description provided for @promotionAddCodeButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Code'**
+  String get promotionAddCodeButton;
+
+  /// No description provided for @subtotalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtotal'**
+  String get subtotalLabel;
+
+  /// No description provided for @discountCodeFieldLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Discount code'**
+  String get discountCodeFieldLabel;
+
+  /// No description provided for @discountCodeFieldHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a code'**
+  String get discountCodeFieldHint;
+
+  /// No description provided for @applyCodeButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get applyCodeButton;
+
+  /// No description provided for @invalidDiscountCodeError.
+  ///
+  /// In en, this message translates to:
+  /// **'That code isn\'t valid or has already been used up.'**
+  String get invalidDiscountCodeError;
+
+  /// No description provided for @promotionNeedsApprovalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} needs manager approval'**
+  String promotionNeedsApprovalLabel(String name);
+
+  /// No description provided for @approveButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get approveButton;
+
+  /// No description provided for @managerApprovalDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manager approval'**
+  String get managerApprovalDialogTitle;
+
+  /// No description provided for @managerApprovalDialogContent.
+  ///
+  /// In en, this message translates to:
+  /// **'A manager or owner must confirm their own credentials to approve this discount.'**
+  String get managerApprovalDialogContent;
+
+  /// No description provided for @advertisingSectionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'ADVERTISING'**
+  String get advertisingSectionLabel;
+
+  /// No description provided for @advertisingSectionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended size: 1920×1080 (16:9). Images/GIFs and videos are cropped to fill the screen (like a TV ad), so keep important content centered.'**
+  String get advertisingSectionHint;
+
+  /// No description provided for @advertisingEmptyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'No slides yet. Add images, GIFs, or videos to play on the customer display whenever it\'s idle.'**
+  String get advertisingEmptyMessage;
+
+  /// No description provided for @advertisingAddSlideButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Slide'**
+  String get advertisingAddSlideButton;
+
+  /// No description provided for @advertisingDurationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Seconds'**
+  String get advertisingDurationLabel;
+
+  /// No description provided for @advertisingPlaysUntilEndLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Plays until it ends'**
+  String get advertisingPlaysUntilEndLabel;
+
+  /// No description provided for @advertisingDeleteSlideTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete slide'**
+  String get advertisingDeleteSlideTooltip;
 
   /// No description provided for @dangerZoneSectionLabel.
   ///

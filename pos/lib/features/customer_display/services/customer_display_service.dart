@@ -9,14 +9,40 @@ import '../../cashier/models/order_item.dart';
 
 enum CustomerDisplayConnectionState { disconnected, connecting, connected, error }
 
-enum CustomerDisplayState { idle, cart, thankYou }
+enum CustomerDisplayState { idle, cart, promptpay, thankYou }
+
+/// One slide in the idle-time advertising slideshow (see `AdService` for the
+/// owner-facing upload/management side). Shop-wide — not per-station, same
+/// as [CustomerDisplayService.stations] isn't either.
+class AdSlide {
+  AdSlide({required this.id, required this.type, required this.url, this.durationSeconds});
+
+  final String id;
+
+  /// 'image' or 'video' — a GIF is served as 'image'.
+  final String type;
+
+  /// Relative path from the server (e.g. `/ads/<id>/file`) — build the full
+  /// address by prefixing `http://${ServerClient.instance.baseUrl}`.
+  final String url;
+
+  /// Only meaningful for image/gif; null for video (plays to its own end).
+  final int? durationSeconds;
+
+  factory AdSlide.fromJson(Map<String, dynamic> json) => AdSlide(
+        id: json['id'] as String,
+        type: json['type'] as String,
+        url: json['url'] as String,
+        durationSeconds: json['durationSeconds'] as int?,
+      );
+}
 
 /// Two-way bridge to the server's `/ws/customer-display` relay. A cashier
-/// device calls [publishCart]/[publishThankYou] to broadcast what's on the
-/// register; a passive customer-facing display just reads [state] /
-/// [items] / [total] / [orderNumber] as they change. The same service and
-/// connection serve both roles — whichever side isn't publishing simply
-/// never calls the publish methods.
+/// device calls [publishCart]/[publishPromptPay]/[publishThankYou] to
+/// broadcast what's on the register; a passive customer-facing display just
+/// reads [state] / [items] / [total] / [orderNumber] / [promptPayPayload] as
+/// they change. The same service and connection serve both roles —
+/// whichever side isn't publishing simply never calls the publish methods.
 class CustomerDisplayService extends ChangeNotifier {
   CustomerDisplayService._();
   static final instance = CustomerDisplayService._();
@@ -28,12 +54,28 @@ class CustomerDisplayService extends ChangeNotifier {
   List<OrderItem> items = const [];
   double total = 0;
   String orderNumber = '';
+  String promptPayPayload = '';
+  String promptPayLabel = '';
   double thankYouTotal = 0;
   double thankYouChange = 0;
+
+  /// Sum of whatever promotions applied to the mirrored cart, and their
+  /// names — only meaningful once the cashier reaches checkout (see
+  /// `payment_screen.dart`'s `publishCart` call); the order-taking
+  /// screen's own `publishCart` never evaluates promotions, so this stays
+  /// zero/empty while a customer's items are just being built up.
+  double discountTotal = 0;
+  List<String> promotionNames = const [];
 
   /// Station names currently publishing carts (only meaningful for a
   /// passive display connection — a publisher never receives this).
   List<String> stations = const [];
+
+  /// The idle-time advertising slideshow content, shop-wide — pushed by the
+  /// server on connect and whenever Settings → Advertising changes it (see
+  /// `CustomerDisplayHub.broadcastAdSlides` server-side). Only meaningful
+  /// for a passive display connection, same as [stations].
+  List<AdSlide> adSlides = const [];
 
   /// Which station this display is currently mirroring; null means "not
   /// picked yet" (or picked, then that station went offline).
@@ -99,6 +141,10 @@ class CustomerDisplayService extends ChangeNotifier {
           items = const [];
           state = CustomerDisplayState.idle;
         }
+      case 'ads':
+        adSlides = (msg['slides'] as List)
+            .map((j) => AdSlide.fromJson(j as Map<String, dynamic>))
+            .toList();
       case 'cart':
         final incomingItems = (msg['items'] as List)
             .map((j) => OrderItem.fromJson(j as Map<String, dynamic>))
@@ -106,9 +152,18 @@ class CustomerDisplayService extends ChangeNotifier {
         orderNumber = msg['orderNumber'] as String? ?? '';
         total = (msg['total'] as num?)?.toDouble() ?? 0;
         items = incomingItems;
+        discountTotal = (msg['discountTotal'] as num?)?.toDouble() ?? 0;
+        promotionNames = (msg['promotionNames'] as List?)?.cast<String>() ?? const [];
         state = incomingItems.isEmpty
             ? CustomerDisplayState.idle
             : CustomerDisplayState.cart;
+        _thankYouTimer?.cancel();
+      case 'promptpay':
+        promptPayPayload = msg['payload'] as String? ?? '';
+        promptPayLabel = msg['label'] as String? ?? '';
+        orderNumber = msg['orderNumber'] as String? ?? '';
+        total = (msg['total'] as num?)?.toDouble() ?? 0;
+        state = CustomerDisplayState.promptpay;
         _thankYouTimer?.cancel();
       case 'thank_you':
         thankYouTotal = (msg['total'] as num?)?.toDouble() ?? 0;
@@ -143,12 +198,31 @@ class CustomerDisplayService extends ChangeNotifier {
     required List<OrderItem> items,
     required double total,
     required String orderNumber,
+    double discountTotal = 0,
+    List<String> promotionNames = const [],
   }) {
     _send({
       'type': 'cart',
       'orderNumber': orderNumber,
       'total': total,
       'items': items.map((i) => i.toJson()).toList(),
+      'discountTotal': discountTotal,
+      'promotionNames': promotionNames,
+    });
+  }
+
+  void publishPromptPay({
+    required String payload,
+    required double total,
+    required String orderNumber,
+    String label = '',
+  }) {
+    _send({
+      'type': 'promptpay',
+      'payload': payload,
+      'total': total,
+      'orderNumber': orderNumber,
+      'label': label,
     });
   }
 
@@ -163,6 +237,8 @@ class CustomerDisplayService extends ChangeNotifier {
     selectedStation = station;
     if (station == null) {
       items = const [];
+      promptPayPayload = '';
+      promptPayLabel = '';
       state = CustomerDisplayState.idle;
     }
     _send({'type': 'select_station', 'station': station});
@@ -184,8 +260,13 @@ class CustomerDisplayService extends ChangeNotifier {
     _channel?.sink.close();
     _channel = null;
     items = const [];
+    promptPayPayload = '';
+    promptPayLabel = '';
+    discountTotal = 0;
+    promotionNames = const [];
     state = CustomerDisplayState.idle;
     stations = const [];
+    adSlides = const [];
     selectedStation = null;
     connectionState = CustomerDisplayConnectionState.disconnected;
     notifyListeners();

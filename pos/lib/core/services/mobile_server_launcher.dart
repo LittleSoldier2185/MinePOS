@@ -7,6 +7,7 @@ import 'package:minepos_server/app_server.dart';
 import 'package:minepos_server/config.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:sqlite3/sqlite3.dart';
 
 const _mobileAddress = '127.0.0.1:8080';
 const _mobilePort = 8080;
@@ -30,13 +31,25 @@ class MobileServerLauncher {
   Isolate? _isolate;
   bool _starting = false;
 
-  /// Whether this device has already been set up as a shop — checked
-  /// directly off disk, same reasoning as [LocalServerLauncher.hasLocalShop]:
-  /// answering this should never have the side effect of spawning the
-  /// background isolate.
+  /// Whether this device has already been set up as a shop — checked the
+  /// same way as [LocalServerLauncher.hasLocalShop]: open the database
+  /// file read-only and look for a `users` row, not just whether the file
+  /// exists, since Remove Shop wipes every table but leaves the file in
+  /// place. Never has the side effect of spawning the background isolate.
   Future<bool> hasLocalShop() async {
     final dbFile = await _dbFile();
-    return dbFile.existsSync();
+    if (!dbFile.existsSync()) return false;
+    try {
+      final conn = sqlite3.open(dbFile.path, mode: OpenMode.readOnly);
+      try {
+        final rows = conn.select('SELECT COUNT(*) AS c FROM users');
+        return (rows.first['c'] as int) > 0;
+      } finally {
+        conn.dispose();
+      }
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Writes [bytes] (a snapshot pulled from `GET /admin/backup`, or read

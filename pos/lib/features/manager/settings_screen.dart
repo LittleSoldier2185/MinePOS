@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:unified_esc_pos_printer/unified_esc_pos_printer.dart';
 
@@ -13,9 +16,13 @@ import '../../l10n/app_localizations.dart';
 import '../cashier/services/menu_service.dart';
 import '../cashier/services/order_service.dart';
 import '../cashier/services/printer_service.dart';
+import '../cashier/services/promptpay_qr.dart';
 import '../welcome/welcome_screen.dart';
+import 'promotion_editor_screen.dart';
 import 'server_status_screen.dart';
+import 'services/ad_service.dart';
 import 'services/backup_service.dart';
+import 'services/promotion_admin_service.dart';
 import 'services/shop_config_service.dart';
 import 'services/shop_service.dart';
 
@@ -45,11 +52,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late final _shopTaxIdController = TextEditingController();
   late final _shopEmailController = TextEditingController();
   late final _shopFooterController = TextEditingController();
+  late final _shopPromptPayController = TextEditingController();
+  late final _shopPromptPayLabelController = TextEditingController();
   bool _shopLoaded = false;
   bool _savingShop = false;
   String? _shopError;
   bool _exportingBackup = false;
   bool _localServerRunning = false;
+
+  List<AdSlideInfo> _adSlides = [];
+  bool _adsLoaded = false;
+  bool _uploadingAd = false;
+  String? _adsError;
+  final _adDurationControllers = <String, TextEditingController>{};
+
+  List<Promotion> _promotions = [];
+  bool _promotionsLoaded = false;
+  String? _promotionsError;
 
   /// Which category is showing in the embedded (desktop dialog) two-pane
   /// layout — meaningless in full-page mode, where every section is just
@@ -62,6 +81,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _load();
     _loadShopDetails();
     _checkLocalServer();
+    _loadAds();
+    _loadPromotions();
   }
 
   @override
@@ -71,6 +92,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _shopTaxIdController.dispose();
     _shopEmailController.dispose();
     _shopFooterController.dispose();
+    _shopPromptPayController.dispose();
+    _shopPromptPayLabelController.dispose();
+    for (final c in _adDurationControllers.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -99,6 +125,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _shopTaxIdController.text = shop.taxId ?? '';
       _shopEmailController.text = shop.email ?? '';
       _shopFooterController.text = shop.receiptFooter ?? '';
+      _shopPromptPayController.text = shop.promptPayId ?? '';
+      _shopPromptPayLabelController.text = shop.promptPayLabel ?? '';
       _shopLoaded = true;
     });
   }
@@ -128,6 +156,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         taxId: _shopTaxIdController.text,
         email: _shopEmailController.text,
         receiptFooter: _shopFooterController.text,
+        promptPayId: _shopPromptPayController.text,
+        promptPayLabel: _shopPromptPayLabelController.text,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -138,6 +168,122 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() => _shopError = '$e');
     } finally {
       if (mounted) setState(() => _savingShop = false);
+    }
+  }
+
+  Future<void> _loadAds() async {
+    if (!ServerClient.instance.canManageShop) return;
+    try {
+      final slides = await AdService.instance.list();
+      if (!mounted) return;
+      setState(() {
+        _adSlides = slides;
+        _adsLoaded = true;
+        for (final slide in slides) {
+          _adDurationControllers.putIfAbsent(
+            slide.id,
+            () => TextEditingController(text: '${slide.durationSeconds ?? 8}'),
+          );
+        }
+      });
+    } catch (_) {
+      // Left un-loaded — the section just won't render until this device
+      // has a working connection, same as the shop-details section.
+    }
+  }
+
+  Future<void> _pickAndUploadAd() async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'jpeg', 'png', 'gif', 'mp4', 'webm', 'mov'],
+    );
+    final path = result?.files.single.path;
+    if (path == null) return;
+
+    setState(() {
+      _uploadingAd = true;
+      _adsError = null;
+    });
+    try {
+      final ext = path.split('.').last.toLowerCase();
+      final bytes = await File(path).readAsBytes();
+      await AdService.instance.upload(bytes, ext: ext);
+      await _loadAds();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _adsError = '$e');
+    } finally {
+      if (mounted) setState(() => _uploadingAd = false);
+    }
+  }
+
+  Future<void> _updateAdDuration(String id, String secondsText) async {
+    final seconds = int.tryParse(secondsText);
+    if (seconds == null || seconds <= 0) return;
+    try {
+      await AdService.instance.updateDuration(id, seconds);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _adsError = '$e');
+    }
+  }
+
+  Future<void> _deleteAdSlide(String id) async {
+    try {
+      await AdService.instance.delete(id);
+      _adDurationControllers.remove(id)?.dispose();
+      await _loadAds();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _adsError = '$e');
+    }
+  }
+
+  Future<void> _loadPromotions() async {
+    if (!ServerClient.instance.canManageShop) return;
+    try {
+      final promotions = await PromotionAdminService.instance.list();
+      if (!mounted) return;
+      setState(() {
+        _promotions = promotions;
+        _promotionsLoaded = true;
+      });
+    } catch (_) {
+      // Left un-loaded — same reasoning as _loadAds: the section just
+      // won't render until this device has a working connection.
+    }
+  }
+
+  Future<void> _openPromotionEditor({Promotion? existing}) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => PromotionEditorScreen(existing: existing)),
+    );
+    await _loadPromotions();
+  }
+
+  Future<void> _confirmDeletePromotion(Promotion promotion) async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(l10n.promotionDeleteConfirmTitle),
+        content: Text(l10n.promotionDeleteConfirmContent),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l10n.cancel)),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l10n.promotionDeleteConfirmButton),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await PromotionAdminService.instance.delete(promotion.id);
+      await _loadPromotions();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _promotionsError = '$e');
     }
   }
 
@@ -354,6 +500,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 label: l10n.receiptFooterFieldLabel,
                 controller: _shopFooterController,
                 hintText: l10n.receiptFooterFieldHint,
+              ),
+              const SizedBox(height: 14),
+              AppTextField(
+                label: l10n.promptpayIdFieldLabel,
+                controller: _shopPromptPayController,
+                hintText: l10n.promptpayIdFieldHint,
+                keyboardType: TextInputType.phone,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return null;
+                  final digits = PromptPayQr.sanitize(v);
+                  if (digits.length != 10 && digits.length != 13) {
+                    return l10n.promptpayIdValidatorError;
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 14),
+              AppTextField(
+                label: l10n.promptpayLabelFieldLabel,
+                controller: _shopPromptPayLabelController,
+                hintText: l10n.promptpayLabelFieldHint,
               ),
               if (_shopError != null) ...[
                 const SizedBox(height: 12),
@@ -575,6 +742,128 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       );
 
+  Widget _advertisingCard(AppLocalizations l10n) => _Card(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.advertisingSectionHint,
+              style: const TextStyle(color: AppColors.muted, fontSize: 11),
+            ),
+            const SizedBox(height: 14),
+            if (_adSlides.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  l10n.advertisingEmptyMessage,
+                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                ),
+              )
+            else
+              ..._adSlides.map((slide) => _AdSlideRow(
+                    slide: slide,
+                    durationController: _adDurationControllers[slide.id]!,
+                    durationLabel: l10n.advertisingDurationLabel,
+                    playsUntilEndLabel: l10n.advertisingPlaysUntilEndLabel,
+                    deleteTooltip: l10n.advertisingDeleteSlideTooltip,
+                    onDurationChanged: (seconds) => _updateAdDuration(slide.id, seconds),
+                    onDelete: () => _deleteAdSlide(slide.id),
+                  )),
+            if (_adsError != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _adsError!,
+                style: const TextStyle(color: AppColors.terracottaDark, fontSize: 12),
+              ),
+            ],
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _uploadingAd ? null : _pickAndUploadAd,
+                icon: _uploadingAd
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.add_photo_alternate_outlined, size: 16),
+                label: Text(l10n.advertisingAddSlideButton),
+              ),
+            ),
+          ],
+        ),
+      );
+
+  Widget _promotionsCard(AppLocalizations l10n) => _Card(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (_promotions.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  l10n.promotionsEmptyMessage,
+                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                ),
+              )
+            else
+              ..._promotions.map((promotion) => Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      title: Text(promotion.name),
+                      subtitle: Text(_promotionTypeLabel(l10n, promotion)),
+                      leading: Icon(
+                        promotion.active ? Icons.toggle_on : Icons.toggle_off,
+                        color: promotion.active ? AppColors.primary : AppColors.muted,
+                        size: 32,
+                      ),
+                      onTap: () => _openPromotionEditor(existing: promotion),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete_outline, color: AppColors.terracottaDark),
+                        onPressed: () => _confirmDeletePromotion(promotion),
+                      ),
+                    ),
+                  )),
+            if (_promotionsError != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _promotionsError!,
+                style: const TextStyle(color: AppColors.terracottaDark, fontSize: 12),
+              ),
+            ],
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _openPromotionEditor(),
+                icon: const Icon(Icons.sell_outlined, size: 16),
+                label: Text(l10n.promotionsAddButton),
+              ),
+            ),
+          ],
+        ),
+      );
+
+  String _promotionTypeLabel(AppLocalizations l10n, Promotion promotion) {
+    final type = switch (promotion.type) {
+      'percent' => l10n.promotionTypePercent,
+      'flat' => l10n.promotionTypeFlat,
+      'bogo' => l10n.promotionTypeBogo,
+      'code' => l10n.promotionTypeCode,
+      'combo' => l10n.promotionTypeCombo,
+      'min_spend' => l10n.promotionTypeMinSpend,
+      'tiered' => l10n.promotionTypeTiered,
+      _ => promotion.type,
+    };
+    final scope = switch (promotion.scopeType) {
+      'item' => l10n.promotionScopeItem,
+      'category' => promotion.scopeCategory ?? l10n.promotionScopeCategory,
+      _ => l10n.promotionScopeShop,
+    };
+    return '$type · $scope';
+  }
+
   Widget _dangerZoneCard(AppLocalizations l10n) => _Card(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -701,6 +990,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
           label: l10n.backupSectionLabel,
           icon: Icons.backup_outlined,
           builder: () => _backupCard(l10n),
+        ),
+      if (client.canManageShop && _adsLoaded)
+        _SettingsSection(
+          label: l10n.advertisingSectionLabel,
+          icon: Icons.slideshow_outlined,
+          builder: () => _advertisingCard(l10n),
+        ),
+      if (client.canManageShop && _promotionsLoaded)
+        _SettingsSection(
+          label: l10n.promotionsSectionLabel,
+          icon: Icons.sell_outlined,
+          builder: () => _promotionsCard(l10n),
         ),
       if (client.isOwner)
         _SettingsSection(
@@ -1066,6 +1367,77 @@ class _Card extends StatelessWidget {
         border: Border.all(color: AppColors.terracottaLight),
       ),
       child: child,
+    );
+  }
+}
+
+class _AdSlideRow extends StatelessWidget {
+  const _AdSlideRow({
+    required this.slide,
+    required this.durationController,
+    required this.durationLabel,
+    required this.playsUntilEndLabel,
+    required this.deleteTooltip,
+    required this.onDurationChanged,
+    required this.onDelete,
+  });
+
+  final AdSlideInfo slide;
+  final TextEditingController durationController;
+  final String durationLabel;
+  final String playsUntilEndLabel;
+  final String deleteTooltip;
+  final ValueChanged<String> onDurationChanged;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final thumbnailUrl = 'http://${ServerClient.instance.baseUrl}${slide.url}';
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: SizedBox(
+              width: 52,
+              height: 52,
+              child: slide.type == 'video'
+                  ? const ColoredBox(
+                      color: AppColors.background,
+                      child: Icon(Icons.videocam_outlined, color: AppColors.muted),
+                    )
+                  : Image.network(thumbnailUrl, fit: BoxFit.cover),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: slide.type == 'video'
+                ? Text(playsUntilEndLabel, style: const TextStyle(fontSize: 12, color: AppColors.muted))
+                : Row(
+                    children: [
+                      SizedBox(
+                        width: 56,
+                        child: TextField(
+                          controller: durationController,
+                          keyboardType: TextInputType.number,
+                          style: const TextStyle(fontSize: 13),
+                          decoration: const InputDecoration(isDense: true),
+                          onSubmitted: onDurationChanged,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(durationLabel, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+                    ],
+                  ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.terracottaDark),
+            tooltip: deleteTooltip,
+            onPressed: onDelete,
+          ),
+        ],
+      ),
     );
   }
 }

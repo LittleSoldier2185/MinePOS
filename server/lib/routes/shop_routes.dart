@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:bcrypt/bcrypt.dart';
+import 'package:path/path.dart' as p;
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
@@ -23,7 +26,8 @@ Response _getShop(Request req, AppDb db, ServerConfig config) {
   return jsonOk(shopConfig);
 }
 
-// PATCH /shop  { shopName, address?, taxId?, email?, receiptFooter? }
+// PATCH /shop  { shopName, address?, taxId?, email?, receiptFooter?,
+//                promptPayId?, promptPayLabel? }
 // Owner/manager only. Full replace of the editable fields (matches
 // setShopConfig's own upsert shape) rather than a partial patch.
 Future<Response> _updateShop(Request req, AppDb db, ServerConfig config) async {
@@ -41,6 +45,8 @@ Future<Response> _updateShop(Request req, AppDb db, ServerConfig config) async {
     taxId: (body?['taxId'] as String?)?.trim(),
     email: (body?['email'] as String?)?.trim(),
     receiptFooter: (body?['receiptFooter'] as String?)?.trim(),
+    promptPayId: (body?['promptPayId'] as String?)?.trim(),
+    promptPayLabel: (body?['promptPayLabel'] as String?)?.trim(),
   );
   return jsonOk(db.getShopConfig()!);
 }
@@ -83,6 +89,14 @@ Future<Response> _deleteShop(
     return unauthorized('Incorrect password');
   }
 
-  db.wipeShop();
+  final wipedAdFilenames = db.wipeShop();
+  for (final filename in wipedAdFilenames) {
+    try {
+      await File(p.join(config.dataDir, 'ads', filename)).delete();
+    } catch (_) {
+      // Best-effort — a missing/already-gone file shouldn't block the rest
+      // of the shop wipe from completing.
+    }
+  }
   return jsonOk({'ok': true});
 }

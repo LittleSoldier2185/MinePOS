@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:web_socket_channel/web_socket_channel.dart';
 
+import 'database.dart';
+
 /// Relays live cart state from a cashier station to whichever
 /// customer-facing display(s) have chosen to mirror it. Two kinds of
 /// connection share this one hub:
@@ -21,6 +23,12 @@ class CustomerDisplayHub {
   final Map<WebSocketChannel, String> _publishers = {};
   final Map<WebSocketChannel, String?> _subscribers = {};
 
+  /// Cached so a freshly-connecting subscriber can be sent the current list
+  /// immediately (see [addSubscriber]) without needing a DB handle passed
+  /// in just for that — set once via [broadcastAdSlides] whenever
+  /// `ad_routes.dart` changes the list.
+  List<Map<String, dynamic>> _adSlidesJson = const [];
+
   /// Real customer-facing display connections — what `/admin/presence`
   /// reports, distinct from cashier registers that merely publish here.
   int get count => _subscribers.length;
@@ -39,6 +47,7 @@ class CustomerDisplayHub {
   void addSubscriber(WebSocketChannel channel) {
     _subscribers[channel] = null;
     channel.sink.add(_stationsMessage());
+    channel.sink.add(_adSlidesMessage());
     channel.stream.listen(
       (message) => _handleSubscriberMessage(channel, message),
       onDone: () => _subscribers.remove(channel),
@@ -67,6 +76,22 @@ class CustomerDisplayHub {
 
   void _broadcastStations() {
     final encoded = _stationsMessage();
+    for (final channel in _subscribers.keys) {
+      try {
+        channel.sink.add(encoded);
+      } catch (_) {}
+    }
+  }
+
+  String _adSlidesMessage() => jsonEncode({'type': 'ads', 'slides': _adSlidesJson});
+
+  /// Called once at server startup (to seed [_adSlidesJson] from the DB
+  /// before any display connects) and again by `ad_routes.dart` whenever the
+  /// list changes — pushes shop-wide to every connected display, the same
+  /// as [_broadcastStations]; ads aren't per-station.
+  void broadcastAdSlides(List<DbAdSlide> slides) {
+    _adSlidesJson = slides.map((s) => s.toJson()).toList();
+    final encoded = _adSlidesMessage();
     for (final channel in _subscribers.keys) {
       try {
         channel.sink.add(encoded);

@@ -6,8 +6,11 @@ import '../lib/app_server.dart';
 import '../lib/config.dart';
 import '../lib/server_log.dart';
 
+InternetAddress? _resolveBindAddress(ServerConfig config) =>
+    config.bindAddress == null ? null : InternetAddress(config.bindAddress!);
+
 Future<void> main() async {
-  final config = await ServerConfig.load();
+  var config = await ServerConfig.load();
   RunningServer? current;
 
   // Restart in place rather than exiting the process: this entrypoint has no
@@ -33,8 +36,14 @@ Future<void> main() async {
     Future.delayed(const Duration(milliseconds: 200), () async {
       ServerLog.instance.log('Restarting server…');
       await current!.close();
+      // Reload from disk so a listen-config change made via PATCH
+      // /admin/config (persisted to server.json) actually takes effect —
+      // otherwise this would keep reusing the port/bindAddress the process
+      // originally booted with.
+      config = await ServerConfig.load();
       current = await startMinePosServer(
         config: config,
+        bindAddress: _resolveBindAddress(config),
         onRestartRequested: requestRestart,
         onRestoreRequested: requestRestore,
       );
@@ -58,6 +67,7 @@ Future<void> main() async {
       await File(dbPath).writeAsBytes(bytes, flush: true);
       current = await startMinePosServer(
         config: config,
+        bindAddress: _resolveBindAddress(config),
         onRestartRequested: requestRestart,
         onRestoreRequested: requestRestore,
       );
@@ -78,6 +88,7 @@ Future<void> main() async {
   try {
     current = await startMinePosServer(
       config: config,
+      bindAddress: _resolveBindAddress(config),
       onRestartRequested: requestRestart,
       onRestoreRequested: requestRestore,
     );

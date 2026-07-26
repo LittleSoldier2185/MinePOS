@@ -155,6 +155,23 @@ class _ReceiptPaper extends StatelessWidget {
             const Divider(),
             const SizedBox(height: 8),
             // Totals
+            if (order.appliedPromotions.isNotEmpty) ...[
+              _TotalRow(
+                AppLocalizations.of(context)!.subtotalLabel,
+                baht(order.subtotal),
+              ),
+              const SizedBox(height: 4),
+              for (final promo in order.appliedPromotions)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: _TotalRow(
+                    promo.name,
+                    '-${baht(promo.discountAmount)}',
+                    color: AppColors.primary,
+                  ),
+                ),
+              const SizedBox(height: 4),
+            ],
             _TotalRow(
               AppLocalizations.of(context)!.total,
               baht(order.total),

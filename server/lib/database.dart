@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
@@ -124,6 +125,44 @@ class DbMenuItem {
       };
 }
 
+class DbAdSlide {
+  DbAdSlide({
+    required this.id,
+    required this.type,
+    required this.filename,
+    required this.position,
+    this.durationSeconds,
+  });
+
+  final String id;
+
+  /// 'image' or 'video' — a GIF is stored/served as 'image'.
+  final String type;
+  final String filename;
+  final int position;
+
+  /// Only meaningful for image/gif; null for video (plays to its own end).
+  final int? durationSeconds;
+
+  factory DbAdSlide._fromRow(Row row) => DbAdSlide(
+        id: row['id'] as String,
+        type: row['type'] as String,
+        filename: row['filename'] as String,
+        position: row['position'] as int,
+        durationSeconds: row['duration_seconds'] as int?,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'type': type,
+        'durationSeconds': durationSeconds,
+        // Relative path only — both the authenticated GET /ads response
+        // (Settings screen) and the unauthenticated WebSocket broadcast
+        // (customer display) share this one field, client prefixes baseUrl.
+        'url': '/ads/$id/file',
+      };
+}
+
 class DbOrderItem {
   DbOrderItem({
     required this.id,
@@ -135,6 +174,7 @@ class DbOrderItem {
     required this.status,
     this.sweetness,
     this.menuItemNameTh,
+    this.discountAmount = 0,
   });
 
   final int id;
@@ -143,6 +183,12 @@ class DbOrderItem {
   final String menuItemCategory;
   final double price;
   final int quantity;
+
+  /// This line's share of whatever promotion(s) applied — set by the client
+  /// (which already computed it via `PromotionService.evaluate`), stored
+  /// here purely for receipt/report line-item detail. See [DbOrder.total]'s
+  /// sibling [DbOrder.discountTotal] for the order-level sum.
+  final double discountAmount;
 
   /// Per-item kitchen prep state: one of [kOrderItemStatuses]. Unlike the
   /// parent order's status, an item never reaches "completed" on its own —
@@ -168,6 +214,7 @@ class DbOrderItem {
         status: row['status'] as String? ?? 'pending',
         sweetness: row['sweetness'] as String?,
         menuItemNameTh: row['menu_item_name_th'] as String?,
+        discountAmount: (row['discount_amount'] as num?)?.toDouble() ?? 0,
       );
 
   Map<String, dynamic> toJson() => {
@@ -180,6 +227,7 @@ class DbOrderItem {
         'status': status,
         'sweetness': sweetness,
         'menuItemNameTh': menuItemNameTh,
+        'discountAmount': discountAmount,
       };
 
   double get subtotal => price * quantity;
@@ -205,12 +253,20 @@ class DbOrder {
     required this.status,
     this.amountPaid,
     this.cancelReason,
+    this.discountTotal = 0,
+    this.appliedPromotions = const [],
+    this.createdByUserId,
+    this.createdByName,
   });
 
   final int id;
   final int orderNumber;
   final DateTime createdAt;
   final String paymentMethod;
+
+  /// Already net of [discountTotal] — the client sends the final
+  /// post-discount total same as it always has, promotions are just another
+  /// input to the price the client was already authoritative for.
   final double total;
   final double? amountPaid;
   final String status;
@@ -219,6 +275,22 @@ class DbOrder {
   /// Set only when [status] is 'cancelled' — the reason chosen (plus any
   /// free-text detail) at cancel time.
   final String? cancelReason;
+
+  /// Sum of every applied promotion's discount — same number as summing
+  /// [appliedPromotions], kept as its own column for cheap Reports queries.
+  final double discountTotal;
+
+  /// Audit trail: which promotion(s) applied to this order, populated from
+  /// `order_promotions` (see [AppDb.recordOrderPromotions]).
+  final List<DbAppliedPromotion> appliedPromotions;
+
+  /// Which staff member rang this up — null for orders placed before this
+  /// column existed. [createdByName] is a snapshot of that user's display
+  /// name at order time (same reasoning as [DbOrderItem.menuItemName]): a
+  /// later rename/deletion of the account shouldn't break past sales
+  /// attribution in Reports.
+  final int? createdByUserId;
+  final String? createdByName;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -230,6 +302,229 @@ class DbOrder {
         'amountPaid': amountPaid,
         'cancelReason': cancelReason,
         'items': items.map((i) => i.toJson()).toList(),
+        'discountTotal': discountTotal,
+        'appliedPromotions': appliedPromotions.map((p) => p.toJson()).toList(),
+        'createdByUserId': createdByUserId,
+        'createdByName': createdByName,
+      };
+}
+
+/// One row of `order_promotions` — a promotion that applied to a specific
+/// order, joined with the promotion's own name for display without a
+/// separate lookup.
+class DbAppliedPromotion {
+  DbAppliedPromotion({
+    required this.promotionId,
+    required this.name,
+    required this.discountAmount,
+    this.codeUsed,
+    this.approvedByUserId,
+  });
+
+  final String promotionId;
+  final String name;
+  final double discountAmount;
+  final String? codeUsed;
+  final int? approvedByUserId;
+
+  Map<String, dynamic> toJson() => {
+        'promotionId': promotionId,
+        'name': name,
+        'discountAmount': discountAmount,
+        'codeUsed': codeUsed,
+        'approvedByUserId': approvedByUserId,
+      };
+}
+
+/// A configured promotion. Which of the nullable mechanics fields are
+/// meaningful depends on [type]:
+///  - 'percent': [percentValue] (+ optional [maxDiscountCap])
+///  - 'flat': [flatAmount]
+///  - 'bogo': [bogoBuyQty]/[bogoGetQty]/[bogoGetDiscountPercent]
+///  - 'code': no mechanics of its own here — see [codes]; a code promotion's
+///    actual discount shape (percent/flat) is still expressed via
+///    [percentValue]/[flatAmount], the code just gates whether it applies
+///  - 'combo': [comboPrice]
+///  - 'min_spend': [minSpendAmount] (+ [percentValue] or [flatAmount] for
+///    what the reward actually is)
+///  - 'tiered': [tiered]
+/// See `PromotionService` (client) for the evaluation logic that actually
+/// interprets these against a cart.
+class DbPromotion {
+  DbPromotion({
+    required this.id,
+    required this.name,
+    required this.type,
+    required this.active,
+    required this.scopeType,
+    this.scopeItemIds = const [],
+    this.scopeCategory,
+    this.excludeItemIds = const [],
+    this.percentValue,
+    this.flatAmount,
+    this.maxDiscountCap,
+    this.minSpendAmount,
+    this.bogoBuyQty,
+    this.bogoGetQty,
+    this.bogoGetDiscountPercent,
+    this.comboPrice,
+    this.tiered = const [],
+    this.startDate,
+    this.endDate,
+    this.daysOfWeek,
+    this.timeStart,
+    this.timeEnd,
+    this.requiresManagerApproval = false,
+    this.approvalThresholdAmount,
+    required this.createdAt,
+    this.codes = const [],
+  });
+
+  final String id;
+  final String name;
+  final String type;
+  final bool active;
+
+  final String scopeType;
+  final List<String> scopeItemIds;
+  final String? scopeCategory;
+  final List<String> excludeItemIds;
+
+  final double? percentValue;
+  final double? flatAmount;
+  final double? maxDiscountCap;
+  final double? minSpendAmount;
+  final int? bogoBuyQty;
+  final int? bogoGetQty;
+  final double? bogoGetDiscountPercent;
+  final double? comboPrice;
+  final List<Map<String, dynamic>> tiered;
+
+  /// Scheduled window — both a date range AND a recurring day/time window
+  /// can be set at once (all non-null constraints must hold simultaneously
+  /// for the promotion to be "in window" right now); either or both may be
+  /// left null, in which case that constraint just doesn't restrict it.
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final List<int>? daysOfWeek;
+  final String? timeStart;
+  final String? timeEnd;
+
+  final bool requiresManagerApproval;
+  final double? approvalThresholdAmount;
+
+  final DateTime createdAt;
+
+  /// Only populated for `type == 'code'` promotions.
+  final List<DbPromotionCode> codes;
+
+  factory DbPromotion._fromRow(Row row, {List<DbPromotionCode> codes = const []}) =>
+      DbPromotion(
+        id: row['id'] as String,
+        name: row['name'] as String,
+        type: row['type'] as String,
+        active: (row['active'] as int) == 1,
+        scopeType: row['scope_type'] as String,
+        scopeItemIds: _decodeStringList(row['scope_item_ids'] as String?),
+        scopeCategory: row['scope_category'] as String?,
+        excludeItemIds: _decodeStringList(row['exclude_item_ids'] as String?),
+        percentValue: (row['percent_value'] as num?)?.toDouble(),
+        flatAmount: (row['flat_amount'] as num?)?.toDouble(),
+        maxDiscountCap: (row['max_discount_cap'] as num?)?.toDouble(),
+        minSpendAmount: (row['min_spend_amount'] as num?)?.toDouble(),
+        bogoBuyQty: row['bogo_buy_qty'] as int?,
+        bogoGetQty: row['bogo_get_qty'] as int?,
+        bogoGetDiscountPercent: (row['bogo_get_discount_percent'] as num?)?.toDouble(),
+        comboPrice: (row['combo_price'] as num?)?.toDouble(),
+        tiered: _decodeTiered(row['tiered_json'] as String?),
+        startDate: row['start_date'] != null ? DateTime.parse(row['start_date'] as String) : null,
+        endDate: row['end_date'] != null ? DateTime.parse(row['end_date'] as String) : null,
+        daysOfWeek: row['days_of_week'] != null
+            ? (jsonDecode(row['days_of_week'] as String) as List).cast<int>()
+            : null,
+        timeStart: row['time_start'] as String?,
+        timeEnd: row['time_end'] as String?,
+        requiresManagerApproval: (row['requires_manager_approval'] as int) == 1,
+        approvalThresholdAmount: (row['approval_threshold_amount'] as num?)?.toDouble(),
+        createdAt: DateTime.parse(row['created_at'] as String),
+        codes: codes,
+      );
+
+  static List<String> _decodeStringList(String? json) {
+    if (json == null) return const [];
+    return (jsonDecode(json) as List).cast<String>();
+  }
+
+  static List<Map<String, dynamic>> _decodeTiered(String? json) {
+    if (json == null) return const [];
+    return (jsonDecode(json) as List).cast<Map<String, dynamic>>();
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'type': type,
+        'active': active,
+        'scopeType': scopeType,
+        'scopeItemIds': scopeItemIds,
+        'scopeCategory': scopeCategory,
+        'excludeItemIds': excludeItemIds,
+        'percentValue': percentValue,
+        'flatAmount': flatAmount,
+        'maxDiscountCap': maxDiscountCap,
+        'minSpendAmount': minSpendAmount,
+        'bogoBuyQty': bogoBuyQty,
+        'bogoGetQty': bogoGetQty,
+        'bogoGetDiscountPercent': bogoGetDiscountPercent,
+        'comboPrice': comboPrice,
+        'tiered': tiered,
+        'startDate': startDate?.toIso8601String(),
+        'endDate': endDate?.toIso8601String(),
+        'daysOfWeek': daysOfWeek,
+        'timeStart': timeStart,
+        'timeEnd': timeEnd,
+        'requiresManagerApproval': requiresManagerApproval,
+        'approvalThresholdAmount': approvalThresholdAmount,
+        'createdAt': createdAt.toIso8601String(),
+        'codes': codes.map((c) => c.toJson()).toList(),
+      };
+}
+
+/// One redeemable code attached to a `type == 'code'` promotion — split
+/// into its own table/model since a single promotion can have many codes
+/// (e.g. a batch of one-time codes for a mailer), each with its own
+/// [maxUses]/[usedCount].
+class DbPromotionCode {
+  DbPromotionCode({
+    required this.id,
+    required this.promotionId,
+    required this.code,
+    this.maxUses,
+    this.usedCount = 0,
+  });
+
+  final String id;
+  final String promotionId;
+
+  /// Stored uppercase; compared case-insensitively everywhere.
+  final String code;
+  final int? maxUses;
+  final int usedCount;
+
+  factory DbPromotionCode._fromRow(Row row) => DbPromotionCode(
+        id: row['id'] as String,
+        promotionId: row['promotion_id'] as String,
+        code: row['code'] as String,
+        maxUses: row['max_uses'] as int?,
+        usedCount: row['used_count'] as int,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'promotionId': promotionId,
+        'code': code,
+        'maxUses': maxUses,
+        'usedCount': usedCount,
       };
 }
 
@@ -462,6 +757,125 @@ class AppDb {
         receipt_footer TEXT
       )
     ''');
+    final shopCols = _db
+        .select("PRAGMA table_info(shop_config)")
+        .map((r) => r['name'])
+        .toSet();
+    if (!shopCols.contains('promptpay_id')) {
+      _db.execute('ALTER TABLE shop_config ADD COLUMN promptpay_id TEXT');
+    }
+    if (!shopCols.contains('promptpay_label')) {
+      _db.execute('ALTER TABLE shop_config ADD COLUMN promptpay_label TEXT');
+    }
+
+    // Customer-display advertising slideshow — shop-wide, not per-station.
+    // `type` is 'image' or 'video' (an animated GIF is stored/served as
+    // 'image'; Flutter's Image widget already animates GIFs natively).
+    // `duration_seconds` only applies to image/gif slides — null for video,
+    // which plays to its own natural end before advancing.
+    _db.execute('''
+      CREATE TABLE IF NOT EXISTS ad_slides (
+        id TEXT PRIMARY KEY,
+        type TEXT NOT NULL,
+        filename TEXT NOT NULL,
+        duration_seconds INTEGER,
+        position INTEGER NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    ''');
+
+    // Promotions — see PromotionService (client) for how these get evaluated
+    // against a cart. Nullable mechanics columns are only meaningful for the
+    // matching `type`; scope/schedule columns hold JSON arrays or plain
+    // strings since sqlite has no native array/date type.
+    _db.execute('''
+      CREATE TABLE IF NOT EXISTS promotions (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL,
+        active INTEGER NOT NULL DEFAULT 1,
+
+        scope_type TEXT NOT NULL,
+        scope_item_ids TEXT,
+        scope_category TEXT,
+        exclude_item_ids TEXT,
+
+        percent_value REAL,
+        flat_amount REAL,
+        max_discount_cap REAL,
+        min_spend_amount REAL,
+        bogo_buy_qty INTEGER,
+        bogo_get_qty INTEGER,
+        bogo_get_discount_percent REAL,
+        combo_price REAL,
+        tiered_json TEXT,
+
+        start_date TEXT,
+        end_date TEXT,
+        days_of_week TEXT,
+        time_start TEXT,
+        time_end TEXT,
+
+        requires_manager_approval INTEGER NOT NULL DEFAULT 0,
+        approval_threshold_amount REAL,
+
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    ''');
+
+    // Codes for a `type = 'code'` promotion — split into its own table
+    // (rather than a single column on `promotions`) since one promotion can
+    // have several codes (e.g. a batch of one-time codes for a mailer).
+    _db.execute('''
+      CREATE TABLE IF NOT EXISTS promotion_codes (
+        id TEXT PRIMARY KEY,
+        promotion_id TEXT NOT NULL,
+        code TEXT NOT NULL,
+        max_uses INTEGER,
+        used_count INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+
+    // Audit trail + per-order attribution — a dedicated join table rather
+    // than a column on `orders` because promotions can stack (multiple rows
+    // per order).
+    _db.execute('''
+      CREATE TABLE IF NOT EXISTS order_promotions (
+        order_id INTEGER NOT NULL,
+        promotion_id TEXT NOT NULL,
+        code_used TEXT,
+        discount_amount REAL NOT NULL,
+        approved_by_user_id INTEGER,
+        PRIMARY KEY (order_id, promotion_id)
+      )
+    ''');
+
+    final orderCols2 =
+        _db.select("PRAGMA table_info(orders)").map((r) => r['name']).toSet();
+    if (!orderCols2.contains('discount_total')) {
+      _db.execute(
+          'ALTER TABLE orders ADD COLUMN discount_total REAL NOT NULL DEFAULT 0');
+    }
+    final orderItemCols2 = _db
+        .select("PRAGMA table_info(order_items)")
+        .map((r) => r['name'])
+        .toSet();
+    if (!orderItemCols2.contains('discount_amount')) {
+      _db.execute(
+          'ALTER TABLE order_items ADD COLUMN discount_amount REAL NOT NULL DEFAULT 0');
+    }
+
+    // Which staff member rang up this order — nullable since orders placed
+    // before this column existed have neither. `created_by_name` is a
+    // snapshot of the actor's display name at order time (same reasoning as
+    // `order_items.menu_item_name`: a later rename/deletion of that staff
+    // account shouldn't break past sales attribution in Reports).
+    if (!orderCols2.contains('created_by_user_id')) {
+      _db.execute('ALTER TABLE orders ADD COLUMN created_by_user_id INTEGER');
+    }
+    if (!orderCols2.contains('created_by_name')) {
+      _db.execute('ALTER TABLE orders ADD COLUMN created_by_name TEXT');
+    }
   }
 
   // ── Shop config ──────────────────────────────────────────────────────────────
@@ -476,6 +890,8 @@ class AppDb {
       'taxId': row['tax_id'],
       'email': row['email'],
       'receiptFooter': row['receipt_footer'],
+      'promptPayId': row['promptpay_id'],
+      'promptPayLabel': row['promptpay_label'],
     };
   }
 
@@ -485,27 +901,43 @@ class AppDb {
     String? taxId,
     String? email,
     String? receiptFooter,
+    String? promptPayId,
+    String? promptPayLabel,
   }) {
     _db.execute(
       'INSERT OR REPLACE INTO shop_config '
-      '(id, shop_name, address, tax_id, email, receipt_footer) '
-      'VALUES (1, ?, ?, ?, ?, ?)',
-      [shopName, address, taxId, email, receiptFooter],
+      '(id, shop_name, address, tax_id, email, receipt_footer, promptpay_id, promptpay_label) '
+      'VALUES (1, ?, ?, ?, ?, ?, ?, ?)',
+      [shopName, address, taxId, email, receiptFooter, promptPayId, promptPayLabel],
     );
   }
 
   /// Wipes every row from every table — shop config, all accounts, menu,
-  /// orders — resetting the server to the same pristine state as before
-  /// POST /setup was ever called, so a new shop can be bootstrapped again.
-  /// Existing JWTs for the deleted owner stop working immediately since
-  /// [verifyToken] looks the user up by username on every request.
-  void wipeShop() {
+  /// orders, ad slides — resetting the server to the same pristine state as
+  /// before POST /setup was ever called, so a new shop can be bootstrapped
+  /// again. Existing JWTs for the deleted owner stop working immediately
+  /// since [verifyToken] looks the user up by username on every request.
+  ///
+  /// Returns the filenames of any wiped ad slides so the caller (which has
+  /// [ServerConfig.dataDir], unlike this DB-only class) can delete the
+  /// actual files from disk too — otherwise they'd linger as orphans, the
+  /// same kind of leftover-file confusion `minepos.db` itself caused before
+  /// `hasLocalShop()` was fixed to check for real rows instead of mere file
+  /// existence.
+  List<String> wipeShop() {
+    final adFilenames =
+        _db.select('SELECT filename FROM ad_slides').map((r) => r['filename'] as String).toList();
+    _db.execute('DELETE FROM order_promotions');
     _db.execute('DELETE FROM order_items');
     _db.execute('DELETE FROM orders');
     _db.execute('DELETE FROM menu_items');
     _db.execute('DELETE FROM otp_tokens');
     _db.execute('DELETE FROM users');
     _db.execute('DELETE FROM shop_config');
+    _db.execute('DELETE FROM ad_slides');
+    _db.execute('DELETE FROM promotion_codes');
+    _db.execute('DELETE FROM promotions');
+    return adFilenames;
   }
 
   // ── User ───────────────────────────────────────────────────────────────────
@@ -717,6 +1149,236 @@ class AppDb {
     return getMenuItem(id);
   }
 
+  // ── Ad slides (customer-display advertising slideshow) ──────────────────────
+
+  List<DbAdSlide> getAdSlides() {
+    final rows = _db.select('SELECT * FROM ad_slides ORDER BY position');
+    return rows.map(DbAdSlide._fromRow).toList();
+  }
+
+  DbAdSlide? getAdSlide(String id) {
+    final rows = _db.select('SELECT * FROM ad_slides WHERE id = ?', [id]);
+    if (rows.isEmpty) return null;
+    return DbAdSlide._fromRow(rows.first);
+  }
+
+  DbAdSlide createAdSlide({
+    required String type,
+    required String filename,
+    int? durationSeconds,
+  }) {
+    final id = _uuid.v4().substring(0, 8);
+    final position = _db
+        .select('SELECT COUNT(*) AS c FROM ad_slides')
+        .first['c'] as int;
+    _db.execute(
+      'INSERT INTO ad_slides (id, type, filename, duration_seconds, position) '
+      'VALUES (?, ?, ?, ?, ?)',
+      [id, type, filename, durationSeconds, position],
+    );
+    return getAdSlide(id)!;
+  }
+
+  DbAdSlide? updateAdSlideDuration(String id, int durationSeconds) {
+    _db.execute(
+      'UPDATE ad_slides SET duration_seconds = ? WHERE id = ?',
+      [durationSeconds, id],
+    );
+    return getAdSlide(id);
+  }
+
+  /// Returns the deleted slide's filename (so the route can remove the
+  /// actual file from disk), or null if no slide with [id] existed.
+  String? deleteAdSlide(String id) {
+    final slide = getAdSlide(id);
+    if (slide == null) return null;
+    _db.execute('DELETE FROM ad_slides WHERE id = ?', [id]);
+    return slide.filename;
+  }
+
+  // ── Promotions ───────────────────────────────────────────────────────────────
+
+  static const _promotionColumns =
+      'id, name, type, active, scope_type, scope_item_ids, scope_category, exclude_item_ids, '
+      'percent_value, flat_amount, max_discount_cap, min_spend_amount, bogo_buy_qty, bogo_get_qty, '
+      'bogo_get_discount_percent, combo_price, tiered_json, start_date, end_date, days_of_week, '
+      'time_start, time_end, requires_manager_approval, approval_threshold_amount, created_at';
+
+  List<DbPromotionCode> _codesFor(String promotionId) => _db
+      .select('SELECT * FROM promotion_codes WHERE promotion_id = ?', [promotionId])
+      .map(DbPromotionCode._fromRow)
+      .toList();
+
+  List<DbPromotion> getPromotions() {
+    final rows = _db.select('SELECT $_promotionColumns FROM promotions ORDER BY created_at');
+    return rows.map((row) => DbPromotion._fromRow(row, codes: _codesFor(row['id'] as String))).toList();
+  }
+
+  DbPromotion? getPromotion(String id) {
+    final rows = _db.select('SELECT $_promotionColumns FROM promotions WHERE id = ?', [id]);
+    if (rows.isEmpty) return null;
+    return DbPromotion._fromRow(rows.first, codes: _codesFor(id));
+  }
+
+  DbPromotion createPromotion({
+    required String name,
+    required String type,
+    bool active = true,
+    required String scopeType,
+    List<String> scopeItemIds = const [],
+    String? scopeCategory,
+    List<String> excludeItemIds = const [],
+    double? percentValue,
+    double? flatAmount,
+    double? maxDiscountCap,
+    double? minSpendAmount,
+    int? bogoBuyQty,
+    int? bogoGetQty,
+    double? bogoGetDiscountPercent,
+    double? comboPrice,
+    List<Map<String, dynamic>> tiered = const [],
+    DateTime? startDate,
+    DateTime? endDate,
+    List<int>? daysOfWeek,
+    String? timeStart,
+    String? timeEnd,
+    bool requiresManagerApproval = false,
+    double? approvalThresholdAmount,
+  }) {
+    final id = _uuid.v4().substring(0, 8);
+    _db.execute(
+      'INSERT INTO promotions ($_promotionColumns) VALUES '
+      "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))",
+      [
+        id,
+        name.trim(),
+        type,
+        active ? 1 : 0,
+        scopeType,
+        scopeItemIds.isEmpty ? null : jsonEncode(scopeItemIds),
+        scopeCategory,
+        excludeItemIds.isEmpty ? null : jsonEncode(excludeItemIds),
+        percentValue,
+        flatAmount,
+        maxDiscountCap,
+        minSpendAmount,
+        bogoBuyQty,
+        bogoGetQty,
+        bogoGetDiscountPercent,
+        comboPrice,
+        tiered.isEmpty ? null : jsonEncode(tiered),
+        startDate?.toIso8601String(),
+        endDate?.toIso8601String(),
+        daysOfWeek == null ? null : jsonEncode(daysOfWeek),
+        timeStart,
+        timeEnd,
+        requiresManagerApproval ? 1 : 0,
+        approvalThresholdAmount,
+      ],
+    );
+    return getPromotion(id)!;
+  }
+
+  DbPromotion? updatePromotion({
+    required String id,
+    required String name,
+    required String type,
+    required bool active,
+    required String scopeType,
+    List<String> scopeItemIds = const [],
+    String? scopeCategory,
+    List<String> excludeItemIds = const [],
+    double? percentValue,
+    double? flatAmount,
+    double? maxDiscountCap,
+    double? minSpendAmount,
+    int? bogoBuyQty,
+    int? bogoGetQty,
+    double? bogoGetDiscountPercent,
+    double? comboPrice,
+    List<Map<String, dynamic>> tiered = const [],
+    DateTime? startDate,
+    DateTime? endDate,
+    List<int>? daysOfWeek,
+    String? timeStart,
+    String? timeEnd,
+    bool requiresManagerApproval = false,
+    double? approvalThresholdAmount,
+  }) {
+    _db.execute(
+      'UPDATE promotions SET name=?, type=?, active=?, scope_type=?, scope_item_ids=?, scope_category=?, '
+      'exclude_item_ids=?, percent_value=?, flat_amount=?, max_discount_cap=?, min_spend_amount=?, '
+      'bogo_buy_qty=?, bogo_get_qty=?, bogo_get_discount_percent=?, combo_price=?, tiered_json=?, '
+      'start_date=?, end_date=?, days_of_week=?, time_start=?, time_end=?, requires_manager_approval=?, '
+      'approval_threshold_amount=? WHERE id=?',
+      [
+        name.trim(),
+        type,
+        active ? 1 : 0,
+        scopeType,
+        scopeItemIds.isEmpty ? null : jsonEncode(scopeItemIds),
+        scopeCategory,
+        excludeItemIds.isEmpty ? null : jsonEncode(excludeItemIds),
+        percentValue,
+        flatAmount,
+        maxDiscountCap,
+        minSpendAmount,
+        bogoBuyQty,
+        bogoGetQty,
+        bogoGetDiscountPercent,
+        comboPrice,
+        tiered.isEmpty ? null : jsonEncode(tiered),
+        startDate?.toIso8601String(),
+        endDate?.toIso8601String(),
+        daysOfWeek == null ? null : jsonEncode(daysOfWeek),
+        timeStart,
+        timeEnd,
+        requiresManagerApproval ? 1 : 0,
+        approvalThresholdAmount,
+        id,
+      ],
+    );
+    if (_db.updatedRows == 0) return null;
+    return getPromotion(id);
+  }
+
+  bool deletePromotion(String id) {
+    _db.execute('DELETE FROM promotion_codes WHERE promotion_id = ?', [id]);
+    _db.execute('DELETE FROM promotions WHERE id = ?', [id]);
+    return _db.updatedRows > 0;
+  }
+
+  DbPromotionCode addPromotionCode(String promotionId, String code, {int? maxUses}) {
+    final id = _uuid.v4().substring(0, 8);
+    _db.execute(
+      'INSERT INTO promotion_codes (id, promotion_id, code, max_uses) VALUES (?, ?, ?, ?)',
+      [id, promotionId, code.trim().toUpperCase(), maxUses],
+    );
+    final rows = _db.select('SELECT * FROM promotion_codes WHERE id = ?', [id]);
+    return DbPromotionCode._fromRow(rows.first);
+  }
+
+  bool deletePromotionCode(String codeId) {
+    _db.execute('DELETE FROM promotion_codes WHERE id = ?', [codeId]);
+    return _db.updatedRows > 0;
+  }
+
+  /// Case-insensitive code lookup, joined with its parent promotion. Null
+  /// means the code doesn't exist at all — a code that exists but is
+  /// expired/used-up/inactive is still returned so the caller can report a
+  /// specific reason instead of a generic "not found".
+  ({DbPromotion promotion, DbPromotionCode code})? findPromotionByCode(String code) {
+    final codeRows = _db.select(
+      'SELECT * FROM promotion_codes WHERE UPPER(code) = UPPER(?)',
+      [code.trim()],
+    );
+    if (codeRows.isEmpty) return null;
+    final dbCode = DbPromotionCode._fromRow(codeRows.first);
+    final promotion = getPromotion(dbCode.promotionId);
+    if (promotion == null) return null;
+    return (promotion: promotion, code: dbCode);
+  }
+
   // ── Orders ─────────────────────────────────────────────────────────────────
 
   /// Scoped to today so the shop-facing counter restarts at 1 each day
@@ -732,10 +1394,19 @@ class AppDb {
     return (max ?? 0) + 1;
   }
 
+  /// [promotions] is the client-computed list of promotions that applied to
+  /// this cart (see `PromotionService.evaluate` client-side) — same trust
+  /// model as [items]' prices: the client is already authoritative for
+  /// pricing, promotions are just another input to numbers it already sent.
+  /// Each entry needs `promotionId`, `discountAmount`, optionally `codeUsed`
+  /// and `approvedByUserId`.
   DbOrder createOrder({
     required String paymentMethod,
     double? amountPaid,
     required List<Map<String, dynamic>> items,
+    List<Map<String, dynamic>> promotions = const [],
+    int? createdByUserId,
+    String? createdByName,
   }) {
     final orderNumber = _nextOrderNumber();
     final now = DateTime.now().toIso8601String();
@@ -743,19 +1414,24 @@ class AppDb {
       0,
       (s, i) => s + ((i['price'] as num).toDouble() * (i['quantity'] as int)),
     );
+    final discountTotal = promotions.fold<double>(
+      0,
+      (s, p) => s + (p['discountAmount'] as num).toDouble(),
+    );
 
     _db.execute(
-      'INSERT INTO orders (order_number, created_at, payment_method, amount_paid, total, status) '
-      "VALUES (?, ?, ?, ?, ?, 'pending')",
-      [orderNumber, now, paymentMethod, amountPaid, total],
+      'INSERT INTO orders (order_number, created_at, payment_method, amount_paid, total, status, discount_total, '
+      'created_by_user_id, created_by_name) '
+      "VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?)",
+      [orderNumber, now, paymentMethod, amountPaid, total, discountTotal, createdByUserId, createdByName],
     );
     final orderId = _db.lastInsertRowId;
 
     for (final item in items) {
       _db.execute(
         'INSERT INTO order_items '
-        '(order_id, menu_item_id, menu_item_name, menu_item_category, price, quantity, sweetness, menu_item_name_th) '
-        'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        '(order_id, menu_item_id, menu_item_name, menu_item_category, price, quantity, sweetness, menu_item_name_th, discount_amount) '
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [
           orderId,
           item['menuItemId'],
@@ -765,11 +1441,35 @@ class AppDb {
           item['quantity'],
           item['sweetness'],
           item['menuItemNameTh'],
+          (item['discountAmount'] as num?)?.toDouble() ?? 0,
         ],
       );
     }
 
-    return _buildOrder(orderId, orderNumber, now, paymentMethod, amountPaid, total, 'pending', null);
+    for (final promo in promotions) {
+      _db.execute(
+        'INSERT INTO order_promotions (order_id, promotion_id, code_used, discount_amount, approved_by_user_id) '
+        'VALUES (?, ?, ?, ?, ?)',
+        [
+          orderId,
+          promo['promotionId'],
+          promo['codeUsed'],
+          (promo['discountAmount'] as num).toDouble(),
+          promo['approvedByUserId'],
+        ],
+      );
+      final codeUsed = promo['codeUsed'] as String?;
+      if (codeUsed != null) {
+        _db.execute(
+          'UPDATE promotion_codes SET used_count = used_count + 1 '
+          'WHERE promotion_id = ? AND UPPER(code) = UPPER(?)',
+          [promo['promotionId'], codeUsed],
+        );
+      }
+    }
+
+    return _buildOrder(orderId, orderNumber, now, paymentMethod, amountPaid, total, 'pending', null, discountTotal,
+        createdByUserId, createdByName);
   }
 
   DbOrder _buildOrder(
@@ -781,9 +1481,18 @@ class AppDb {
     double total,
     String status,
     String? cancelReason,
+    double discountTotal,
+    int? createdByUserId,
+    String? createdByName,
   ) {
     final itemRows = _db.select(
       'SELECT * FROM order_items WHERE order_id = ?',
+      [id],
+    );
+    final promoRows = _db.select(
+      'SELECT op.promotion_id, p.name, op.discount_amount, op.code_used, op.approved_by_user_id '
+      'FROM order_promotions op JOIN promotions p ON p.id = op.promotion_id '
+      'WHERE op.order_id = ?',
       [id],
     );
     return DbOrder(
@@ -796,6 +1505,18 @@ class AppDb {
       status: status,
       cancelReason: cancelReason,
       items: itemRows.map(DbOrderItem._fromRow).toList(),
+      discountTotal: discountTotal,
+      appliedPromotions: promoRows
+          .map((r) => DbAppliedPromotion(
+                promotionId: r['promotion_id'] as String,
+                name: r['name'] as String,
+                discountAmount: (r['discount_amount'] as num).toDouble(),
+                codeUsed: r['code_used'] as String?,
+                approvedByUserId: r['approved_by_user_id'] as int?,
+              ))
+          .toList(),
+      createdByUserId: createdByUserId,
+      createdByName: createdByName,
     );
   }
 
@@ -808,12 +1529,16 @@ class AppDb {
         (row['total'] as num).toDouble(),
         row['status'] as String,
         row['cancel_reason'] as String?,
+        (row['discount_total'] as num?)?.toDouble() ?? 0,
+        row['created_by_user_id'] as int?,
+        row['created_by_name'] as String?,
       );
 
   List<DbOrder> getOrders({String? date}) {
     final buffer = StringBuffer(
       'SELECT o.id, o.order_number, o.created_at, o.payment_method, '
-      'o.amount_paid, o.total, o.status, o.cancel_reason FROM orders o',
+      'o.amount_paid, o.total, o.status, o.cancel_reason, o.discount_total, '
+      'o.created_by_user_id, o.created_by_name FROM orders o',
     );
     final args = <Object?>[];
 
@@ -830,7 +1555,8 @@ class AppDb {
   /// Orders still in the kitchen pipeline (not completed or cancelled), oldest first.
   List<DbOrder> getActiveOrders() {
     final rows = _db.select(
-      "SELECT id, order_number, created_at, payment_method, amount_paid, total, status, cancel_reason "
+      "SELECT id, order_number, created_at, payment_method, amount_paid, total, status, cancel_reason, discount_total, "
+      "created_by_user_id, created_by_name "
       "FROM orders WHERE status NOT IN ('completed', 'cancelled') ORDER BY id ASC",
     );
     return rows.map(_rowToOrder).toList();
@@ -838,7 +1564,8 @@ class AppDb {
 
   DbOrder? getOrderById(int id) {
     final rows = _db.select(
-      'SELECT id, order_number, created_at, payment_method, amount_paid, total, status, cancel_reason '
+      'SELECT id, order_number, created_at, payment_method, amount_paid, total, status, cancel_reason, discount_total, '
+      'created_by_user_id, created_by_name '
       'FROM orders WHERE id = ?',
       [id],
     );

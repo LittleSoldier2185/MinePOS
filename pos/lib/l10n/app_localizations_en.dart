@@ -525,6 +525,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get receiptFooterFieldHint => 'Optional, e.g. \"Thank you!\"';
 
   @override
+  String get promptpayIdFieldLabel => 'PromptPay ID';
+
+  @override
+  String get promptpayIdFieldHint => 'Mobile number or 13-digit Tax/Citizen ID';
+
+  @override
+  String get promptpayIdValidatorError =>
+      'Enter a 10-digit phone number or 13-digit ID';
+
+  @override
+  String get promptpayLabelFieldLabel => 'QR Caption';
+
+  @override
+  String get promptpayLabelFieldHint =>
+      'Optional text shown under the QR, e.g. shop name';
+
+  @override
   String get shopDetailsSectionLabel => 'Shop Details';
 
   @override
@@ -659,6 +676,9 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get promptpayConfigMessage =>
       'Configure PromptPay ID\nin Settings to enable';
+
+  @override
+  String get tapToEnlargeQrMessage => 'Tap to enlarge';
 
   @override
   String get scanQrToPayMessage => 'Scan QR to pay';
@@ -933,6 +953,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get allTimeRange => 'All Time';
 
   @override
+  String get monthRange => 'Month…';
+
+  @override
   String get customRange => 'Custom…';
 
   @override
@@ -955,6 +978,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ordersColumnHeader => 'ORDERS';
+
+  @override
+  String get totalDiscountedLabel => 'Discounted';
+
+  @override
+  String get staffSalesHeader => 'SALES BY STAFF';
+
+  @override
+  String get staffSalesUnknownLabel => 'Unknown';
+
+  @override
+  String get ordersSuffix => 'orders';
+
+  @override
+  String get promotionBreakdownHeader => 'PROMOTIONS USED';
+
+  @override
+  String get usedSuffix => 'used';
 
   @override
   String get topSellingItemsHeader => 'TOP SELLING ITEMS';
@@ -1201,6 +1242,271 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get exportBackupFailedMessage =>
       'Couldn\'t export the backup. Try again.';
+
+  @override
+  String get staffJoinedLabel => 'Joined';
+
+  @override
+  String get staffTenureLabel => 'Working here for';
+
+  @override
+  String tenureDaysLabel(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days',
+      one: '$count day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String tenureMonthsLabel(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count months',
+      one: '$count month',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String tenureYearsLabel(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count years',
+      one: '$count year',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get promotionsSectionLabel => 'PROMOTIONS';
+
+  @override
+  String get promotionsEmptyMessage =>
+      'No promotions yet. Add a discount, BOGO, or promo code.';
+
+  @override
+  String get promotionsAddButton => 'Add Promotion';
+
+  @override
+  String get promotionDeleteConfirmTitle => 'Delete this promotion?';
+
+  @override
+  String get promotionDeleteConfirmContent =>
+      'This can\'t be undone. Past orders that already used it keep their own record either way.';
+
+  @override
+  String get promotionDeleteConfirmButton => 'Delete';
+
+  @override
+  String get promotionEditorNewTitle => 'New Promotion';
+
+  @override
+  String get promotionEditorEditTitle => 'Edit Promotion';
+
+  @override
+  String get promotionNameLabel => 'Name';
+
+  @override
+  String get promotionNameHint => 'e.g. Weekday 10% off';
+
+  @override
+  String get promotionNameRequiredError => 'Name is required';
+
+  @override
+  String get promotionActiveLabel => 'Active';
+
+  @override
+  String get promotionSavedMessage => 'Promotion saved';
+
+  @override
+  String get promotionSaveButton => 'Save';
+
+  @override
+  String get promotionTypeLabel => 'Type';
+
+  @override
+  String get promotionTypePercent => 'Percent off';
+
+  @override
+  String get promotionTypeFlat => 'Flat amount off';
+
+  @override
+  String get promotionTypeBogo => 'Buy one get one';
+
+  @override
+  String get promotionTypeCode => 'Discount code';
+
+  @override
+  String get promotionTypeCombo => 'Combo bundle';
+
+  @override
+  String get promotionTypeMinSpend => 'Minimum spend';
+
+  @override
+  String get promotionTypeTiered => 'Tiered pricing';
+
+  @override
+  String get promotionScopeLabel => 'Applies to';
+
+  @override
+  String get promotionScopeItem => 'Specific item(s)';
+
+  @override
+  String get promotionScopeCategory => 'Category';
+
+  @override
+  String get promotionScopeShop => 'Whole shop';
+
+  @override
+  String get promotionExcludeItemsLabel => 'Exclude specific items (optional)';
+
+  @override
+  String get promotionPercentLabel => 'Percent off (%)';
+
+  @override
+  String get promotionMaxCapLabel => 'Max discount amount (optional)';
+
+  @override
+  String get promotionFlatAmountLabel => 'Amount off (฿)';
+
+  @override
+  String get promotionMinSpendLabel => 'Minimum order total (฿)';
+
+  @override
+  String get promotionRewardPercent => 'Percent off';
+
+  @override
+  String get promotionRewardFlat => 'Fixed amount off';
+
+  @override
+  String get promotionBogoBuyQtyLabel => 'Buy quantity';
+
+  @override
+  String get promotionBogoGetQtyLabel => 'Get quantity';
+
+  @override
+  String get promotionBogoDiscountLabel =>
+      'Discount on the \"get\" items (%, 100 = free)';
+
+  @override
+  String get promotionComboPriceLabel => 'Bundle price (฿)';
+
+  @override
+  String get promotionComboItemsLabel => 'Items included in the bundle';
+
+  @override
+  String get promotionTieredLabel => 'Quantity / price tiers';
+
+  @override
+  String get promotionTieredQtyLabel => 'Qty';
+
+  @override
+  String get promotionTieredPriceLabel => 'Price (฿)';
+
+  @override
+  String get promotionTieredAddRow => 'Add tier';
+
+  @override
+  String get promotionScheduleLabel => 'Schedule (optional)';
+
+  @override
+  String get promotionStartDateLabel => 'Start date';
+
+  @override
+  String get promotionEndDateLabel => 'End date';
+
+  @override
+  String get promotionDaysOfWeekLabel =>
+      'Days of week (leave empty for every day)';
+
+  @override
+  String get promotionTimeStartLabel => 'Start time';
+
+  @override
+  String get promotionTimeEndLabel => 'End time';
+
+  @override
+  String get promotionApprovalLabel => 'Requires manager approval';
+
+  @override
+  String get promotionApprovalThresholdLabel =>
+      'Only above this discount amount (optional, ฿)';
+
+  @override
+  String get promotionCodesLabel => 'Codes';
+
+  @override
+  String promotionCodeUsageLabel(int usedCount, String maxUses) {
+    return 'Used $usedCount / $maxUses';
+  }
+
+  @override
+  String get promotionNewCodeLabel => 'New code';
+
+  @override
+  String get promotionMaxUsesLabel => 'Max uses (optional)';
+
+  @override
+  String get promotionAddCodeButton => 'Add Code';
+
+  @override
+  String get subtotalLabel => 'Subtotal';
+
+  @override
+  String get discountCodeFieldLabel => 'Discount code';
+
+  @override
+  String get discountCodeFieldHint => 'Enter a code';
+
+  @override
+  String get applyCodeButton => 'Apply';
+
+  @override
+  String get invalidDiscountCodeError =>
+      'That code isn\'t valid or has already been used up.';
+
+  @override
+  String promotionNeedsApprovalLabel(String name) {
+    return '$name needs manager approval';
+  }
+
+  @override
+  String get approveButton => 'Approve';
+
+  @override
+  String get managerApprovalDialogTitle => 'Manager approval';
+
+  @override
+  String get managerApprovalDialogContent =>
+      'A manager or owner must confirm their own credentials to approve this discount.';
+
+  @override
+  String get advertisingSectionLabel => 'ADVERTISING';
+
+  @override
+  String get advertisingSectionHint =>
+      'Recommended size: 1920×1080 (16:9). Images/GIFs and videos are cropped to fill the screen (like a TV ad), so keep important content centered.';
+
+  @override
+  String get advertisingEmptyMessage =>
+      'No slides yet. Add images, GIFs, or videos to play on the customer display whenever it\'s idle.';
+
+  @override
+  String get advertisingAddSlideButton => 'Add Slide';
+
+  @override
+  String get advertisingDurationLabel => 'Seconds';
+
+  @override
+  String get advertisingPlaysUntilEndLabel => 'Plays until it ends';
+
+  @override
+  String get advertisingDeleteSlideTooltip => 'Delete slide';
 
   @override
   String get dangerZoneSectionLabel => 'DANGER ZONE';

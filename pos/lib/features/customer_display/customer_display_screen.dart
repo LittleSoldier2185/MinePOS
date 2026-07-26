@@ -1,4 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
@@ -129,10 +134,17 @@ class _CustomerDisplayScreenState extends State<CustomerDisplayScreen> {
     switch (_svc.state) {
       case CustomerDisplayState.cart:
         return _CartView(svc: _svc, baht: _baht);
+      case CustomerDisplayState.promptpay:
+        return _PromptPayView(svc: _svc, baht: _baht);
       case CustomerDisplayState.thankYou:
         return _ThankYouView(svc: _svc, baht: _baht);
       case CustomerDisplayState.idle:
-        return const _IdleView();
+        // Ads only play while actively connected — a dropped connection
+        // falls back to the plain idle screen instead of looping slides
+        // that reference a server that might no longer be reachable.
+        final canShowAds = _svc.connectionState == CustomerDisplayConnectionState.connected &&
+            _svc.adSlides.isNotEmpty;
+        return canShowAds ? _AdSlideshowView(svc: _svc) : const _IdleView();
     }
   }
 }
@@ -223,6 +235,89 @@ class _IdleView extends StatelessWidget {
   }
 }
 
+/// Idle-time advertising slideshow — cycles through `svc.adSlides` in order,
+/// looping back to the start. Image/GIF slides advance after their own
+/// configured duration; video slides advance when playback reaches the end.
+class _AdSlideshowView extends StatefulWidget {
+  const _AdSlideshowView({required this.svc});
+  final CustomerDisplayService svc;
+
+  @override
+  State<_AdSlideshowView> createState() => _AdSlideshowViewState();
+}
+
+class _AdSlideshowViewState extends State<_AdSlideshowView> {
+  int _index = 0;
+  Timer? _timer;
+  Player? _player;
+  VideoController? _controller;
+  StreamSubscription<bool>? _completedSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _playCurrentSlide();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _completedSub?.cancel();
+    _player?.dispose();
+    super.dispose();
+  }
+
+  String _fullUrl(String relativeUrl) => 'http://${ServerClient.instance.baseUrl}$relativeUrl';
+
+  void _playCurrentSlide() {
+    _timer?.cancel();
+    _completedSub?.cancel();
+    _player?.dispose();
+    _player = null;
+    _controller = null;
+
+    final slides = widget.svc.adSlides;
+    if (slides.isEmpty) return;
+    final slide = slides[_index % slides.length];
+
+    if (slide.type == 'video') {
+      final player = Player();
+      final controller = VideoController(player);
+      _player = player;
+      _controller = controller;
+      player.open(Media(_fullUrl(slide.url)));
+      _completedSub = player.stream.completed.listen((done) {
+        if (done) _advance();
+      });
+    } else {
+      _timer = Timer(Duration(seconds: slide.durationSeconds ?? 8), _advance);
+    }
+  }
+
+  void _advance() {
+    if (!mounted) return;
+    final slides = widget.svc.adSlides;
+    if (slides.isEmpty) return;
+    setState(() {
+      _index = (_index + 1) % slides.length;
+      _playCurrentSlide();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final slides = widget.svc.adSlides;
+    if (slides.isEmpty) return const _IdleView();
+    final slide = slides[_index % slides.length];
+
+    return SizedBox.expand(
+      child: slide.type == 'video' && _controller != null
+          ? Video(controller: _controller!, fit: BoxFit.cover, controls: NoVideoControls)
+          : Image.network(_fullUrl(slide.url), fit: BoxFit.cover),
+    );
+  }
+}
+
 class _CartView extends StatelessWidget {
   const _CartView({required this.svc, required this.baht});
   final CustomerDisplayService svc;
@@ -289,20 +384,96 @@ class _CartView extends StatelessWidget {
           decoration: const BoxDecoration(
             border: Border(top: BorderSide(color: Colors.white12)),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(AppLocalizations.of(context)!.total,
-                  style: const TextStyle(color: Colors.white70, fontSize: 20)),
-              Text(
-                baht(svc.total),
-                style: const TextStyle(
-                    color: AppColors.primaryLight, fontSize: 34, fontWeight: FontWeight.w800),
+              if (svc.discountTotal > 0) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        svc.promotionNames.join(', '),
+                        style: const TextStyle(color: AppColors.primaryLight, fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    Text('-${baht(svc.discountTotal)}',
+                        style: const TextStyle(color: AppColors.primaryLight, fontSize: 14, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(AppLocalizations.of(context)!.total,
+                      style: const TextStyle(color: Colors.white70, fontSize: 20)),
+                  Text(
+                    baht(svc.total),
+                    style: const TextStyle(
+                        color: AppColors.primaryLight, fontSize: 34, fontWeight: FontWeight.w800),
+                  ),
+                ],
               ),
             ],
           ),
         ),
       ],
+    );
+  }
+}
+
+class _PromptPayView extends StatelessWidget {
+  const _PromptPayView({required this.svc, required this.baht});
+  final CustomerDisplayService svc;
+  final String Function(double) baht;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            svc.orderNumber.isEmpty
+                ? l10n.customerDisplayOrderLabel
+                : l10n.customerDisplayOrderWithNumber(svc.orderNumber),
+            style: const TextStyle(
+                color: Colors.white70, fontSize: 18, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 20),
+          Container(
+            width: 220,
+            height: 220,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: QrImageView(data: svc.promptPayPayload),
+          ),
+          if (svc.promptPayLabel.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              svc.promptPayLabel,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Text(
+            baht(svc.total),
+            style: const TextStyle(
+                color: AppColors.primaryLight, fontSize: 34, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            l10n.scanQrToPayMessage,
+            style: const TextStyle(color: Colors.white54, fontSize: 15),
+          ),
+        ],
+      ),
     );
   }
 }

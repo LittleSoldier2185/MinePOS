@@ -5,8 +5,10 @@ import 'package:shelf/shelf_io.dart' as io;
 import 'package:shelf_router/shelf_router.dart';
 
 import 'config.dart';
+import 'customer_display_hub.dart';
 import 'database.dart';
 import 'mdns_service.dart';
+import 'routes/ad_routes.dart';
 import 'routes/admin_routes.dart';
 import 'routes/auth_routes.dart';
 import 'routes/backup_routes.dart';
@@ -15,6 +17,7 @@ import 'routes/health_route.dart';
 import 'routes/kitchen_routes.dart';
 import 'routes/menu_routes.dart';
 import 'routes/order_routes.dart';
+import 'routes/promotion_routes.dart';
 import 'routes/setup_routes.dart';
 import 'routes/shop_routes.dart';
 import 'routes/user_routes.dart';
@@ -53,6 +56,10 @@ Future<RunningServer> startMinePosServer({
 }) async {
   ServerLog.open(config.dataDir);
   final db = await AppDb.open(config);
+  // Seeds the hub's cached ad-slide list from disk before any display
+  // connects — otherwise a display that connects before the first upload
+  // after a restart would see an empty list until something changed it.
+  CustomerDisplayHub.instance.broadcastAdSlides(db.getAdSlides());
 
   final router = Router();
   registerHealthRoute(router, db, config);
@@ -64,6 +71,8 @@ Future<RunningServer> startMinePosServer({
   registerCustomerDisplayRoutes(router, db, config);
   registerSetupRoutes(router, db, config);
   registerShopRoutes(router, db, config);
+  registerAdRoutes(router, db, config);
+  registerPromotionRoutes(router, db, config);
   registerAdminRoutes(router, db, config, onRestart: onRestartRequested);
   registerBackupRoutes(router, db, config, onRestoreRequested: onRestoreRequested);
 

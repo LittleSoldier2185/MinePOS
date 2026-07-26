@@ -21,6 +21,7 @@ class OrderItem {
     this.id,
     this.status = 'pending',
     this.sweetness,
+    this.discountAmount = 0,
   });
 
   final MenuItem menuItem;
@@ -39,14 +40,22 @@ class OrderItem {
   /// Chosen sweetness level, only set when [menuItem.hasSweetness].
   final SweetnessLevel? sweetness;
 
+  /// This line's share of an applied promotion — only ever set by a BOGO
+  /// promotion (the one type whose discount is inherently per-unit; see
+  /// `PromotionService.bogoDiscountByItemId`), computed at checkout just
+  /// before submitting the order. Zero on cart-building items and on
+  /// anything read back before that point.
+  final double discountAmount;
+
   double get subtotal => menuItem.price * quantity;
 
-  OrderItem copy() => OrderItem(
+  OrderItem copy({double? discountAmount}) => OrderItem(
         menuItem: menuItem,
         quantity: quantity,
         id: id,
         status: status,
         sweetness: sweetness,
+        discountAmount: discountAmount ?? this.discountAmount,
       );
 
   factory OrderItem.fromJson(Map<String, dynamic> json) => OrderItem(
@@ -63,6 +72,7 @@ class OrderItem {
         sweetness: (json['sweetness'] as String?) == null
             ? null
             : SweetnessLevel.values.byName(json['sweetness'] as String),
+        discountAmount: (json['discountAmount'] as num?)?.toDouble() ?? 0,
       );
 
   Map<String, dynamic> toJson() => {
@@ -75,5 +85,6 @@ class OrderItem {
         'quantity': quantity,
         'status': status,
         'sweetness': sweetness?.name,
+        'discountAmount': discountAmount,
       };
 }

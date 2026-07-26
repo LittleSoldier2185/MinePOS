@@ -8,6 +8,7 @@ import '../home/mobile_bottom_nav.dart';
 import 'models/order.dart';
 import 'models/order_item.dart';
 import 'services/order_service.dart';
+import 'services/printer_service.dart';
 import 'widgets/cancel_order_dialog.dart';
 
 class OrderHistoryScreen extends StatefulWidget {
@@ -139,11 +140,29 @@ class _OrderTile extends StatefulWidget {
 
 class _OrderTileState extends State<_OrderTile> {
   bool _expanded = false;
+  final _printerService = PrinterService();
+  bool _printing = false;
 
   String _itemLabel(BuildContext context, OrderItem item) {
     final name = item.menuItem.displayName(Localizations.localeOf(context));
     if (item.sweetness == null) return name;
     return '$name (${item.sweetness!.label(AppLocalizations.of(context)!)})';
+  }
+
+  Future<void> _reprint(Order o) async {
+    setState(() => _printing = true);
+    final l10n = AppLocalizations.of(context)!;
+    final result = await _printerService.printReceipt(o);
+    if (!mounted) return;
+    setState(() => _printing = false);
+
+    final message = switch (result.outcome) {
+      PrintOutcome.skipped => l10n.printSkippedMessage,
+      PrintOutcome.success => l10n.printSuccessMessage,
+      PrintOutcome.noPrinterFound => l10n.printNoPrinterMessage,
+      PrintOutcome.failed => l10n.printFailedMessage(result.errorDetail ?? ''),
+    };
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _confirmCancel(Order o) async {
@@ -230,6 +249,19 @@ class _OrderTileState extends State<_OrderTile> {
                   constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                   onPressed: () => _confirmCancel(o),
                 ),
+              IconButton(
+                icon: _printing
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.print_outlined, size: 18, color: AppColors.muted),
+                tooltip: l10n.printButtonLabel,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                onPressed: _printing ? null : () => _reprint(o),
+              ),
               Text(
                 widget.baht(o.total),
                 style: const TextStyle(

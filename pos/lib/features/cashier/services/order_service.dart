@@ -8,6 +8,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import '../../../core/services/server_client.dart';
 import '../models/order.dart';
 import '../models/order_item.dart';
+import 'promotion_service.dart';
 
 class OrderService extends ChangeNotifier {
   OrderService._();
@@ -44,12 +45,29 @@ class OrderService extends ChangeNotifier {
   /// Completes an order locally and syncs it to the server.
   /// Returns the order — if server sync succeeds the returned order carries
   /// the server-assigned id/order number.
+  ///
+  /// [appliedPromotions] is `PromotionEvaluation.applied` from the payment
+  /// screen's `PromotionService.evaluate()` call — already cleared of
+  /// anything still needing manager approval. [approvedByUserId] looks up
+  /// the approving manager/owner's id per promotion id, for whichever of
+  /// those entries actually required approval.
   Future<Order> complete({
     required List<OrderItem> items,
     required PaymentMethod paymentMethod,
     double? amountPaid,
+    List<AppliedPromotion> appliedPromotions = const [],
+    Map<String, int> approvedByUserId = const {},
   }) async {
     final client = ServerClient.instance;
+    final promotionsPayload = appliedPromotions
+        .map((a) => {
+              'promotionId': a.promotion.id,
+              'discountAmount': a.discountAmount,
+              'codeUsed': a.codeUsed,
+              'approvedByUserId': approvedByUserId[a.promotion.id],
+            })
+        .toList();
+
     if (client.isConnected) {
       try {
         final res = await http
@@ -62,6 +80,7 @@ class OrderService extends ChangeNotifier {
                     : 'promptpay',
                 'amountPaid': amountPaid,
                 'items': items.map((i) => i.toJson()).toList(),
+                'promotions': promotionsPayload,
               }),
             )
             .timeout(const Duration(seconds: 10));
@@ -92,6 +111,17 @@ class OrderService extends ChangeNotifier {
       createdAt: DateTime.now(),
       paymentMethod: paymentMethod,
       amountPaid: amountPaid,
+      discountTotal: appliedPromotions.fold(0.0, (s, a) => s + a.discountAmount),
+      appliedPromotions: appliedPromotions
+          .map((a) => AppliedOrderPromotion(
+                promotionId: a.promotion.id,
+                name: a.promotion.name,
+                discountAmount: a.discountAmount,
+                codeUsed: a.codeUsed,
+              ))
+          .toList(),
+      createdByUserId: client.userId,
+      createdByName: (client.name?.isNotEmpty ?? false) ? client.name : client.username,
     );
     _orders.add(order);
     notifyListeners();
@@ -211,6 +241,10 @@ class OrderService extends ChangeNotifier {
             amountPaid: o.amountPaid,
             kitchenStatus: newStatus,
             cancelReason: msg['cancelReason'] as String? ?? o.cancelReason,
+            discountTotal: o.discountTotal,
+            appliedPromotions: o.appliedPromotions,
+            createdByUserId: o.createdByUserId,
+            createdByName: o.createdByName,
           );
         }
     }
