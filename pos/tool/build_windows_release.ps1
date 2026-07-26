@@ -52,7 +52,25 @@ Copy-Item $sqliteDll $serverDestDir -Force
 Write-Host '== Zipping release bundle ==' -ForegroundColor Cyan
 $zipPath = Join-Path $posDir 'build\MinePOS-Windows.zip'
 if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
-Compress-Archive -Path (Join-Path $releaseDir '*') -DestinationPath $zipPath
+
+# server\data (minepos.db, the JWT secret, server.log) is local runtime
+# state from whoever last ran this exact Release build for testing/dev
+# purposes - a fresh distributable zip must never ship someone else's shop
+# data. Moved aside for the zip, then restored, rather than deleted: this
+# project has had a real accidental-data-loss incident before, so don't
+# treat build-output data as safe to discard even temporarily-adjacent code.
+$serverDataDir = Join-Path $serverDestDir 'data'
+$serverDataStash = Join-Path $posDir 'build\.server-data-stash'
+$hadServerData = Test-Path $serverDataDir
+if ($hadServerData) {
+    if (Test-Path $serverDataStash) { Remove-Item $serverDataStash -Recurse -Force }
+    Move-Item $serverDataDir $serverDataStash
+}
+try {
+    Compress-Archive -Path (Join-Path $releaseDir '*') -DestinationPath $zipPath
+} finally {
+    if ($hadServerData) { Move-Item $serverDataStash $serverDataDir }
+}
 
 Write-Host "== Done: $releaseDir ==" -ForegroundColor Green
 Write-Host "== Bundle zip: $zipPath ==" -ForegroundColor Green
