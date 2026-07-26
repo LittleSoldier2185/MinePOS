@@ -813,10 +813,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 onReorderItem: _reorderAdSlide,
+                // The default drag handle overlays an icon on top of each
+                // item's trailing edge (Stack + Positioned, see
+                // ReorderableListView source) — that was landing directly on
+                // top of this row's own preview/mute/delete icon buttons.
+                // Using an explicit handle instead avoids the collision.
+                buildDefaultDragHandles: false,
                 children: [
-                  for (final slide in _adSlides)
+                  for (final (index, slide) in _adSlides.indexed)
                     _AdSlideRow(
                       key: ValueKey(slide.id),
+                      index: index,
                       slide: slide,
                       durationController: _adDurationControllers[slide.id]!,
                       durationLabel: l10n.advertisingDurationLabel,
@@ -1445,6 +1452,7 @@ class _Card extends StatelessWidget {
 class _AdSlideRow extends StatelessWidget {
   const _AdSlideRow({
     required super.key,
+    required this.index,
     required this.slide,
     required this.durationController,
     required this.durationLabel,
@@ -1458,6 +1466,10 @@ class _AdSlideRow extends StatelessWidget {
     required this.onDelete,
   });
 
+  /// Position within the reorderable list — needed by
+  /// [ReorderableDragStartListener] since `buildDefaultDragHandles` is off
+  /// for this list (see call site).
+  final int index;
   final AdSlideInfo slide;
   final TextEditingController durationController;
   final String durationLabel;
@@ -1477,6 +1489,13 @@ class _AdSlideRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
+          ReorderableDragStartListener(
+            index: index,
+            child: const Padding(
+              padding: EdgeInsets.only(right: 8),
+              child: Icon(Icons.drag_indicator, size: 18, color: AppColors.muted),
+            ),
+          ),
           InkWell(
             borderRadius: BorderRadius.circular(8),
             onTap: () => showDialog(context: context, builder: (_) => _AdPreviewDialog(slide: slide)),

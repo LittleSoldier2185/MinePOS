@@ -96,24 +96,28 @@ const String adminWebPageHtml = r'''
   #app { display: none; min-height: 100vh; }
   .shell { display: flex; min-height: 100vh; }
   .sidebar {
-    width: 210px; flex: none; background: #0d0f15; border-right: 1px solid var(--border);
-    padding: 20px 0; display: flex; flex-direction: column;
+    width: 224px; flex: none; background: #0d0f15; border-right: 1px solid var(--border);
+    padding: 18px 12px; display: flex; flex-direction: column;
   }
   .sidebar .brand {
-    padding: 0 20px 20px; font-weight: 800; font-size: 15px; letter-spacing: -.01em;
-    display: flex; align-items: center;
+    padding: 4px 8px 6px; display: flex; align-items: center; gap: 10px;
   }
+  .sidebar .brand-name { font-weight: 800; font-size: 15px; letter-spacing: -.01em; line-height: 1.2; }
+  .sidebar .brand-sub { font-size: 10px; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+  .sidebar-divider { height: 1px; background: var(--border); margin: 12px 4px 14px; flex: none; }
+  .nav-group { display: flex; flex-direction: column; gap: 2px; }
   .navbtn {
-    display: block; width: 100%; text-align: left; background: none; border: none;
-    color: var(--muted-soft); padding: 10px 20px; font-size: 13px; font-weight: 500; margin: 1px 0;
-    cursor: pointer; border-left: 3px solid transparent; transition: background .15s, color .15s;
+    display: flex; align-items: center; width: 100%; text-align: left; background: none; border: none;
+    color: var(--muted-soft); padding: 10px 12px; font-size: 13px; font-weight: 500;
+    cursor: pointer; border-radius: 9px; transition: background .15s, color .15s;
   }
-  .navbtn:hover { background: #ffffff08; color: var(--text); }
+  .navbtn:hover { background: #ffffff0a; color: var(--text); }
   .navbtn.active {
-    background: linear-gradient(90deg, #ffffff10, transparent); color: var(--text);
-    border-left-color: var(--accent); font-weight: 600;
+    background: linear-gradient(90deg, var(--accent-glow), transparent 85%);
+    color: var(--text); font-weight: 700; box-shadow: inset 0 0 0 1px #ffffff12;
   }
-  .navbtn .sub-nav-icon { margin-right: 8px; }
+  .navbtn .sub-nav-icon { margin-right: 10px; font-size: 14px; }
+  .sidebar-footer { margin-top: auto; padding-top: 14px; }
   main { flex: 1; padding: 28px 32px; overflow-y: auto; }
   section { display: none; animation: fadein .18s ease; }
   section.active { display: block; }
@@ -222,19 +226,27 @@ const String adminWebPageHtml = r'''
   <div class="shell">
     <nav class="sidebar">
       <div class="brand">
-        <span class="login-logo" style="width:28px;height:28px;border-radius:8px;font-size:13px;margin:0 8px 0 0;">M</span>
-        <span id="shopName">MinePOS</span>
+        <span class="login-logo" style="width:32px;height:32px;border-radius:9px;font-size:14px;">M</span>
+        <div>
+          <div class="brand-name" id="shopName">MinePOS</div>
+          <div class="brand-sub">Shop Manager</div>
+        </div>
         <span id="statusDot" class="dot" style="margin-left:auto;"></span>
       </div>
-      <button class="navbtn active" data-sec="dashboard" onclick="showSection('dashboard')"><span class="sub-nav-icon">📊</span>Dashboard</button>
-      <button class="navbtn" data-sec="menu" onclick="showSection('menu')"><span class="sub-nav-icon">🍔</span>Menu</button>
-      <button class="navbtn" data-sec="staff" onclick="showSection('staff')"><span class="sub-nav-icon">👥</span>Staff</button>
-      <button class="navbtn" data-sec="promotions" onclick="showSection('promotions')"><span class="sub-nav-icon">🏷️</span>Promotions</button>
-      <button class="navbtn" data-sec="reports" onclick="showSection('reports')"><span class="sub-nav-icon">📈</span>Reports</button>
-      <button class="navbtn" data-sec="shop" onclick="showSection('shop')"><span class="sub-nav-icon">⚙️</span>Shop Settings</button>
-      <button class="navbtn" data-sec="ads" onclick="showSection('ads')"><span class="sub-nav-icon">📺</span>Advertising</button>
-      <div style="flex:1;"></div>
-      <button class="navbtn" onclick="logout()" style="color:var(--danger-soft);"><span class="sub-nav-icon">🚪</span>Sign out</button>
+      <div class="sidebar-divider"></div>
+      <div class="nav-group">
+        <button class="navbtn active" data-sec="dashboard" onclick="showSection('dashboard')"><span class="sub-nav-icon">📊</span>Dashboard</button>
+        <button class="navbtn" data-sec="menu" onclick="showSection('menu')"><span class="sub-nav-icon">🍔</span>Menu</button>
+        <button class="navbtn" data-sec="staff" onclick="showSection('staff')"><span class="sub-nav-icon">👥</span>Staff</button>
+        <button class="navbtn" data-sec="promotions" onclick="showSection('promotions')"><span class="sub-nav-icon">🏷️</span>Promotions</button>
+        <button class="navbtn" data-sec="reports" onclick="showSection('reports')"><span class="sub-nav-icon">📈</span>Reports</button>
+        <button class="navbtn" data-sec="shop" onclick="showSection('shop')"><span class="sub-nav-icon">⚙️</span>Shop Settings</button>
+        <button class="navbtn" data-sec="ads" onclick="showSection('ads')"><span class="sub-nav-icon">📺</span>Advertising</button>
+      </div>
+      <div class="sidebar-footer">
+        <div class="sidebar-divider" style="margin-top:0;"></div>
+        <button class="navbtn" onclick="logout()" style="color:var(--danger-soft);"><span class="sub-nav-icon">🚪</span>Sign out</button>
+      </div>
     </nav>
     <main>
 
