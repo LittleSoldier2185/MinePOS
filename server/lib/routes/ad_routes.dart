@@ -29,7 +29,10 @@ const _allowedExtensions = {
 void registerAdRoutes(Router router, AppDb db, ServerConfig config) {
   router.get('/ads', (Request req) => _list(req, db, config));
   router.post('/ads', (Request req) => _upload(req, db, config));
-  router.patch('/ads/<id>', (Request req, String id) => _updateDuration(req, id, db, config));
+  // Registered before the '/ads/<id>' PATCH so 'reorder' can't be swallowed
+  // by that pattern.
+  router.post('/ads/reorder', (Request req) => _reorder(req, db, config));
+  router.patch('/ads/<id>', (Request req, String id) => _updateSlide(req, id, db, config));
   router.delete('/ads/<id>', (Request req, String id) => _delete(req, id, db, config));
   // No auth — mirrors /ws/customer-display's own reasoning (not sensitive,
   // LAN-only): the passive customer display never logs in, so it has no
@@ -82,21 +85,48 @@ Future<Response> _upload(Request req, AppDb db, ServerConfig config) async {
   return jsonOk(slide.toJson(), status: 201);
 }
 
-// PATCH /ads/:id  { durationSeconds }  — image/gif slides only.
-Future<Response> _updateDuration(
+// PATCH /ads/:id  { durationSeconds? , muted? } — durationSeconds applies to
+// image/gif slides only, muted to video slides only; both are accepted
+// independently so either can be updated without touching the other.
+Future<Response> _updateSlide(
     Request req, String id, AppDb db, ServerConfig config) async {
   if (requireRoles(req, db, config.jwtSecret, _kAdEditors) == null) {
     return unauthorized();
   }
   final body = await parseJsonBody(req);
-  final durationSeconds = (body?['durationSeconds'] as num?)?.toInt();
-  if (durationSeconds == null || durationSeconds <= 0) {
-    return jsonError('durationSeconds (> 0) is required');
+  if (body == null || (!body.containsKey('durationSeconds') && !body.containsKey('muted'))) {
+    return jsonError('durationSeconds and/or muted is required');
   }
-  final updated = db.updateAdSlideDuration(id, durationSeconds);
+  if (body.containsKey('durationSeconds')) {
+    final durationSeconds = (body['durationSeconds'] as num?)?.toInt();
+    if (durationSeconds == null || durationSeconds <= 0) {
+      return jsonError('durationSeconds must be a positive number');
+    }
+    db.updateAdSlideDuration(id, durationSeconds);
+  }
+  if (body.containsKey('muted')) {
+    final muted = body['muted'] as bool?;
+    if (muted == null) return jsonError('muted must be a boolean');
+    db.updateAdSlideMuted(id, muted);
+  }
+  final updated = db.getAdSlide(id);
   if (updated == null) return notFound('Ad slide not found');
   CustomerDisplayHub.instance.broadcastAdSlides(db.getAdSlides());
   return jsonOk(updated.toJson());
+}
+
+// POST /ads/reorder  { order: [id, id, ...] } — full new slide order.
+Future<Response> _reorder(Request req, AppDb db, ServerConfig config) async {
+  if (requireRoles(req, db, config.jwtSecret, _kAdEditors) == null) {
+    return unauthorized();
+  }
+  final body = await parseJsonBody(req);
+  final order = (body?['order'] as List?)?.cast<String>();
+  if (order == null) return jsonError('order (array of ids) is required');
+  db.reorderAdSlides(order);
+  final slides = db.getAdSlides();
+  CustomerDisplayHub.instance.broadcastAdSlides(slides);
+  return jsonOk(slides.map((s) => s.toJson()).toList());
 }
 
 // DELETE /ads/:id

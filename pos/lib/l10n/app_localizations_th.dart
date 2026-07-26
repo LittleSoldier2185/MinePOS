@@ -1495,6 +1495,15 @@ class AppLocalizationsTh extends AppLocalizations {
   String get advertisingDeleteSlideTooltip => 'ลบสไลด์';
 
   @override
+  String get advertisingPreviewTooltip => 'ดูตัวอย่าง';
+
+  @override
+  String get advertisingMuteTooltip => 'ปิดเสียง';
+
+  @override
+  String get advertisingUnmuteTooltip => 'เปิดเสียง';
+
+  @override
   String get dangerZoneSectionLabel => 'โซนอันตราย';
 
   @override

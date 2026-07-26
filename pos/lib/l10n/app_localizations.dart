@@ -2786,6 +2786,24 @@ abstract class AppLocalizations {
   /// **'Delete slide'**
   String get advertisingDeleteSlideTooltip;
 
+  /// No description provided for @advertisingPreviewTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get advertisingPreviewTooltip;
+
+  /// No description provided for @advertisingMuteTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Mute'**
+  String get advertisingMuteTooltip;
+
+  /// No description provided for @advertisingUnmuteTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Unmute'**
+  String get advertisingUnmuteTooltip;
+
   /// No description provided for @dangerZoneSectionLabel.
   ///
   /// In en, this message translates to:

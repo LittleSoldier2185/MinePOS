@@ -285,6 +285,7 @@ class _AdSlideshowViewState extends State<_AdSlideshowView> {
       final controller = VideoController(player);
       _player = player;
       _controller = controller;
+      player.setVolume(slide.muted ? 0 : 100);
       player.open(Media(_fullUrl(slide.url)));
       _completedSub = player.stream.completed.listen((done) {
         if (done) _advance();
@@ -310,10 +311,13 @@ class _AdSlideshowViewState extends State<_AdSlideshowView> {
     if (slides.isEmpty) return const _IdleView();
     final slide = slides[_index % slides.length];
 
+    // BoxFit.contain (not .cover) so the whole slide is always visible —
+    // letterboxed against the screen's dark background instead of cropped —
+    // regardless of the slide's own resolution/aspect ratio vs the display's.
     return SizedBox.expand(
       child: slide.type == 'video' && _controller != null
-          ? Video(controller: _controller!, fit: BoxFit.cover, controls: NoVideoControls)
-          : Image.network(_fullUrl(slide.url), fit: BoxFit.cover),
+          ? Video(controller: _controller!, fit: BoxFit.contain, controls: NoVideoControls)
+          : Image.network(_fullUrl(slide.url), fit: BoxFit.contain),
     );
   }
 }

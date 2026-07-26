@@ -1509,6 +1509,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get advertisingDeleteSlideTooltip => 'Delete slide';
 
   @override
+  String get advertisingPreviewTooltip => 'Preview';
+
+  @override
+  String get advertisingMuteTooltip => 'Mute';
+
+  @override
+  String get advertisingUnmuteTooltip => 'Unmute';
+
+  @override
   String get dangerZoneSectionLabel => 'DANGER ZONE';
 
   @override

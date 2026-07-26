@@ -15,7 +15,13 @@ enum CustomerDisplayState { idle, cart, promptpay, thankYou }
 /// owner-facing upload/management side). Shop-wide — not per-station, same
 /// as [CustomerDisplayService.stations] isn't either.
 class AdSlide {
-  AdSlide({required this.id, required this.type, required this.url, this.durationSeconds});
+  AdSlide({
+    required this.id,
+    required this.type,
+    required this.url,
+    this.durationSeconds,
+    this.muted = true,
+  });
 
   final String id;
 
@@ -29,11 +35,15 @@ class AdSlide {
   /// Only meaningful for image/gif; null for video (plays to its own end).
   final int? durationSeconds;
 
+  /// Only meaningful for video — images have no audio to mute.
+  final bool muted;
+
   factory AdSlide.fromJson(Map<String, dynamic> json) => AdSlide(
         id: json['id'] as String,
         type: json['type'] as String,
         url: json['url'] as String,
         durationSeconds: json['durationSeconds'] as int?,
+        muted: json['muted'] as bool? ?? true,
       );
 }
 

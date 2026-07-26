@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -11,6 +12,7 @@ class AdSlideInfo {
     required this.type,
     required this.url,
     this.durationSeconds,
+    this.muted = true,
   });
 
   final String id;
@@ -23,11 +25,15 @@ class AdSlideInfo {
   final String url;
   final int? durationSeconds;
 
+  /// Only meaningful for video — images have no audio to mute.
+  final bool muted;
+
   factory AdSlideInfo.fromJson(Map<String, dynamic> json) => AdSlideInfo(
         id: json['id'] as String,
         type: json['type'] as String,
         url: json['url'] as String,
         durationSeconds: json['durationSeconds'] as int?,
+        muted: json['muted'] as bool? ?? true,
       );
 }
 
@@ -63,28 +69,55 @@ class AdService {
   /// [ext] is the picked file's lowercase extension without the dot (e.g.
   /// 'png', 'mp4') — the server infers image-vs-video from it and rejects
   /// anything not on its allow-list. [durationSeconds] is only meaningful
-  /// for image/gif; ignored server-side for video.
-  Future<AdSlideInfo> upload(Uint8List bytes, {required String ext, int durationSeconds = 8}) async {
+  /// for image/gif; ignored server-side for video. [onProgress] (0.0–1.0),
+  /// if given, is called as each chunk is handed to the request's byte
+  /// stream — approximate (it tracks writes into the stream, not confirmed
+  /// wire delivery), but good enough for a progress bar on a LAN upload of
+  /// a short clip/photo.
+  Future<AdSlideInfo> upload(
+    Uint8List bytes, {
+    required String ext,
+    int durationSeconds = 8,
+    void Function(double progress)? onProgress,
+  }) async {
     final client = ServerClient.instance;
     if (!client.isConnected) throw AdServiceException('Not connected to a server');
-    late final http.Response res;
+
+    final request = http.StreamedRequest(
+      'POST',
+      client.uri('/ads').replace(queryParameters: {
+        'ext': ext,
+        'durationSeconds': '$durationSeconds',
+      }),
+    );
+    request.headers.addAll({
+      if (client.token != null) 'Authorization': 'Bearer ${client.token}',
+      'Content-Type': 'application/octet-stream',
+    });
+    request.contentLength = bytes.length;
+
+    const chunkSize = 64 * 1024;
+    Future<void> pump() async {
+      for (var i = 0; i < bytes.length; i += chunkSize) {
+        final end = (i + chunkSize < bytes.length) ? i + chunkSize : bytes.length;
+        request.sink.add(bytes.sublist(i, end));
+        onProgress?.call(end / bytes.length);
+        // Yields a turn so the sink's listener (the HTTP client) actually
+        // gets to drain each chunk instead of receiving them all in one go.
+        await Future<void>.delayed(Duration.zero);
+      }
+      await request.sink.close();
+    }
+
+    unawaited(pump());
+
+    late final http.StreamedResponse streamedRes;
     try {
-      res = await http
-          .post(
-            client.uri('/ads').replace(queryParameters: {
-              'ext': ext,
-              'durationSeconds': '$durationSeconds',
-            }),
-            headers: {
-              if (client.token != null) 'Authorization': 'Bearer ${client.token}',
-              'Content-Type': 'application/octet-stream',
-            },
-            body: bytes,
-          )
-          .timeout(const Duration(seconds: 30));
+      streamedRes = await http.Client().send(request).timeout(const Duration(seconds: 30));
     } catch (_) {
       throw AdServiceException('Could not reach the server');
     }
+    final res = await http.Response.fromStream(streamedRes);
     if (res.statusCode < 200 || res.statusCode >= 300) throw AdServiceException(_errorMessage(res));
     return AdSlideInfo.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
@@ -99,6 +132,43 @@ class AdService {
             client.uri('/ads/$id'),
             headers: client.headers,
             body: jsonEncode({'durationSeconds': durationSeconds}),
+          )
+          .timeout(const Duration(seconds: 10));
+    } catch (_) {
+      throw AdServiceException('Could not reach the server');
+    }
+    if (res.statusCode < 200 || res.statusCode >= 300) throw AdServiceException(_errorMessage(res));
+  }
+
+  Future<void> updateMuted(String id, bool muted) async {
+    final client = ServerClient.instance;
+    if (!client.isConnected) throw AdServiceException('Not connected to a server');
+    late final http.Response res;
+    try {
+      res = await http
+          .patch(
+            client.uri('/ads/$id'),
+            headers: client.headers,
+            body: jsonEncode({'muted': muted}),
+          )
+          .timeout(const Duration(seconds: 10));
+    } catch (_) {
+      throw AdServiceException('Could not reach the server');
+    }
+    if (res.statusCode < 200 || res.statusCode >= 300) throw AdServiceException(_errorMessage(res));
+  }
+
+  /// [orderedIds] is every slide's id in its new order.
+  Future<void> reorder(List<String> orderedIds) async {
+    final client = ServerClient.instance;
+    if (!client.isConnected) throw AdServiceException('Not connected to a server');
+    late final http.Response res;
+    try {
+      res = await http
+          .post(
+            client.uri('/ads/reorder'),
+            headers: client.headers,
+            body: jsonEncode({'order': orderedIds}),
           )
           .timeout(const Duration(seconds: 10));
     } catch (_) {

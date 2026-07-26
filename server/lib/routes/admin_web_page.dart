@@ -19,49 +19,74 @@ const String adminWebPageHtml = r'''
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MinePOS Shop Manager</title>
 <style>
-  :root { color-scheme: dark; }
+  :root {
+    color-scheme: dark;
+    --bg: #0f1117; --bg-glow: radial-gradient(1200px 600px at 15% -10%, rgba(99,102,241,.14), transparent 60%);
+    --card: #1a1d27; --card-hover: #1e222e; --border: #2a2e3d; --border-soft: #23273350;
+    --input: #12141c; --text: #eef0f6; --muted: #9297ab; --muted-soft: #b6bbcc;
+    --accent: #6366f1; --accent-2: #818cf8; --accent-glow: rgba(99,102,241,.35);
+    --danger: #f0546a; --danger-soft: #ff8fa0; --ok: #34d399; --ok-soft: #86efac;
+  }
   * { box-sizing: border-box; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
   body {
     margin: 0; min-height: 100vh;
-    background: #14161c; color: #e6e8ee;
-    font: 14px/1.5 -apple-system, Segoe UI, Roboto, sans-serif;
+    background: var(--bg-glow), var(--bg); color: var(--text);
+    font: 14px/1.55 "Inter", -apple-system, Segoe UI, Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
-  h1 { font-size: 18px; margin: 0 0 4px; }
-  h2 { font-size: 14px; margin: 0 0 12px; color: #aeb4c4; text-transform: uppercase; letter-spacing: .04em; }
-  h3 { font-size: 13px; margin: 16px 0 8px; color: #aeb4c4; }
-  .sub { color: #8b90a0; margin: 0 0 24px; }
+  h1 { font-size: 20px; margin: 0 0 4px; font-weight: 700; letter-spacing: -.01em; }
+  h2 { font-size: 13px; margin: 0 0 14px; color: var(--muted-soft); text-transform: uppercase; letter-spacing: .06em; font-weight: 700; }
+  h3 { font-size: 13px; margin: 16px 0 8px; color: var(--muted-soft); }
+  .sub { color: var(--muted); margin: 0 0 24px; }
   .card {
-    background: #1b1e27; border: 1px solid #2a2e3a; border-radius: 10px;
-    padding: 18px 20px; margin-bottom: 16px; max-width: 760px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 20px 22px; margin-bottom: 18px; max-width: 760px;
+    box-shadow: 0 8px 24px -12px rgba(0,0,0,.5);
   }
-  label { display: block; font-size: 12px; color: #8b90a0; margin: 10px 0 4px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; font-weight: 500; }
   input, select, textarea {
-    width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid #333848;
-    background: #10121a; color: #e6e8ee; font-size: 14px; font-family: inherit;
+    width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--input); color: var(--text); font-size: 14px; font-family: inherit;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow);
   }
   textarea { resize: vertical; min-height: 60px; }
   input[type=checkbox] { width: auto; }
   button {
-    margin-top: 14px; padding: 9px 16px; border-radius: 6px; border: none;
-    background: #4a6cf7; color: white; font-weight: 600; cursor: pointer; font-size: 13px;
+    margin-top: 14px; padding: 10px 18px; border-radius: 8px; border: none;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    background-size: 100% 100%;
+    color: white; font-weight: 600; cursor: pointer; font-size: 13px;
+    transition: filter .15s, transform .1s; box-shadow: 0 4px 14px -4px var(--accent-glow);
   }
-  button.danger { background: #e14a4a; }
-  button.secondary { background: #2a2e3a; }
-  button.small { padding: 5px 10px; font-size: 12px; margin-top: 0; }
-  button:disabled { opacity: .5; cursor: default; }
-  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; background: #666; }
-  .dot.live { background: #38d97a; }
-  .dot.off { background: #e14a4a; }
+  button:hover { filter: brightness(1.1); }
+  button:active { transform: translateY(1px); }
+  button.danger { background: var(--danger); box-shadow: 0 4px 14px -4px rgba(240,84,106,.4); }
+  button.secondary { background: var(--border); box-shadow: none; }
+  button.small { padding: 6px 11px; font-size: 12px; margin-top: 0; }
+  button:disabled { opacity: .45; cursor: default; filter: none; box-shadow: none; }
+  .dot {
+    display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px;
+    background: #666; box-shadow: 0 0 0 3px transparent; transition: box-shadow .2s;
+  }
+  .dot.live { background: var(--ok); box-shadow: 0 0 0 3px rgba(52,211,153,.2); }
+  .dot.off { background: var(--danger); box-shadow: 0 0 0 3px rgba(240,84,106,.2); }
   .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .msg { font-size: 12px; margin-top: 8px; }
-  .msg.err { color: #ff8a8a; }
-  .msg.ok { color: #7ee08a; }
+  .msg.err { color: var(--danger-soft); }
+  .msg.ok { color: var(--ok-soft); }
   ul { list-style: none; padding: 0; margin: 0; }
-  li { padding: 6px 0; border-bottom: 1px solid #262a35; font-size: 13px; }
+  li { padding: 8px 0; border-bottom: 1px solid var(--border-soft); font-size: 13px; }
   li:last-child { border-bottom: none; }
-  .role { color: #8b90a0; font-size: 11px; text-transform: uppercase; }
+  .role { color: var(--muted); font-size: 11px; text-transform: uppercase; }
   pre {
-    background: #10121a; border: 1px solid #262a35; border-radius: 6px; padding: 10px;
+    background: var(--input); border: 1px solid var(--border); border-radius: 8px; padding: 12px;
     max-height: 320px; overflow: auto; font-size: 12px; white-space: pre-wrap; word-break: break-all;
   }
   .field-half { display: flex; gap: 12px; }
@@ -71,91 +96,145 @@ const String adminWebPageHtml = r'''
   #app { display: none; min-height: 100vh; }
   .shell { display: flex; min-height: 100vh; }
   .sidebar {
-    width: 200px; flex: none; background: #10121a; border-right: 1px solid #262a35;
+    width: 210px; flex: none; background: #0d0f15; border-right: 1px solid var(--border);
     padding: 20px 0; display: flex; flex-direction: column;
   }
-  .sidebar .brand { padding: 0 20px 20px; font-weight: 700; font-size: 15px; }
+  .sidebar .brand {
+    padding: 0 20px 20px; font-weight: 800; font-size: 15px; letter-spacing: -.01em;
+    display: flex; align-items: center;
+  }
   .navbtn {
     display: block; width: 100%; text-align: left; background: none; border: none;
-    color: #aeb4c4; padding: 10px 20px; font-size: 13px; font-weight: 500; margin: 0;
-    cursor: pointer; border-left: 3px solid transparent;
+    color: var(--muted-soft); padding: 10px 20px; font-size: 13px; font-weight: 500; margin: 1px 0;
+    cursor: pointer; border-left: 3px solid transparent; transition: background .15s, color .15s;
   }
-  .navbtn:hover { background: #1b1e27; color: #e6e8ee; }
-  .navbtn.active { background: #1b1e27; color: #e6e8ee; border-left-color: #4a6cf7; }
+  .navbtn:hover { background: #ffffff08; color: var(--text); }
+  .navbtn.active {
+    background: linear-gradient(90deg, #ffffff10, transparent); color: var(--text);
+    border-left-color: var(--accent); font-weight: 600;
+  }
   .navbtn .sub-nav-icon { margin-right: 8px; }
-  main { flex: 1; padding: 24px; overflow-y: auto; }
-  section { display: none; }
+  main { flex: 1; padding: 28px 32px; overflow-y: auto; }
+  section { display: none; animation: fadein .18s ease; }
   section.active { display: block; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
   /* ── Tables / lists ────────────────────────────────────────────────── */
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { text-align: left; color: #8b90a0; font-size: 11px; text-transform: uppercase; letter-spacing: .03em;
-       padding: 8px 10px; border-bottom: 1px solid #262a35; }
-  td { padding: 8px 10px; border-bottom: 1px solid #262a35; vertical-align: middle; }
+  th { text-align: left; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+       padding: 10px 10px; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 10px; border-bottom: 1px solid var(--border-soft); vertical-align: middle; }
   tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: #ffffff05; }
   .chip {
-    display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 20px;
-    border: 1px solid #333848; background: #1b1e27; color: #aeb4c4; font-size: 12px;
-    cursor: pointer; margin: 0 6px 6px 0; user-select: none;
+    display: inline-flex; align-items: center; padding: 5px 13px; border-radius: 20px;
+    border: 1px solid var(--border); background: var(--card); color: var(--muted-soft); font-size: 12px;
+    cursor: pointer; margin: 0 6px 6px 0; user-select: none; transition: all .12s;
   }
-  .chip.sel { background: #4a6cf7; border-color: #4a6cf7; color: white; }
-  .chip.dim { opacity: .55; }
+  .chip:hover { border-color: var(--accent); }
+  .chip.sel { background: var(--accent); border-color: var(--accent); color: white; }
+  .chip.dim { opacity: .5; }
   .badge {
-    display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px;
+    display: inline-block; padding: 3px 9px; border-radius: 5px; font-size: 10px;
     font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
   }
-  .stat-grid { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .stat-grid { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
   .stat-card {
-    background: #1b1e27; border: 1px solid #2a2e3a; border-radius: 10px; padding: 12px 14px;
-    min-width: 110px; flex: 1;
+    background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--accent);
+    border-radius: 10px; padding: 13px 16px; min-width: 110px; flex: 1;
+    box-shadow: 0 8px 24px -14px rgba(0,0,0,.5);
   }
-  .stat-card .v { font-size: 18px; font-weight: 800; }
-  .stat-card .l { font-size: 10px; color: #8b90a0; letter-spacing: .03em; margin-top: 2px; }
+  .stat-card .v { font-size: 20px; font-weight: 800; }
+  .stat-card .l { font-size: 10px; color: var(--muted); letter-spacing: .04em; margin-top: 3px; text-transform: uppercase; }
   .toggle-track {
-    display: inline-block; width: 34px; height: 18px; border-radius: 10px; background: #333848;
-    position: relative; cursor: pointer; vertical-align: middle;
+    display: inline-block; width: 34px; height: 18px; border-radius: 10px; background: var(--border);
+    position: relative; cursor: pointer; vertical-align: middle; transition: background .15s;
   }
-  .toggle-track.on { background: #4a6cf7; }
+  .toggle-track.on { background: var(--accent); }
   .toggle-track .knob {
     position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%;
     background: white; transition: left .15s;
   }
   .toggle-track.on .knob { left: 18px; }
   .item-checklist {
-    max-height: 220px; overflow-y: auto; border: 1px solid #333848; border-radius: 6px; padding: 6px 10px;
-    background: #10121a;
+    max-height: 220px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px;
+    background: var(--input);
   }
-  .item-checklist label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #e6e8ee; margin: 6px 0; }
+  .item-checklist label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); margin: 6px 0; }
   .item-checklist input { width: auto; }
-  .thumb { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; background: #10121a; }
+  .thumb { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; background: var(--input); }
+  .thumb-clickable { cursor: pointer; transition: transform .12s, box-shadow .12s; }
+  .thumb-clickable:hover { transform: scale(1.06); box-shadow: 0 0 0 2px var(--accent); }
   .hidden { display: none !important; }
+
+  /* ── Media preview lightbox ───────────────────────────────────────────── */
+  .media-preview-overlay {
+    position: fixed; inset: 0; z-index: 1000; background: rgba(6,7,11,.86);
+    display: flex; align-items: center; justify-content: center; backdrop-filter: blur(2px);
+  }
+  .media-preview-close {
+    position: absolute; top: 20px; right: 24px; margin: 0; padding: 8px 12px;
+    background: var(--card); border: 1px solid var(--border); box-shadow: none;
+  }
+
+  /* ── Upload progress ──────────────────────────────────────────────────── */
+  .progress-wrap {
+    margin-top: 10px; height: 8px; border-radius: 4px; background: var(--input);
+    border: 1px solid var(--border); overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    transition: width .15s ease;
+  }
+
+  /* ── Login ─────────────────────────────────────────────────────────── */
+  #login { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+  .login-card { width: 100%; max-width: 340px; text-align: center; }
+  .login-logo {
+    width: 52px; height: 52px; margin: 0 auto 18px; border-radius: 14px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 22px; color: white;
+    box-shadow: 0 10px 28px -8px var(--accent-glow);
+  }
+  .login-card h2 { text-transform: none; letter-spacing: 0; font-size: 19px; color: var(--text); margin-bottom: 2px; }
+  .login-card label { text-align: left; }
+  .login-card button { width: 100%; }
 </style>
 </head>
 <body>
 
-<div id="login" class="card" style="margin: 60px auto;">
-  <h2>MinePOS Shop Manager</h2>
-  <label>Username</label>
-  <input id="loginUser" autocomplete="username">
-  <label>Password</label>
-  <input id="loginPass" type="password" autocomplete="current-password">
-  <button id="loginBtn" onclick="doLogin()">Sign in</button>
-  <div id="loginMsg" class="msg"></div>
+<div id="login">
+  <div class="card login-card">
+    <div class="login-logo">M</div>
+    <h2>MinePOS Shop Manager</h2>
+    <p class="sub" style="margin-bottom:16px;">Sign in with your owner account</p>
+    <label>Username</label>
+    <input id="loginUser" autocomplete="username">
+    <label>Password</label>
+    <input id="loginPass" type="password" autocomplete="current-password">
+    <button id="loginBtn" onclick="doLogin()">Sign in</button>
+    <div id="loginMsg" class="msg"></div>
+  </div>
 </div>
 
 <div id="app">
   <div class="shell">
     <nav class="sidebar">
-      <div class="brand"><span id="statusDot" class="dot"></span><span id="shopName">MinePOS</span></div>
-      <button class="navbtn active" data-sec="dashboard" onclick="showSection('dashboard')">Dashboard</button>
-      <button class="navbtn" data-sec="menu" onclick="showSection('menu')">Menu</button>
-      <button class="navbtn" data-sec="staff" onclick="showSection('staff')">Staff</button>
-      <button class="navbtn" data-sec="promotions" onclick="showSection('promotions')">Promotions</button>
-      <button class="navbtn" data-sec="reports" onclick="showSection('reports')">Reports</button>
-      <button class="navbtn" data-sec="shop" onclick="showSection('shop')">Shop Settings</button>
-      <button class="navbtn" data-sec="ads" onclick="showSection('ads')">Advertising</button>
+      <div class="brand">
+        <span class="login-logo" style="width:28px;height:28px;border-radius:8px;font-size:13px;margin:0 8px 0 0;">M</span>
+        <span id="shopName">MinePOS</span>
+        <span id="statusDot" class="dot" style="margin-left:auto;"></span>
+      </div>
+      <button class="navbtn active" data-sec="dashboard" onclick="showSection('dashboard')"><span class="sub-nav-icon">📊</span>Dashboard</button>
+      <button class="navbtn" data-sec="menu" onclick="showSection('menu')"><span class="sub-nav-icon">🍔</span>Menu</button>
+      <button class="navbtn" data-sec="staff" onclick="showSection('staff')"><span class="sub-nav-icon">👥</span>Staff</button>
+      <button class="navbtn" data-sec="promotions" onclick="showSection('promotions')"><span class="sub-nav-icon">🏷️</span>Promotions</button>
+      <button class="navbtn" data-sec="reports" onclick="showSection('reports')"><span class="sub-nav-icon">📈</span>Reports</button>
+      <button class="navbtn" data-sec="shop" onclick="showSection('shop')"><span class="sub-nav-icon">⚙️</span>Shop Settings</button>
+      <button class="navbtn" data-sec="ads" onclick="showSection('ads')"><span class="sub-nav-icon">📺</span>Advertising</button>
       <div style="flex:1;"></div>
-      <button class="navbtn" onclick="logout()" style="color:#ff8a8a;">Sign out</button>
+      <button class="navbtn" onclick="logout()" style="color:var(--danger-soft);"><span class="sub-nav-icon">🚪</span>Sign out</button>
     </nav>
     <main>
 
@@ -492,12 +571,20 @@ const String adminWebPageHtml = r'''
           <label>Seconds to show (images/GIFs only, ignored for video)</label>
           <input id="adsDuration" type="number" min="1" value="8">
           <button onclick="uploadAdSlide()">Upload</button>
+          <div id="adsProgressWrap" class="progress-wrap hidden">
+            <div id="adsProgressBar" class="progress-bar"></div>
+          </div>
           <div id="adsMsg" class="msg"></div>
         </div>
       </section>
 
     </main>
   </div>
+</div>
+
+<div id="mediaPreviewOverlay" class="media-preview-overlay hidden" onclick="if (event.target === this) closeMediaPreview()">
+  <button class="media-preview-close" onclick="closeMediaPreview()">✕</button>
+  <div id="mediaPreviewContent"></div>
 </div>
 
 <script>
@@ -550,7 +637,7 @@ function logout() {
   token = ''; localStorage.removeItem('minepos_admin_token'); localStorage.removeItem('minepos_admin_role');
   if (pollTimer) clearInterval(pollTimer);
   document.getElementById('app').style.display = 'none';
-  document.getElementById('login').style.display = 'block';
+  document.getElementById('login').style.display = 'flex';
 }
 
 function showSection(name) {
@@ -1281,34 +1368,90 @@ async function loadAds() {
 }
 function renderAdsList() {
   const el = document.getElementById('adsList');
-  el.innerHTML = adSlides.map(s => `
+  el.innerHTML = adSlides.map((s, i) => `
     <div class="row" style="padding:8px 0; border-bottom:1px solid #262a35;">
       <div class="row" style="gap:10px;">
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <button class="small" ${i === 0 ? 'disabled' : ''} onclick="moveAdSlide(${i}, -1)">▲</button>
+          <button class="small" ${i === adSlides.length - 1 ? 'disabled' : ''} onclick="moveAdSlide(${i}, 1)">▼</button>
+        </div>
         ${s.type === 'video'
-          ? '<div class="thumb" style="display:flex;align-items:center;justify-content:center;">▶</div>'
-          : `<img class="thumb" src="${s.url}">`}
+          ? `<div class="thumb thumb-clickable" style="display:flex;align-items:center;justify-content:center;" onclick="openMediaPreview('${s.url}', 'video', ${!!s.muted})">▶</div>`
+          : `<img class="thumb thumb-clickable" src="${s.url}" onclick="openMediaPreview('${s.url}', 'image', false)">`}
         <span>${s.type === 'video' ? 'Video — plays until it ends' : (s.durationSeconds || 8) + 's'}</span>
+        ${s.type === 'video'
+          ? `<button class="small secondary" onclick="toggleAdMuted('${s.id}', ${!!s.muted})">${s.muted ? '\u{1F507} Muted' : '\u{1F50A} Sound on'}</button>`
+          : ''}
       </div>
-      <button class="small danger" onclick="deleteAdSlide('${s.id}')">Delete</button>
+      <div>
+        <button class="small secondary" onclick="openMediaPreview('${s.url}', '${s.type}', ${!!s.muted})">Preview</button>
+        <button class="small danger" onclick="deleteAdSlide('${s.id}')">Delete</button>
+      </div>
     </div>
   `).join('') || '<p class="sub">No slides yet.</p>';
 }
-async function uploadAdSlide() {
+async function toggleAdMuted(id, currentlyMuted) {
+  try { await api('PATCH', '/ads/' + id, { muted: !currentlyMuted }); loadAds(); } catch (e) { alert(e.message); }
+}
+function openMediaPreview(url, type, muted) {
+  const content = document.getElementById('mediaPreviewContent');
+  content.innerHTML = type === 'video'
+    ? `<video src="${url}" controls autoplay ${muted ? 'muted' : ''} style="max-width:88vw;max-height:82vh;"></video>`
+    : `<img src="${url}" style="max-width:88vw;max-height:82vh;object-fit:contain;">`;
+  document.getElementById('mediaPreviewOverlay').classList.remove('hidden');
+}
+function closeMediaPreview() {
+  document.getElementById('mediaPreviewOverlay').classList.add('hidden');
+  document.getElementById('mediaPreviewContent').innerHTML = '';
+}
+async function moveAdSlide(index, delta) {
+  const target = index + delta;
+  if (target < 0 || target >= adSlides.length) return;
+  const reordered = adSlides.slice();
+  const [moved] = reordered.splice(index, 1);
+  reordered.splice(target, 0, moved);
+  adSlides = reordered;
+  renderAdsList();
+  try { await api('POST', '/ads/reorder', { order: adSlides.map(s => s.id) }); } catch (e) { alert(e.message); loadAds(); }
+}
+function uploadAdSlide() {
   const msg = document.getElementById('adsMsg');
+  const bar = document.getElementById('adsProgressBar');
+  const barWrap = document.getElementById('adsProgressWrap');
   const file = document.getElementById('adsFile').files[0];
   if (!file) { msg.textContent = 'Choose a file first.'; msg.className = 'msg err'; return; }
   const ext = file.name.split('.').pop().toLowerCase();
   const duration = parseInt(document.getElementById('adsDuration').value, 10) || 8;
-  try {
-    const res = await fetch(`/ads?ext=${encodeURIComponent(ext)}&durationSeconds=${duration}`, {
-      method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/octet-stream' }, body: file,
-    });
-    const data = await res.json();
-    if (!res.ok) { msg.textContent = data.error || 'Upload failed.'; msg.className = 'msg err'; return; }
+
+  msg.textContent = ''; msg.className = 'msg';
+  barWrap.classList.remove('hidden');
+  bar.style.width = '0%';
+
+  // XMLHttpRequest (not fetch) specifically for upload.onprogress — fetch
+  // has no cross-browser-reliable upload progress event.
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', `/ads?ext=${encodeURIComponent(ext)}&durationSeconds=${duration}`);
+  xhr.setRequestHeader('Authorization', authHeaders()['Authorization']);
+  xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+  xhr.upload.onprogress = (e) => {
+    if (e.lengthComputable) bar.style.width = Math.round((e.loaded / e.total) * 100) + '%';
+  };
+  xhr.onload = () => {
+    barWrap.classList.add('hidden');
+    let data = {};
+    try { data = JSON.parse(xhr.responseText); } catch (_) {}
+    if (xhr.status < 200 || xhr.status >= 300) {
+      msg.textContent = data.error || 'Upload failed.'; msg.className = 'msg err'; return;
+    }
     document.getElementById('adsFile').value = '';
     msg.textContent = 'Uploaded.'; msg.className = 'msg ok';
     loadAds();
-  } catch (e) { msg.textContent = 'Could not reach the server.'; msg.className = 'msg err'; }
+  };
+  xhr.onerror = () => {
+    barWrap.classList.add('hidden');
+    msg.textContent = 'Could not reach the server.'; msg.className = 'msg err';
+  };
+  xhr.send(file);
 }
 async function deleteAdSlide(id) {
   if (!confirm('Delete this slide?')) return;

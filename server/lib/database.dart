@@ -132,6 +132,7 @@ class DbAdSlide {
     required this.filename,
     required this.position,
     this.durationSeconds,
+    this.muted = true,
   });
 
   final String id;
@@ -144,18 +145,23 @@ class DbAdSlide {
   /// Only meaningful for image/gif; null for video (plays to its own end).
   final int? durationSeconds;
 
+  /// Only meaningful for video — images have no audio to mute.
+  final bool muted;
+
   factory DbAdSlide._fromRow(Row row) => DbAdSlide(
         id: row['id'] as String,
         type: row['type'] as String,
         filename: row['filename'] as String,
         position: row['position'] as int,
         durationSeconds: row['duration_seconds'] as int?,
+        muted: (row['muted'] as int) != 0,
       );
 
   Map<String, dynamic> toJson() => {
         'id': id,
         'type': type,
         'durationSeconds': durationSeconds,
+        'muted': muted,
         // Relative path only — both the authenticated GET /ads response
         // (Settings screen) and the unauthenticated WebSocket broadcast
         // (customer display) share this one field, client prefixes baseUrl.
@@ -783,6 +789,16 @@ class AppDb {
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       )
     ''');
+    final adSlideCols = _db
+        .select('PRAGMA table_info(ad_slides)')
+        .map((r) => r['name'])
+        .toSet();
+    if (!adSlideCols.contains('muted')) {
+      // Video only (ignored/meaningless for images) — defaults to muted
+      // since unexpected audio on a customer-facing display is the
+      // riskier default for a shop floor.
+      _db.execute('ALTER TABLE ad_slides ADD COLUMN muted INTEGER NOT NULL DEFAULT 1');
+    }
 
     // Promotions — see PromotionService (client) for how these get evaluated
     // against a cart. Nullable mechanics columns are only meaningful for the
@@ -1185,6 +1201,23 @@ class AppDb {
       [durationSeconds, id],
     );
     return getAdSlide(id);
+  }
+
+  DbAdSlide? updateAdSlideMuted(String id, bool muted) {
+    _db.execute(
+      'UPDATE ad_slides SET muted = ? WHERE id = ?',
+      [muted ? 1 : 0, id],
+    );
+    return getAdSlide(id);
+  }
+
+  /// Rewrites every slide's `position` to match [orderedIds]'s index —
+  /// unknown ids are ignored (e.g. a slide deleted on another device just
+  /// before this request landed).
+  void reorderAdSlides(List<String> orderedIds) {
+    for (var i = 0; i < orderedIds.length; i++) {
+      _db.execute('UPDATE ad_slides SET position = ? WHERE id = ?', [i, orderedIds[i]]);
+    }
   }
 
   /// Returns the deleted slide's filename (so the route can remove the

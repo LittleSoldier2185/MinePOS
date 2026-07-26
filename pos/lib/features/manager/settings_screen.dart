@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import 'package:unified_esc_pos_printer/unified_esc_pos_printer.dart';
 
 import '../../core/services/app_settings_service.dart';
@@ -63,6 +65,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   List<AdSlideInfo> _adSlides = [];
   bool _adsLoaded = false;
   bool _uploadingAd = false;
+  double _uploadProgress = 0;
   String? _adsError;
   final _adDurationControllers = <String, TextEditingController>{};
 
@@ -202,12 +205,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     setState(() {
       _uploadingAd = true;
+      _uploadProgress = 0;
       _adsError = null;
     });
     try {
       final ext = path.split('.').last.toLowerCase();
       final bytes = await File(path).readAsBytes();
-      await AdService.instance.upload(bytes, ext: ext);
+      await AdService.instance.upload(
+        bytes,
+        ext: ext,
+        onProgress: (p) {
+          if (mounted) setState(() => _uploadProgress = p);
+        },
+      );
       await _loadAds();
     } catch (e) {
       if (!mounted) return;
@@ -228,6 +238,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _updateAdMuted(String id, bool muted) async {
+    final index = _adSlides.indexWhere((s) => s.id == id);
+    if (index == -1) return;
+    final previous = _adSlides[index];
+    setState(() {
+      _adSlides = List.of(_adSlides)
+        ..[index] = AdSlideInfo(
+          id: previous.id,
+          type: previous.type,
+          url: previous.url,
+          durationSeconds: previous.durationSeconds,
+          muted: muted,
+        );
+    });
+    try {
+      await AdService.instance.updateMuted(id, muted);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _adsError = '$e';
+        _adSlides = List.of(_adSlides)..[index] = previous;
+      });
+    }
+  }
+
   Future<void> _deleteAdSlide(String id) async {
     try {
       await AdService.instance.delete(id);
@@ -236,6 +271,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _adsError = '$e');
+    }
+  }
+
+  Future<void> _reorderAdSlide(int oldIndex, int newIndex) async {
+    final reordered = List<AdSlideInfo>.from(_adSlides);
+    final moved = reordered.removeAt(oldIndex);
+    reordered.insert(newIndex, moved);
+    setState(() => _adSlides = reordered);
+    try {
+      await AdService.instance.reorder(reordered.map((s) => s.id).toList());
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _adsError = '$e');
+      await _loadAds();
     }
   }
 
@@ -760,15 +809,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               )
             else
-              ..._adSlides.map((slide) => _AdSlideRow(
-                    slide: slide,
-                    durationController: _adDurationControllers[slide.id]!,
-                    durationLabel: l10n.advertisingDurationLabel,
-                    playsUntilEndLabel: l10n.advertisingPlaysUntilEndLabel,
-                    deleteTooltip: l10n.advertisingDeleteSlideTooltip,
-                    onDurationChanged: (seconds) => _updateAdDuration(slide.id, seconds),
-                    onDelete: () => _deleteAdSlide(slide.id),
-                  )),
+              ReorderableListView(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                onReorderItem: _reorderAdSlide,
+                children: [
+                  for (final slide in _adSlides)
+                    _AdSlideRow(
+                      key: ValueKey(slide.id),
+                      slide: slide,
+                      durationController: _adDurationControllers[slide.id]!,
+                      durationLabel: l10n.advertisingDurationLabel,
+                      playsUntilEndLabel: l10n.advertisingPlaysUntilEndLabel,
+                      deleteTooltip: l10n.advertisingDeleteSlideTooltip,
+                      previewTooltip: l10n.advertisingPreviewTooltip,
+                      muteTooltip: l10n.advertisingMuteTooltip,
+                      unmuteTooltip: l10n.advertisingUnmuteTooltip,
+                      onDurationChanged: (seconds) => _updateAdDuration(slide.id, seconds),
+                      onMutedChanged: (muted) => _updateAdMuted(slide.id, muted),
+                      onDelete: () => _deleteAdSlide(slide.id),
+                    ),
+                ],
+              ),
             if (_adsError != null) ...[
               const SizedBox(height: 8),
               Text(
@@ -777,17 +839,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ],
             const SizedBox(height: 8),
+            if (_uploadingAd) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: _uploadProgress > 0 ? _uploadProgress : null,
+                  minHeight: 6,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '${(_uploadProgress * 100).round()}%',
+                style: const TextStyle(color: AppColors.muted, fontSize: 11),
+              ),
+              const SizedBox(height: 8),
+            ],
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: _uploadingAd ? null : _pickAndUploadAd,
-                icon: _uploadingAd
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.add_photo_alternate_outlined, size: 16),
+                icon: const Icon(Icons.add_photo_alternate_outlined, size: 16),
                 label: Text(l10n.advertisingAddSlideButton),
               ),
             ),
@@ -1373,12 +1444,17 @@ class _Card extends StatelessWidget {
 
 class _AdSlideRow extends StatelessWidget {
   const _AdSlideRow({
+    required super.key,
     required this.slide,
     required this.durationController,
     required this.durationLabel,
     required this.playsUntilEndLabel,
     required this.deleteTooltip,
+    required this.previewTooltip,
+    required this.muteTooltip,
+    required this.unmuteTooltip,
     required this.onDurationChanged,
+    required this.onMutedChanged,
     required this.onDelete,
   });
 
@@ -1387,7 +1463,11 @@ class _AdSlideRow extends StatelessWidget {
   final String durationLabel;
   final String playsUntilEndLabel;
   final String deleteTooltip;
+  final String previewTooltip;
+  final String muteTooltip;
+  final String unmuteTooltip;
   final ValueChanged<String> onDurationChanged;
+  final ValueChanged<bool> onMutedChanged;
   final VoidCallback onDelete;
 
   @override
@@ -1397,23 +1477,43 @@ class _AdSlideRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          ClipRRect(
+          InkWell(
             borderRadius: BorderRadius.circular(8),
-            child: SizedBox(
-              width: 52,
-              height: 52,
-              child: slide.type == 'video'
-                  ? const ColoredBox(
-                      color: AppColors.background,
-                      child: Icon(Icons.videocam_outlined, color: AppColors.muted),
-                    )
-                  : Image.network(thumbnailUrl, fit: BoxFit.cover),
+            onTap: () => showDialog(context: context, builder: (_) => _AdPreviewDialog(slide: slide)),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(
+                width: 52,
+                height: 52,
+                child: slide.type == 'video'
+                    ? const ColoredBox(
+                        color: AppColors.background,
+                        child: Icon(Icons.play_circle_outline, color: AppColors.muted),
+                      )
+                    : Image.network(thumbnailUrl, fit: BoxFit.cover),
+              ),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: slide.type == 'video'
-                ? Text(playsUntilEndLabel, style: const TextStyle(fontSize: 12, color: AppColors.muted))
+                ? Row(
+                    children: [
+                      Expanded(
+                        child: Text(playsUntilEndLabel,
+                            style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          slide.muted ? Icons.volume_off_outlined : Icons.volume_up_outlined,
+                          size: 18,
+                          color: AppColors.muted,
+                        ),
+                        tooltip: slide.muted ? unmuteTooltip : muteTooltip,
+                        onPressed: () => onMutedChanged(!slide.muted),
+                      ),
+                    ],
+                  )
                 : Row(
                     children: [
                       SizedBox(
@@ -1432,11 +1532,86 @@ class _AdSlideRow extends StatelessWidget {
                   ),
           ),
           IconButton(
+            icon: const Icon(Icons.visibility_outlined, size: 18, color: AppColors.muted),
+            tooltip: previewTooltip,
+            onPressed: () => showDialog(context: context, builder: (_) => _AdPreviewDialog(slide: slide)),
+          ),
+          IconButton(
             icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.terracottaDark),
             tooltip: deleteTooltip,
             onPressed: onDelete,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Full-size preview of an uploaded ad slide (Settings → Advertising), so an
+/// owner/manager can check what's actually playing on the customer display
+/// without needing a second device — images render at native fit, video gets
+/// real playback controls (default `AdaptiveVideoControls`, unlike the
+/// customer display's own `NoVideoControls` kiosk view).
+class _AdPreviewDialog extends StatefulWidget {
+  const _AdPreviewDialog({required this.slide});
+  final AdSlideInfo slide;
+
+  @override
+  State<_AdPreviewDialog> createState() => _AdPreviewDialogState();
+}
+
+class _AdPreviewDialogState extends State<_AdPreviewDialog> {
+  Player? _player;
+  VideoController? _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.slide.type == 'video') {
+      final player = Player();
+      _controller = VideoController(player);
+      _player = player;
+      // Starts at the same mute state the customer display would use, so
+      // the preview reflects reality — the adaptive controls still let the
+      // owner/manager un-mute here to check the audio itself.
+      player.setVolume(widget.slide.muted ? 0 : 100);
+      player.open(Media('http://${ServerClient.instance.baseUrl}${widget.slide.url}'));
+    }
+  }
+
+  @override
+  void dispose() {
+    _player?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final url = 'http://${ServerClient.instance.baseUrl}${widget.slide.url}';
+    return Dialog(
+      backgroundColor: Colors.black,
+      insetPadding: const EdgeInsets.all(24),
+      child: SizedBox(
+        width: (size.width * 0.9).clamp(0, 720),
+        height: (size.height * 0.8).clamp(0, 480),
+        child: Stack(
+          children: [
+            Center(
+              child: widget.slide.type == 'video' && _controller != null
+                  ? Video(controller: _controller!)
+                  : Image.network(url, fit: BoxFit.contain),
+            ),
+            Positioned(
+              top: 4,
+              right: 4,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

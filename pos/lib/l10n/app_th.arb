@@ -489,6 +489,9 @@
   "advertisingDurationLabel": "วินาที",
   "advertisingPlaysUntilEndLabel": "เล่นจนจบคลิป",
   "advertisingDeleteSlideTooltip": "ลบสไลด์",
+  "advertisingPreviewTooltip": "ดูตัวอย่าง",
+  "advertisingMuteTooltip": "ปิดเสียง",
+  "advertisingUnmuteTooltip": "เปิดเสียง",
 
   "dangerZoneSectionLabel": "โซนอันตราย",
   "removeShopButton": "ลบร้านนี้",

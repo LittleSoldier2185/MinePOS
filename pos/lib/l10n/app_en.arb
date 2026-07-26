@@ -511,6 +511,9 @@
   "advertisingDurationLabel": "Seconds",
   "advertisingPlaysUntilEndLabel": "Plays until it ends",
   "advertisingDeleteSlideTooltip": "Delete slide",
+  "advertisingPreviewTooltip": "Preview",
+  "advertisingMuteTooltip": "Mute",
+  "advertisingUnmuteTooltip": "Unmute",
 
   "dangerZoneSectionLabel": "DANGER ZONE",
   "removeShopButton": "REMOVE SHOP",
