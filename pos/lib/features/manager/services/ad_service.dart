@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
+import '../../../core/services/api_client.dart';
 import '../../../core/services/server_client.dart';
 
 class AdSlideInfo {
@@ -37,13 +38,6 @@ class AdSlideInfo {
       );
 }
 
-class AdServiceException implements Exception {
-  AdServiceException(this.message);
-  final String message;
-  @override
-  String toString() => message;
-}
-
 /// Advertising slideshow management (Settings → Advertising) — same
 /// owner/manager-only, HTTP-against-`/ads` shape as [ShopService], but
 /// uploads/serves raw file bytes instead of JSON since ad content (photos,
@@ -53,15 +47,8 @@ class AdService {
   static final instance = AdService._();
 
   Future<List<AdSlideInfo>> list() async {
-    final client = ServerClient.instance;
-    if (!client.isConnected) throw AdServiceException('Not connected to a server');
-    late final http.Response res;
-    try {
-      res = await http.get(client.uri('/ads'), headers: client.headers).timeout(const Duration(seconds: 10));
-    } catch (_) {
-      throw AdServiceException('Could not reach the server');
-    }
-    if (res.statusCode < 200 || res.statusCode >= 300) throw AdServiceException(_errorMessage(res));
+    final res = await apiSend(
+        () => http.get(ServerClient.instance.uri('/ads'), headers: ServerClient.instance.headers));
     final list = jsonDecode(res.body) as List;
     return list.map((j) => AdSlideInfo.fromJson(j as Map<String, dynamic>)).toList();
   }
@@ -81,7 +68,7 @@ class AdService {
     void Function(double progress)? onProgress,
   }) async {
     final client = ServerClient.instance;
-    if (!client.isConnected) throw AdServiceException('Not connected to a server');
+    if (!client.isConnected) throw ApiException('Not connected to a server');
 
     final request = http.StreamedRequest(
       'POST',
@@ -111,90 +98,32 @@ class AdService {
 
     unawaited(pump());
 
-    late final http.StreamedResponse streamedRes;
-    try {
-      streamedRes = await http.Client().send(request).timeout(const Duration(seconds: 30));
-    } catch (_) {
-      throw AdServiceException('Could not reach the server');
-    }
-    final res = await http.Response.fromStream(streamedRes);
-    if (res.statusCode < 200 || res.statusCode >= 300) throw AdServiceException(_errorMessage(res));
+    final res = await apiSend(
+      () async => http.Response.fromStream(await http.Client().send(request)),
+      timeout: const Duration(seconds: 30),
+    );
     return AdSlideInfo.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
-  Future<void> updateDuration(String id, int durationSeconds) async {
-    final client = ServerClient.instance;
-    if (!client.isConnected) throw AdServiceException('Not connected to a server');
-    late final http.Response res;
-    try {
-      res = await http
-          .patch(
-            client.uri('/ads/$id'),
-            headers: client.headers,
-            body: jsonEncode({'durationSeconds': durationSeconds}),
-          )
-          .timeout(const Duration(seconds: 10));
-    } catch (_) {
-      throw AdServiceException('Could not reach the server');
-    }
-    if (res.statusCode < 200 || res.statusCode >= 300) throw AdServiceException(_errorMessage(res));
-  }
+  Future<void> updateDuration(String id, int durationSeconds) => apiSend(() => http.patch(
+        ServerClient.instance.uri('/ads/$id'),
+        headers: ServerClient.instance.headers,
+        body: jsonEncode({'durationSeconds': durationSeconds}),
+      ));
 
-  Future<void> updateMuted(String id, bool muted) async {
-    final client = ServerClient.instance;
-    if (!client.isConnected) throw AdServiceException('Not connected to a server');
-    late final http.Response res;
-    try {
-      res = await http
-          .patch(
-            client.uri('/ads/$id'),
-            headers: client.headers,
-            body: jsonEncode({'muted': muted}),
-          )
-          .timeout(const Duration(seconds: 10));
-    } catch (_) {
-      throw AdServiceException('Could not reach the server');
-    }
-    if (res.statusCode < 200 || res.statusCode >= 300) throw AdServiceException(_errorMessage(res));
-  }
+  Future<void> updateMuted(String id, bool muted) => apiSend(() => http.patch(
+        ServerClient.instance.uri('/ads/$id'),
+        headers: ServerClient.instance.headers,
+        body: jsonEncode({'muted': muted}),
+      ));
 
   /// [orderedIds] is every slide's id in its new order.
-  Future<void> reorder(List<String> orderedIds) async {
-    final client = ServerClient.instance;
-    if (!client.isConnected) throw AdServiceException('Not connected to a server');
-    late final http.Response res;
-    try {
-      res = await http
-          .post(
-            client.uri('/ads/reorder'),
-            headers: client.headers,
-            body: jsonEncode({'order': orderedIds}),
-          )
-          .timeout(const Duration(seconds: 10));
-    } catch (_) {
-      throw AdServiceException('Could not reach the server');
-    }
-    if (res.statusCode < 200 || res.statusCode >= 300) throw AdServiceException(_errorMessage(res));
-  }
+  Future<void> reorder(List<String> orderedIds) => apiSend(() => http.post(
+        ServerClient.instance.uri('/ads/reorder'),
+        headers: ServerClient.instance.headers,
+        body: jsonEncode({'order': orderedIds}),
+      ));
 
-  Future<void> delete(String id) async {
-    final client = ServerClient.instance;
-    if (!client.isConnected) throw AdServiceException('Not connected to a server');
-    late final http.Response res;
-    try {
-      res = await http.delete(client.uri('/ads/$id'), headers: client.headers).timeout(const Duration(seconds: 10));
-    } catch (_) {
-      throw AdServiceException('Could not reach the server');
-    }
-    if (res.statusCode < 200 || res.statusCode >= 300) throw AdServiceException(_errorMessage(res));
-  }
-
-  String _errorMessage(http.Response res) {
-    try {
-      final body = jsonDecode(res.body) as Map<String, dynamic>;
-      return body['error'] as String? ?? 'Request failed (${res.statusCode})';
-    } catch (_) {
-      return 'Request failed (${res.statusCode})';
-    }
-  }
+  Future<void> delete(String id) => apiSend(
+      () => http.delete(ServerClient.instance.uri('/ads/$id'), headers: ServerClient.instance.headers));
 }

@@ -9,6 +9,20 @@ class PresenceTracker {
 
   static const onlineWithin = Duration(seconds: 30);
 
+  // Non-owner sessions expire after this much inactivity (owner sessions are
+  // persistent, bounded only by the JWT's own 30-day expiry — see
+  // auth_routes.dart's `_login`). A JWT's own `exp` is fixed at mint time and
+  // can't reset on activity, so idle timeout has to be enforced here instead.
+  static const workerIdleTimeout = Duration(minutes: 30);
+
+  // Keyed by user+device+iat (the JWT's issue time) rather than just
+  // user+device, so the first request of a brand-new login never gets
+  // mistaken for a stale idle session left over from an earlier login on
+  // the same device.
+  // ponytail: never pruned (personal-use scale, cleared on server restart);
+  // add eviction if this ever runs long enough for it to matter.
+  final Map<String, DateTime> _sessionLastActive = {};
+
   // Keyed by "userId:deviceName" rather than just userId — two stations
   // signed in as the same account (e.g. two registers both logged in as
   // "cashier1") are distinct physical devices and must show up as separate
@@ -26,6 +40,16 @@ class PresenceTracker {
       deviceName: deviceName,
       seenAt: DateTime.now(),
     );
+  }
+
+  bool isIdleExpired(int userId, String deviceName, int iat) {
+    final last = _sessionLastActive['$userId:$deviceName:$iat'];
+    if (last == null) return false;
+    return DateTime.now().difference(last) > workerIdleTimeout;
+  }
+
+  void touchSession(int userId, String deviceName, int iat) {
+    _sessionLastActive['$userId:$deviceName:$iat'] = DateTime.now();
   }
 
   List<Map<String, dynamic>> onlineUsers() {

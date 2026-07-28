@@ -3,11 +3,13 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/responsive/breakpoints.dart';
 import '../../core/services/app_settings_service.dart';
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/confirm_dialog.dart';
 import '../../core/widgets/image_crop_screen.dart';
 import '../../l10n/app_localizations.dart';
 import 'models/staff_member.dart';
@@ -163,27 +165,14 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
 
   Future<void> _confirmDelete(StaffMember m) async {
     final l10n = AppLocalizations.of(context)!;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(l10n.removeStaffTitle),
-        content: Text(l10n.removeStaffContent(m.username)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(l10n.cancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              l10n.remove,
-              style: const TextStyle(color: AppColors.terracottaDark),
-            ),
-          ),
-        ],
-      ),
+    final ok = await confirmDialog(
+      context,
+      title: l10n.removeStaffTitle,
+      content: l10n.removeStaffContent(m.username),
+      confirmLabel: l10n.remove,
+      cancelLabel: l10n.cancel,
     );
-    if (ok != true) return;
+    if (!ok) return;
     try {
       await _svc.delete(m.id);
       _reload();
@@ -634,8 +623,7 @@ class _StaffDetailDialog extends StatelessWidget {
   const _StaffDetailDialog({required this.member});
   final StaffMember member;
 
-  String _formatDate(DateTime d) =>
-      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  String _formatDate(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
 
   /// Whichever unit is most meaningful: days under a month, months under a
   /// year, otherwise years (plus a leftover-months remainder, e.g. "2 years

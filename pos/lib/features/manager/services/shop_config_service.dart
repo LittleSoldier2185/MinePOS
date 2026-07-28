@@ -2,14 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../../core/services/api_client.dart';
 import '../../../core/services/server_client.dart';
-
-class ShopConfigServiceException implements Exception {
-  ShopConfigServiceException(this.message);
-  final String message;
-  @override
-  String toString() => message;
-}
 
 /// Caches the shop's own display details (name, address, tax ID, receipt
 /// footer) fetched once at login — read synchronously wherever a
@@ -68,52 +62,26 @@ class ShopConfigService {
     String? promptPayId,
     String? promptPayLabel,
   }) async {
-    final client = ServerClient.instance;
-    if (!client.isConnected) {
-      throw ShopConfigServiceException('Not connected to a server');
-    }
-
-    late final http.Response res;
-    try {
-      res = await http
-          .patch(
-            client.uri('/shop'),
-            headers: client.headers,
-            body: jsonEncode({
-              'shopName': shopName.trim(),
-              'address': address?.trim(),
-              'taxId': taxId?.trim(),
-              'email': email?.trim(),
-              'receiptFooter': receiptFooter?.trim(),
-              'promptPayId': promptPayId?.trim(),
-              'promptPayLabel': promptPayLabel?.trim(),
-            }),
-          )
-          .timeout(const Duration(seconds: 10));
-    } catch (_) {
-      throw ShopConfigServiceException('Could not reach the server');
-    }
-
-    if (res.statusCode >= 200 && res.statusCode < 300) {
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-      this.shopName = data['shopName'] as String? ?? this.shopName;
-      this.address = data['address'] as String?;
-      this.taxId = data['taxId'] as String?;
-      this.email = data['email'] as String?;
-      this.receiptFooter = data['receiptFooter'] as String?;
-      this.promptPayId = data['promptPayId'] as String?;
-      this.promptPayLabel = data['promptPayLabel'] as String?;
-      return;
-    }
-    throw ShopConfigServiceException(_errorMessage(res));
-  }
-
-  String _errorMessage(http.Response res) {
-    try {
-      final body = jsonDecode(res.body) as Map<String, dynamic>;
-      return body['error'] as String? ?? 'Request failed (${res.statusCode})';
-    } catch (_) {
-      return 'Request failed (${res.statusCode})';
-    }
+    final res = await apiSend(() => http.patch(
+          ServerClient.instance.uri('/shop'),
+          headers: ServerClient.instance.headers,
+          body: jsonEncode({
+            'shopName': shopName.trim(),
+            'address': address?.trim(),
+            'taxId': taxId?.trim(),
+            'email': email?.trim(),
+            'receiptFooter': receiptFooter?.trim(),
+            'promptPayId': promptPayId?.trim(),
+            'promptPayLabel': promptPayLabel?.trim(),
+          }),
+        ));
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    this.shopName = data['shopName'] as String? ?? this.shopName;
+    this.address = data['address'] as String?;
+    this.taxId = data['taxId'] as String?;
+    this.email = data['email'] as String?;
+    this.receiptFooter = data['receiptFooter'] as String?;
+    this.promptPayId = data['promptPayId'] as String?;
+    this.promptPayLabel = data['promptPayLabel'] as String?;
   }
 }

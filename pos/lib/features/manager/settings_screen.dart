@@ -13,6 +13,7 @@ import '../../core/services/locale_controller.dart';
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_text_field.dart';
+import '../../core/widgets/confirm_dialog.dart';
 import '../../core/window/platform_window.dart';
 import '../../l10n/app_localizations.dart';
 import '../cashier/services/menu_service.dart';
@@ -312,21 +313,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _confirmDeletePromotion(Promotion promotion) async {
     final l10n = AppLocalizations.of(context)!;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(l10n.promotionDeleteConfirmTitle),
-        content: Text(l10n.promotionDeleteConfirmContent),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l10n.cancel)),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(l10n.promotionDeleteConfirmButton),
-          ),
-        ],
-      ),
+    final confirmed = await confirmDialog(
+      context,
+      title: l10n.promotionDeleteConfirmTitle,
+      content: l10n.promotionDeleteConfirmContent,
+      confirmLabel: l10n.promotionDeleteConfirmButton,
+      cancelLabel: l10n.cancel,
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
     try {
       await PromotionAdminService.instance.delete(promotion.id);
       await _loadPromotions();
@@ -409,27 +403,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _disconnect() async {
     final l10n = AppLocalizations.of(context)!;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(l10n.disconnectTitle),
-        content: Text(l10n.disconnectContent),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(l10n.cancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              l10n.disconnectLabel,
-              style: const TextStyle(color: AppColors.terracottaDark),
-            ),
-          ),
-        ],
-      ),
+    final ok = await confirmDialog(
+      context,
+      title: l10n.disconnectTitle,
+      content: l10n.disconnectContent,
+      confirmLabel: l10n.disconnectLabel,
+      cancelLabel: l10n.cancel,
     );
-    if (ok == true && mounted) {
+    if (ok && mounted) {
       MenuService.instance.reset();
       OrderService.instance.reset();
       ShopConfigService.instance.reset();

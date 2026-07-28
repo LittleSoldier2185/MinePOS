@@ -1,53 +1,26 @@
-import 'dart:convert';
-
 import 'package:web_socket_channel/web_socket_channel.dart';
 
+import 'broadcast_hub.dart';
 import 'database.dart';
 
 /// Fans out newly-created orders to every connected client. Order History
 /// and the cashier dashboard otherwise only learn about orders placed on
 /// other devices at their next login.
-class OrderHub {
+class OrderHub extends BroadcastHub {
   OrderHub._();
   static final instance = OrderHub._();
 
-  final Set<WebSocketChannel> _channels = {};
+  void add(WebSocketChannel channel, AppDb db) => connect(channel, {
+        'type': 'snapshot',
+        'orders': db.getOrders().map((o) => o.toJson()).toList(),
+      });
 
-  int get count => _channels.length;
+  void broadcastOrderCreated(DbOrder order) => broadcast({'type': 'order_created', 'order': order.toJson()});
 
-  void add(WebSocketChannel channel, AppDb db) {
-    _channels.add(channel);
-    channel.sink.add(jsonEncode({
-      'type': 'snapshot',
-      'orders': db.getOrders().map((o) => o.toJson()).toList(),
-    }));
-    channel.stream.listen(
-      (_) {}, // clients are receive-only
-      onDone: () => _channels.remove(channel),
-      onError: (_) => _channels.remove(channel),
-      cancelOnError: true,
-    );
-  }
-
-  void broadcastOrderCreated(DbOrder order) {
-    _broadcast({'type': 'order_created', 'order': order.toJson()});
-  }
-
-  void broadcastOrderStatus(DbOrder order) {
-    _broadcast({
-      'type': 'order_status',
-      'orderId': order.id,
-      'status': order.status,
-      'cancelReason': order.cancelReason,
-    });
-  }
-
-  void _broadcast(Map<String, dynamic> message) {
-    final encoded = jsonEncode(message);
-    for (final channel in _channels) {
-      try {
-        channel.sink.add(encoded);
-      } catch (_) {}
-    }
-  }
+  void broadcastOrderStatus(DbOrder order) => broadcast({
+        'type': 'order_status',
+        'orderId': order.id,
+        'status': order.status,
+        'cancelReason': order.cancelReason,
+      });
 }

@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:shelf/shelf.dart';
+import 'package:shelf_web_socket/shelf_web_socket.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'database.dart';
 import 'presence_tracker.dart';
@@ -59,13 +61,24 @@ DbUser? verifyToken(String token, AppDb db, String jwtSecret, {String? role}) {
 
   final id = int.tryParse(claims['sub'] as String? ?? '');
   final ver = claims['ver'] as int?;
-  if (id == null || ver == null) return null;
+  final iat = (claims['iat'] as num?)?.toInt();
+  if (id == null || ver == null || iat == null) return null;
 
   final user = db.getUserById(id);
   if (user == null || !user.active || user.tokenVersion != ver) return null;
   if (role != null && user.role != role) return null;
   final deviceName = claims['dev'] as String? ?? 'Unknown device';
+
+  // Owner sessions are persistent; every other role is logged out after
+  // 30 minutes of inactivity, enforced here since the JWT's own expiry is
+  // fixed at login and can't reset on activity.
+  if (user.role != 'owner' &&
+      PresenceTracker.instance.isIdleExpired(user.id, deviceName, iat)) {
+    return null;
+  }
+
   PresenceTracker.instance.touch(user.id, user.username, user.role, deviceName);
+  PresenceTracker.instance.touchSession(user.id, deviceName, iat);
   return user;
 }
 
@@ -83,6 +96,26 @@ DbUser? requireRoles(
   final user = requireAuth(req, db, jwtSecret);
   if (user == null || !roles.contains(user.role)) return null;
   return user;
+}
+
+// ── WebSocket helper ──────────────────────────────────────────────────────────
+
+/// Wraps [onConnect] with the query-param-token auth check shared by every
+/// `/ws/*` route (`/ws/orders`, `/ws/kitchen`, `/ws/menu`) — browsers can't
+/// set custom headers on a WebSocket handshake, so the JWT travels as
+/// `?token=` instead of the usual Authorization header.
+Handler wsAuthRoute(
+  AppDb db,
+  String jwtSecret,
+  void Function(WebSocketChannel channel) onConnect,
+) {
+  return (Request req) {
+    final token = req.url.queryParameters['token'];
+    if (token == null || verifyToken(token, db, jwtSecret) == null) {
+      return unauthorized();
+    }
+    return webSocketHandler((WebSocketChannel channel, String? protocol) => onConnect(channel))(req);
+  };
 }
 
 // ── CORS middleware ────────────────────────────────────────────────────────────

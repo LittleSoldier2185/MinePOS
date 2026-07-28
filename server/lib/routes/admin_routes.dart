@@ -62,7 +62,7 @@ Response _presence(Request req, AppDb db, ServerConfig config) {
 // for what that defaults to) after responding, so the caller gets its 200 back
 // before anything actually goes down.
 Response _restart(Request req, AppDb db, ServerConfig config, void Function() restart) {
-  if (requireRoles(req, db, config.jwtSecret, {'owner'}) == null) {
+  if (requireAuth(req, db, config.jwtSecret, role: 'owner') == null) {
     return unauthorized();
   }
   ServerLog.instance.log('Restart requested via Server Status screen.');
@@ -72,7 +72,7 @@ Response _restart(Request req, AppDb db, ServerConfig config, void Function() re
 
 // GET /admin/config — owner-only. Current listen settings.
 Response _getConfig(Request req, AppDb db, ServerConfig config) {
-  if (requireRoles(req, db, config.jwtSecret, {'owner'}) == null) {
+  if (requireAuth(req, db, config.jwtSecret, role: 'owner') == null) {
     return unauthorized();
   }
   return jsonOk({'port': config.port, 'bindAddress': config.bindAddress ?? 'any'});
@@ -85,7 +85,7 @@ Response _getConfig(Request req, AppDb db, ServerConfig config) {
 // bindAddress (see ServerConfig.bindAddress doc).
 Future<Response> _patchConfig(
     Request req, AppDb db, ServerConfig config, void Function() restart) async {
-  if (requireRoles(req, db, config.jwtSecret, {'owner'}) == null) {
+  if (requireAuth(req, db, config.jwtSecret, role: 'owner') == null) {
     return unauthorized();
   }
   final body = await parseJsonBody(req);
@@ -116,7 +116,7 @@ Future<Response> _patchConfig(
 // same file the in-app Server Status → View Logs screen reads directly off
 // disk; this is the remote-access equivalent for the web dashboard.
 Response _logs(Request req, AppDb db, ServerConfig config) {
-  if (requireRoles(req, db, config.jwtSecret, {'owner'}) == null) {
+  if (requireAuth(req, db, config.jwtSecret, role: 'owner') == null) {
     return unauthorized();
   }
   final want = int.tryParse(req.url.queryParameters['lines'] ?? '') ?? 300;

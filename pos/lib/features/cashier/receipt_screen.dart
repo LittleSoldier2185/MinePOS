@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/formatting.dart';
 import '../../l10n/app_localizations.dart';
 import '../manager/services/shop_config_service.dart';
 import 'models/order.dart';
@@ -12,8 +13,6 @@ class ReceiptScreen extends StatelessWidget {
   const ReceiptScreen({super.key, required this.order});
 
   final Order order;
-
-  String _baht(double v) => '฿${v.toStringAsFixed(0)}';
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +38,7 @@ class ReceiptScreen extends StatelessWidget {
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(24),
-                    child: _ReceiptPaper(order: order, baht: _baht),
+                    child: _ReceiptPaper(order: order, baht: baht),
                   ),
                 ),
                 _BottomActions(order: order),

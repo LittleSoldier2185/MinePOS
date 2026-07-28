@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import '../../core/services/local_server_launcher.dart';
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/confirm_dialog.dart';
 import '../../l10n/app_localizations.dart';
 import '../connect/services/connection_service.dart';
 
@@ -92,25 +93,14 @@ class _ServerStatusScreenState extends State<ServerStatusScreen> {
 
   Future<void> _restart() async {
     final l10n = AppLocalizations.of(context)!;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(l10n.restartServerTitle),
-        content: Text(l10n.restartServerContent),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(l10n.cancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(l10n.restartServerButton,
-                style: const TextStyle(color: AppColors.terracottaDark)),
-          ),
-        ],
-      ),
+    final confirmed = await confirmDialog(
+      context,
+      title: l10n.restartServerTitle,
+      content: l10n.restartServerContent,
+      confirmLabel: l10n.restartServerButton,
+      cancelLabel: l10n.cancel,
     );
-    if (confirmed != true || !mounted) return;
+    if (!confirmed || !mounted) return;
 
     setState(() => _restarting = true);
     final client = ServerClient.instance;

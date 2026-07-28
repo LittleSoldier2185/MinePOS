@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import '../../core/responsive/breakpoints.dart';
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/formatting.dart';
+import '../../core/widgets/confirm_dialog.dart';
 import '../../core/widgets/user_avatar.dart';
 import '../../l10n/app_localizations.dart';
 import '../cashier/models/order.dart';
@@ -61,30 +63,15 @@ String _dateStr(BuildContext context) {
   ).format(d);
 }
 
-String _baht(double v) => '฿${v.toStringAsFixed(0)}';
-
 Future<void> _confirmLogout(BuildContext context) async {
-  final ok = await showDialog<bool>(
-    context: context,
-    builder: (_) => AlertDialog(
-      title: Text(AppLocalizations.of(context)!.signOutDialogTitle),
-      content: Text(AppLocalizations.of(context)!.signOutDialogContent),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: Text(AppLocalizations.of(context)!.cancel),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: Text(
-            AppLocalizations.of(context)!.signOut,
-            style: const TextStyle(color: AppColors.terracottaDark),
-          ),
-        ),
-      ],
-    ),
+  final ok = await confirmDialog(
+    context,
+    title: AppLocalizations.of(context)!.signOutDialogTitle,
+    content: AppLocalizations.of(context)!.signOutDialogContent,
+    confirmLabel: AppLocalizations.of(context)!.signOut,
+    cancelLabel: AppLocalizations.of(context)!.cancel,
   );
-  if (ok == true && context.mounted) {
+  if (ok && context.mounted) {
     MenuService.instance.reset();
     OrderService.instance.reset();
     ShopConfigService.instance.reset();
@@ -650,14 +637,14 @@ class _ContentPanelState extends State<_ContentPanel> {
                     _StatCard(
                       icon: Icons.payments_outlined,
                       label: AppLocalizations.of(context)!.revenueLabel,
-                      value: _baht(revenue),
+                      value: baht(revenue),
                     ),
                     const SizedBox(width: 12),
                     _StatCard(
                       icon: Icons.bar_chart_outlined,
                       label: AppLocalizations.of(context)!.avgOrderLabel,
                       value: count > 0
-                          ? _baht(avg)
+                          ? baht(avg)
                           : AppLocalizations.of(context)!.emDash,
                     ),
                   ],
@@ -899,7 +886,7 @@ class _RecentOrders extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            _baht(o.total),
+                            baht(o.total),
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,

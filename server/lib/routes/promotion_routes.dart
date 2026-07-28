@@ -86,11 +86,24 @@ const _kScopeTypes = {'item', 'category', 'shop'};
   );
 }
 
+/// Shared by create/update: `name`/`type`/`scopeType` are the only fields
+/// strictly required regardless of `type` — which of the rest matter
+/// depends on it, validated client-side by the Settings form, not
+/// re-validated per-type here (same trust level as menu item fields).
+/// Returns an error message, or null if valid.
+String? _validate(String? name, String? type, String? scopeType) {
+  if (name == null || name.isEmpty) return 'name is required';
+  if (type == null || !_kPromotionTypes.contains(type)) {
+    return 'type must be one of ${_kPromotionTypes.join(', ')}';
+  }
+  if (scopeType == null || !_kScopeTypes.contains(scopeType)) {
+    return 'scopeType must be one of ${_kScopeTypes.join(', ')}';
+  }
+  return null;
+}
+
 // POST /promotions — owner/manager only. See `_extractFields` for the body
-// shape; only `name`, `type` (one of `_kPromotionTypes`), and `scopeType`
-// (one of `_kScopeTypes`) are strictly required — which of the rest matter
-// depends on `type`, validated client-side by the Settings form, not
-// re-validated per-type here (same trust level as menu item fields).
+// shape and `_validate` for what's required.
 Future<Response> _create(Request req, AppDb db, ServerConfig config) async {
   if (requireRoles(req, db, config.jwtSecret, _kPromotionEditors) == null) {
     return unauthorized();
@@ -99,13 +112,8 @@ Future<Response> _create(Request req, AppDb db, ServerConfig config) async {
   if (body == null) return jsonError('Invalid JSON body');
   final f = _extractFields(body);
 
-  if (f.name == null || f.name!.isEmpty) return jsonError('name is required');
-  if (f.type == null || !_kPromotionTypes.contains(f.type)) {
-    return jsonError('type must be one of ${_kPromotionTypes.join(', ')}');
-  }
-  if (f.scopeType == null || !_kScopeTypes.contains(f.scopeType)) {
-    return jsonError('scopeType must be one of ${_kScopeTypes.join(', ')}');
-  }
+  final error = _validate(f.name, f.type, f.scopeType);
+  if (error != null) return jsonError(error);
 
   final promotion = db.createPromotion(
     name: f.name!,
@@ -145,13 +153,8 @@ Future<Response> _update(Request req, String id, AppDb db, ServerConfig config) 
   if (body == null) return jsonError('Invalid JSON body');
   final f = _extractFields(body);
 
-  if (f.name == null || f.name!.isEmpty) return jsonError('name is required');
-  if (f.type == null || !_kPromotionTypes.contains(f.type)) {
-    return jsonError('type must be one of ${_kPromotionTypes.join(', ')}');
-  }
-  if (f.scopeType == null || !_kScopeTypes.contains(f.scopeType)) {
-    return jsonError('scopeType must be one of ${_kScopeTypes.join(', ')}');
-  }
+  final error = _validate(f.name, f.type, f.scopeType);
+  if (error != null) return jsonError(error);
 
   final updated = db.updatePromotion(
     id: id,

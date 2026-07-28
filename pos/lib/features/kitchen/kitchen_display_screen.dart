@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../core/responsive/breakpoints.dart';
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/confirm_dialog.dart';
 import '../../l10n/app_localizations.dart';
 import '../cashier/models/order.dart';
 import '../cashier/models/order_item.dart';
@@ -28,25 +29,14 @@ const _kUrgentAge = Duration(minutes: 5);
 
 Future<void> _confirmLogout(BuildContext context) async {
   final l10n = AppLocalizations.of(context)!;
-  final ok = await showDialog<bool>(
-    context: context,
-    builder: (_) => AlertDialog(
-      title: Text(l10n.signOutDialogTitle),
-      content: Text(l10n.signOutDialogContent),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: Text(l10n.cancel),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: Text(l10n.signOut,
-              style: const TextStyle(color: AppColors.terracottaDark)),
-        ),
-      ],
-    ),
+  final ok = await confirmDialog(
+    context,
+    title: l10n.signOutDialogTitle,
+    content: l10n.signOutDialogContent,
+    confirmLabel: l10n.signOut,
+    cancelLabel: l10n.cancel,
   );
-  if (ok == true && context.mounted) {
+  if (ok && context.mounted) {
     MenuService.instance.reset();
     OrderService.instance.reset();
     ShopConfigService.instance.reset();

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/formatting.dart';
 import '../../core/widgets/access_restricted.dart';
 import '../../l10n/app_localizations.dart';
 import '../cashier/models/order.dart';
@@ -29,10 +30,15 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   void initState() {
     super.initState();
-    _future = ReportsService.instance.fetchAllOrders();
+    _future = _fetchForCurrentRange();
   }
 
-  void _reload() => setState(() { _future = ReportsService.instance.fetchAllOrders(); });
+  Future<List<Order>> _fetchForCurrentRange() {
+    final range = _resolveRange();
+    return ReportsService.instance.fetchOrders(from: range.start, to: range.end);
+  }
+
+  void _reload() => setState(() { _future = _fetchForCurrentRange(); });
 
   DateTimeRange _resolveRange() {
     final now = DateTime.now();
@@ -79,6 +85,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     setState(() {
       _range = _QuickRange.custom;
       _customRange = result;
+      _future = _fetchForCurrentRange();
     });
   }
 
@@ -97,12 +104,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
     setState(() {
       _range = _QuickRange.month;
       _selectedMonth = DateTime(picked.year, picked.month);
+      _future = _fetchForCurrentRange();
     });
   }
 
   String _formatMonth(DateTime m) => DateFormat.yMMMM().format(m);
-
-  String _baht(double v) => '฿${v.toStringAsFixed(0)}';
 
   String _formatCustomRange(DateTimeRange r) {
     String fmt(DateTime d) =>
@@ -215,7 +221,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   } else if (r == _QuickRange.month) {
                     _pickMonth();
                   } else {
-                    setState(() => _range = r);
+                    setState(() {
+                      _range = r;
+                      _future = _fetchForCurrentRange();
+                    });
                   }
                 },
               ),
@@ -229,10 +238,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         children: [
                           _StatCard(label: l10n.reportsOrdersLabel, value: '${orders.length}'),
                           const SizedBox(width: 10),
-                          _StatCard(label: l10n.revenueLabel, value: _baht(revenue)),
+                          _StatCard(label: l10n.revenueLabel, value: baht(revenue)),
                           const SizedBox(width: 10),
                           _StatCard(
-                              label: l10n.avgOrderLabel, value: orders.isEmpty ? l10n.emDash : _baht(avg)),
+                              label: l10n.avgOrderLabel, value: orders.isEmpty ? l10n.emDash : baht(avg)),
                         ],
                       ),
                       const SizedBox(height: 10),
@@ -242,19 +251,19 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           const SizedBox(width: 10),
                           _StatCard(label: l10n.promptpay, value: '${orders.length - cashCount}'),
                           const SizedBox(width: 10),
-                          _StatCard(label: l10n.totalDiscountedLabel, value: _baht(totalDiscounted)),
+                          _StatCard(label: l10n.totalDiscountedLabel, value: baht(totalDiscounted)),
                         ],
                       ),
                       if (orders.isNotEmpty) ...[
                         const SizedBox(height: 16),
-                        _SalesTrendChart(orders: orders, range: _resolveRange(), l10n: l10n, baht: _baht),
+                        _SalesTrendChart(orders: orders, range: _resolveRange(), l10n: l10n, baht: baht),
                         const SizedBox(height: 16),
-                        _TopItemsCard(orders: orders, l10n: l10n, baht: _baht),
+                        _TopItemsCard(orders: orders, l10n: l10n, baht: baht),
                         const SizedBox(height: 16),
-                        _StaffSalesCard(orders: orders, l10n: l10n, baht: _baht),
+                        _StaffSalesCard(orders: orders, l10n: l10n, baht: baht),
                         if (totalDiscounted > 0) ...[
                           const SizedBox(height: 16),
-                          _PromotionBreakdownCard(orders: orders, l10n: l10n, baht: _baht),
+                          _PromotionBreakdownCard(orders: orders, l10n: l10n, baht: baht),
                         ],
                       ],
                       const SizedBox(height: 16),
@@ -339,7 +348,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                               fontWeight: FontWeight.w600)),
                                     ),
                                     const SizedBox(width: 8),
-                                    Text(_baht(o.total),
+                                    Text(baht(o.total),
                                         style: const TextStyle(
                                             fontSize: 13, fontWeight: FontWeight.w700)),
                                   ],

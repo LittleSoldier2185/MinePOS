@@ -3,6 +3,7 @@ import 'package:unified_esc_pos_printer/unified_esc_pos_printer.dart';
 
 import '../../../core/services/app_settings_service.dart';
 import '../../../core/services/locale_controller.dart';
+import '../../../core/utils/formatting.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../manager/services/shop_config_service.dart';
 import '../models/order.dart';
@@ -144,8 +145,6 @@ class PrinterService {
     // Kept concatenated into one "฿65" string, not a separate column: a
     // separate column left a gap between the symbol and the amount since
     // flex-sized columns don't shrink to fit short content.
-    String baht(double v) => '฿${v.toStringAsFixed(0)}';
-
     final locale = LocaleController.instance.locale;
     final l10n = lookupAppLocalizations(locale);
     final shop = ShopConfigService.instance;

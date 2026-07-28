@@ -25,13 +25,7 @@ void registerAuthRoutes(Router router, AppDb db, ServerConfig config) {
 Response _me(Request req, AppDb db, ServerConfig config) {
   final user = requireAuth(req, db, config.jwtSecret);
   if (user == null) return unauthorized();
-  return jsonOk({
-    'role': user.role,
-    'username': user.username,
-    'id': user.id,
-    'name': user.name,
-    'avatarBase64': user.avatarBase64,
-  });
+  return jsonOk(user.toAuthJson());
 }
 
 // POST /auth/login  { username, password, deviceName }
@@ -75,14 +69,7 @@ Future<Response> _login(
     },
   ).sign(SecretKey(config.jwtSecret), expiresIn: ttl);
 
-  return jsonOk({
-    'token': token,
-    'role': user.role,
-    'username': user.username,
-    'id': user.id,
-    'name': user.name,
-    'avatarBase64': user.avatarBase64,
-  });
+  return jsonOk({'token': token, ...user.toAuthJson()});
 }
 
 // POST /auth/request-otp  { username }
@@ -109,6 +96,9 @@ Future<Response> _requestOtp(Request req, AppDb db) async {
   return jsonOk({'ok': true});
 }
 
+bool _otpValid(DbOtp? stored, String otp) =>
+    stored != null && stored.otp == otp && !DateTime.now().isAfter(stored.expiresAt);
+
 // POST /auth/verify-otp  { username, otp }
 Future<Response> _verifyOtp(Request req, AppDb db) async {
   final body = await parseJsonBody(req);
@@ -118,10 +108,7 @@ Future<Response> _verifyOtp(Request req, AppDb db) async {
     return jsonError('username and otp are required');
   }
 
-  final stored = db.getOtp(username);
-  if (stored == null ||
-      stored.otp != otp ||
-      DateTime.now().isAfter(stored.expiresAt)) {
+  if (!_otpValid(db.getOtp(username), otp)) {
     return jsonError('Invalid or expired OTP', status: 422);
   }
 
@@ -143,10 +130,7 @@ Future<Response> _resetPassword(
     return jsonError('Password must be at least 8 characters');
   }
 
-  final stored = db.getOtp(username);
-  if (stored == null ||
-      stored.otp != otp ||
-      DateTime.now().isAfter(stored.expiresAt)) {
+  if (!_otpValid(db.getOtp(username), otp)) {
     return jsonError('Invalid or expired OTP', status: 422);
   }
 

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/formatting.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../l10n/app_localizations.dart';
 import '../customer_display/services/customer_display_service.dart';
@@ -172,8 +173,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return paid != null && paid >= _total;
   }
 
-  String _baht(double v) => '฿${v.toStringAsFixed(0)}';
-
   // Mirrors the chosen payment method onto the Customer Display: PromptPay
   // shows the QR there (so the customer scans their own screen instead of
   // the cashier's), switching back to Cash restores the plain itemized cart
@@ -259,7 +258,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _OrderSummaryCard(
-                            items: widget.items, baht: _baht, evaluation: _evaluation),
+                            items: widget.items, baht: baht, evaluation: _evaluation),
                         if (_promotions.any((p) => p.type == 'code')) ...[
                           const SizedBox(height: 12),
                           _DiscountCodeField(
@@ -273,7 +272,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                           for (final pending in _evaluation!.pendingApproval)
                             _PendingApprovalRow(
                               pending: pending,
-                              baht: _baht,
+                              baht: baht,
                               onApprove: () => _openApprovalSheet(pending),
                             ),
                         ],
@@ -288,11 +287,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
                             total: _total,
                             change: _change,
                             controller: _cashController,
-                            baht: _baht,
+                            baht: baht,
                             onChanged: (_) => setState(() {}),
                           )
                         else
-                          _PromptPayPanel(total: _total, baht: _baht),
+                          _PromptPayPanel(total: _total, baht: baht),
                       ],
                     ),
                   ),
@@ -301,7 +300,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   total: _total,
                   canConfirm: _canConfirm,
                   processing: _processing,
-                  baht: _baht,
+                  baht: baht,
                   onConfirm: _confirm,
                 ),
               ],

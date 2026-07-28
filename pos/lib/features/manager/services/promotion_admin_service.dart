@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../../core/services/api_client.dart';
 import '../../../core/services/server_client.dart';
 
 /// A promotion as configured in Settings. Which of the nullable mechanics
@@ -179,13 +180,6 @@ class PromotionCode {
       );
 }
 
-class PromotionAdminServiceException implements Exception {
-  PromotionAdminServiceException(this.message);
-  final String message;
-  @override
-  String toString() => message;
-}
-
 /// Settings → Promotions management: owner/manager CRUD against
 /// `/promotions`, same HTTP-service shape as `AdService`/`ShopService`.
 class PromotionAdminService {
@@ -193,77 +187,41 @@ class PromotionAdminService {
   static final instance = PromotionAdminService._();
 
   Future<List<Promotion>> list() async {
-    final client = ServerClient.instance;
-    if (!client.isConnected) throw PromotionAdminServiceException('Not connected to a server');
-    late final http.Response res;
-    try {
-      res = await http.get(client.uri('/promotions'), headers: client.headers).timeout(const Duration(seconds: 10));
-    } catch (_) {
-      throw PromotionAdminServiceException('Could not reach the server');
-    }
-    if (res.statusCode < 200 || res.statusCode >= 300) throw PromotionAdminServiceException(_errorMessage(res));
+    final res = await apiSend(
+        () => http.get(ServerClient.instance.uri('/promotions'), headers: ServerClient.instance.headers));
     final list = jsonDecode(res.body) as List;
     return list.map((j) => Promotion.fromJson(j as Map<String, dynamic>)).toList();
   }
 
   Future<Promotion> create(Promotion promotion) async {
-    final client = ServerClient.instance;
-    if (!client.isConnected) throw PromotionAdminServiceException('Not connected to a server');
-    late final http.Response res;
-    try {
-      res = await http
-          .post(client.uri('/promotions'), headers: client.headers, body: jsonEncode(promotion.toRequestJson()))
-          .timeout(const Duration(seconds: 10));
-    } catch (_) {
-      throw PromotionAdminServiceException('Could not reach the server');
-    }
-    if (res.statusCode < 200 || res.statusCode >= 300) throw PromotionAdminServiceException(_errorMessage(res));
+    final res = await apiSend(() => http.post(
+          ServerClient.instance.uri('/promotions'),
+          headers: ServerClient.instance.headers,
+          body: jsonEncode(promotion.toRequestJson()),
+        ));
     return Promotion.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
   Future<Promotion> update(String id, Promotion promotion) async {
-    final client = ServerClient.instance;
-    if (!client.isConnected) throw PromotionAdminServiceException('Not connected to a server');
-    late final http.Response res;
-    try {
-      res = await http
-          .patch(client.uri('/promotions/$id'), headers: client.headers, body: jsonEncode(promotion.toRequestJson()))
-          .timeout(const Duration(seconds: 10));
-    } catch (_) {
-      throw PromotionAdminServiceException('Could not reach the server');
-    }
-    if (res.statusCode < 200 || res.statusCode >= 300) throw PromotionAdminServiceException(_errorMessage(res));
+    final res = await apiSend(() => http.patch(
+          ServerClient.instance.uri('/promotions/$id'),
+          headers: ServerClient.instance.headers,
+          body: jsonEncode(promotion.toRequestJson()),
+        ));
     return Promotion.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
-  Future<void> delete(String id) async {
-    final client = ServerClient.instance;
-    if (!client.isConnected) throw PromotionAdminServiceException('Not connected to a server');
-    late final http.Response res;
-    try {
-      res = await http.delete(client.uri('/promotions/$id'), headers: client.headers).timeout(const Duration(seconds: 10));
-    } catch (_) {
-      throw PromotionAdminServiceException('Could not reach the server');
-    }
-    if (res.statusCode < 200 || res.statusCode >= 300) throw PromotionAdminServiceException(_errorMessage(res));
-  }
+  Future<void> delete(String id) => apiSend(() => http.delete(
+        ServerClient.instance.uri('/promotions/$id'),
+        headers: ServerClient.instance.headers,
+      ));
 
   Future<PromotionCode> addCode(String promotionId, String code, {int? maxUses}) async {
-    final client = ServerClient.instance;
-    if (!client.isConnected) throw PromotionAdminServiceException('Not connected to a server');
-    late final http.Response res;
-    try {
-      res = await http
-          .post(
-            client.uri('/promotions/$promotionId/codes'),
-            headers: client.headers,
-            body: jsonEncode({'code': code, 'maxUses': maxUses}),
-          )
-          .timeout(const Duration(seconds: 10));
-    } catch (_) {
-      throw PromotionAdminServiceException('Could not reach the server');
-    }
-    if (res.statusCode < 200 || res.statusCode >= 300) throw PromotionAdminServiceException(_errorMessage(res));
+    final res = await apiSend(() => http.post(
+          ServerClient.instance.uri('/promotions/$promotionId/codes'),
+          headers: ServerClient.instance.headers,
+          body: jsonEncode({'code': code, 'maxUses': maxUses}),
+        ));
     return PromotionCode.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
@@ -272,45 +230,17 @@ class PromotionAdminService {
   /// — same shape as the Remove Shop re-auth flow, just checking role
   /// instead of matching a specific actor. Never issues a session/JWT.
   Future<({int userId, String name})> approve({required String username, required String password}) async {
-    final client = ServerClient.instance;
-    if (!client.isConnected) throw PromotionAdminServiceException('Not connected to a server');
-    late final http.Response res;
-    try {
-      res = await http
-          .post(
-            client.uri('/promotions/approve'),
-            headers: const {'Content-Type': 'application/json'},
-            body: jsonEncode({'username': username, 'password': password}),
-          )
-          .timeout(const Duration(seconds: 10));
-    } catch (_) {
-      throw PromotionAdminServiceException('Could not reach the server');
-    }
-    if (res.statusCode < 200 || res.statusCode >= 300) throw PromotionAdminServiceException(_errorMessage(res));
+    final res = await apiSend(() => http.post(
+          ServerClient.instance.uri('/promotions/approve'),
+          headers: const {'Content-Type': 'application/json'},
+          body: jsonEncode({'username': username, 'password': password}),
+        ));
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     return (userId: body['userId'] as int, name: body['name'] as String);
   }
 
-  Future<void> deleteCode(String promotionId, String codeId) async {
-    final client = ServerClient.instance;
-    if (!client.isConnected) throw PromotionAdminServiceException('Not connected to a server');
-    late final http.Response res;
-    try {
-      res = await http
-          .delete(client.uri('/promotions/$promotionId/codes/$codeId'), headers: client.headers)
-          .timeout(const Duration(seconds: 10));
-    } catch (_) {
-      throw PromotionAdminServiceException('Could not reach the server');
-    }
-    if (res.statusCode < 200 || res.statusCode >= 300) throw PromotionAdminServiceException(_errorMessage(res));
-  }
-
-  String _errorMessage(http.Response res) {
-    try {
-      final body = jsonDecode(res.body) as Map<String, dynamic>;
-      return body['error'] as String? ?? 'Request failed (${res.statusCode})';
-    } catch (_) {
-      return 'Request failed (${res.statusCode})';
-    }
-  }
+  Future<void> deleteCode(String promotionId, String codeId) => apiSend(() => http.delete(
+        ServerClient.instance.uri('/promotions/$promotionId/codes/$codeId'),
+        headers: ServerClient.instance.headers,
+      ));
 }

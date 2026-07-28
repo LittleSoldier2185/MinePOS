@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/responsive/breakpoints.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/formatting.dart';
+import '../../core/widgets/confirm_dialog.dart';
 import '../../l10n/app_localizations.dart';
 import '../customer_display/services/customer_display_service.dart';
 import 'models/menu_item.dart';
@@ -33,8 +35,6 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
 
   int get _cartCount => _cart.fold(0, (s, i) => s + i.quantity);
   double get _cartTotal => _cart.fold(0.0, (s, i) => s + i.subtotal);
-
-  String _baht(double v) => '฿${v.toStringAsFixed(0)}';
 
   @override
   void initState() {
@@ -141,27 +141,14 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
 
   Future<void> _clearCart() async {
     if (_cart.isEmpty) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.clearOrderDialogTitle),
-        content: Text(AppLocalizations.of(context)!.clearOrderDialogContent),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(AppLocalizations.of(context)!.cancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              AppLocalizations.of(context)!.clearButton,
-              style: const TextStyle(color: AppColors.terracottaDark),
-            ),
-          ),
-        ],
-      ),
+    final confirmed = await confirmDialog(
+      context,
+      title: AppLocalizations.of(context)!.clearOrderDialogTitle,
+      content: AppLocalizations.of(context)!.clearOrderDialogContent,
+      confirmLabel: AppLocalizations.of(context)!.clearButton,
+      cancelLabel: AppLocalizations.of(context)!.cancel,
     );
-    if (confirmed == true) {
+    if (confirmed) {
       setState(() => _cart.clear());
       _syncDisplay();
     }
@@ -426,7 +413,7 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
                   itemCount: _cart.length,
                   itemBuilder: (context, index) => _CartItemRow(
                     item: _cart[index],
-                    baht: _baht,
+                    baht: baht,
                     onIncrement: () => _increment(index),
                     onDecrement: () => _decrement(index),
                     onRemove: () => _remove(index),
@@ -452,7 +439,7 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
                     ),
                   ),
                   Text(
-                    _baht(_cartTotal),
+                    baht(_cartTotal),
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 20,

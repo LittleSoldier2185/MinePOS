@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 import 'order_item.dart';
 
 enum OrderStatus { open, paid, cancelled }
@@ -90,17 +92,9 @@ class Order {
 
   String get formattedNumber => '#${orderNumber.toString().padLeft(3, '0')}';
 
-  String get formattedDate {
-    final d = createdAt;
-    final date =
-        '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-    return '$date $formattedTime';
-  }
+  String get formattedDate => DateFormat('yyyy-MM-dd HH:mm').format(createdAt);
 
-  String get formattedTime {
-    final d = createdAt;
-    return '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
-  }
+  String get formattedTime => DateFormat('HH:mm').format(createdAt);
 
   factory Order.fromJson(Map<String, dynamic> json) => Order(
     id: json['id'] as int?,

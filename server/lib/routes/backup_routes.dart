@@ -24,7 +24,7 @@ void registerBackupRoutes(
 // as a downloadable file, for moving the shop to a new device (either saved
 // to a file, or pulled directly by a new device during Restore).
 Future<Response> _backup(Request req, AppDb db, ServerConfig config) async {
-  if (requireRoles(req, db, config.jwtSecret, {'owner'}) == null) {
+  if (requireAuth(req, db, config.jwtSecret, role: 'owner') == null) {
     return unauthorized();
   }
 

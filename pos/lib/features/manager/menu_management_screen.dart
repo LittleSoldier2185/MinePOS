@@ -8,6 +8,7 @@ import '../../core/services/app_settings_service.dart';
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/access_restricted.dart';
+import '../../core/widgets/confirm_dialog.dart';
 import '../../core/widgets/image_crop_screen.dart';
 import '../../l10n/app_localizations.dart';
 import '../cashier/models/menu_item.dart';
@@ -79,27 +80,14 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
 
   Future<void> _confirmDelete(MenuItem item) async {
     final l10n = AppLocalizations.of(context)!;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(l10n.deleteItemTitle),
-        content: Text(l10n.deleteItemContent(item.name)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(l10n.cancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              l10n.delete,
-              style: const TextStyle(color: AppColors.terracottaDark),
-            ),
-          ),
-        ],
-      ),
+    final ok = await confirmDialog(
+      context,
+      title: l10n.deleteItemTitle,
+      content: l10n.deleteItemContent(item.name),
+      confirmLabel: l10n.delete,
+      cancelLabel: l10n.cancel,
     );
-    if (ok == true && mounted) {
+    if (ok && mounted) {
       setState(() => _svc.deleteItem(item.id));
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.deleteItemSnackbar(item.name))),

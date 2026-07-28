@@ -66,6 +66,18 @@ class DbUser {
         'phone': phone,
         'avatarBase64': avatarBase64,
       };
+
+  /// The subset of [toJson] that `/auth/login` and `/auth/me` both return
+  /// for "who am I signed in as" — deliberately smaller than [toJson] (no
+  /// `active`/`createdAt`/`email`/`phone`), so kept as its own method rather
+  /// than reusing that one and letting the auth response shape drift with it.
+  Map<String, dynamic> toAuthJson() => {
+        'role': role,
+        'username': username,
+        'id': id,
+        'name': name,
+        'avatarBase64': avatarBase64,
+      };
 }
 
 class DbOtp {
@@ -593,6 +605,18 @@ class AppDb {
     _db.execute('VACUUM INTO ?', [path]);
   }
 
+  bool _hasColumn(String table, String column) =>
+      _db.select('PRAGMA table_info($table)').any((r) => r['name'] == column);
+
+  /// Backfills [column] onto [table] (with [columnDef], e.g. `'TEXT'` or
+  /// `'INTEGER NOT NULL DEFAULT 1'`) for databases created before it existed.
+  /// Idempotent — a no-op once the column is present.
+  void _addColumnIfMissing(String table, String column, String columnDef) {
+    if (!_hasColumn(table, column)) {
+      _db.execute('ALTER TABLE $table ADD COLUMN $column $columnDef');
+    }
+  }
+
   void _migrate() {
     _db.execute('''
       CREATE TABLE IF NOT EXISTS users (
@@ -604,35 +628,18 @@ class AppDb {
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       )
     ''');
-    // Backfill columns for databases created before these fields existed.
-    final userCols =
-        _db.select("PRAGMA table_info(users)").map((r) => r['name']).toSet();
-    if (!userCols.contains('active')) {
-      _db.execute(
-          'ALTER TABLE users ADD COLUMN active INTEGER NOT NULL DEFAULT 1');
-    }
-    if (!userCols.contains('token_version')) {
-      _db.execute(
-          'ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0');
-    }
-    if (!userCols.contains('email')) {
-      _db.execute('ALTER TABLE users ADD COLUMN email TEXT');
-    }
-    if (!userCols.contains('phone')) {
-      _db.execute('ALTER TABLE users ADD COLUMN phone TEXT');
-    }
-    if (!userCols.contains('avatar_base64')) {
-      _db.execute('ALTER TABLE users ADD COLUMN avatar_base64 TEXT');
-    }
-    if (!userCols.contains('name')) {
-      _db.execute('ALTER TABLE users ADD COLUMN name TEXT');
-    }
+    _addColumnIfMissing('users', 'active', 'INTEGER NOT NULL DEFAULT 1');
+    _addColumnIfMissing('users', 'token_version', 'INTEGER NOT NULL DEFAULT 0');
+    _addColumnIfMissing('users', 'email', 'TEXT');
+    _addColumnIfMissing('users', 'phone', 'TEXT');
+    _addColumnIfMissing('users', 'avatar_base64', 'TEXT');
+    _addColumnIfMissing('users', 'name', 'TEXT');
     // One-time rebuild: username used to be the PK (and the identifier used
     // in routes/JWTs), which made it impossible to rename a user without
     // breaking their own row's identity. Numeric `id` is now the real key;
     // `username` becomes an ordinary unique column. Runs once per DB — later
     // opens see `id` already present and skip straight past this block.
-    if (!userCols.contains('id')) {
+    if (!_hasColumn('users', 'id')) {
       _db.execute('ALTER TABLE users RENAME TO users_old');
       _db.execute('''
         CREATE TABLE users (
@@ -679,20 +686,9 @@ class AppDb {
         image_base64 TEXT
       )
     ''');
-    final menuCols = _db
-        .select("PRAGMA table_info(menu_items)")
-        .map((r) => r['name'])
-        .toSet();
-    if (!menuCols.contains('image_base64')) {
-      _db.execute('ALTER TABLE menu_items ADD COLUMN image_base64 TEXT');
-    }
-    if (!menuCols.contains('has_sweetness')) {
-      _db.execute(
-          'ALTER TABLE menu_items ADD COLUMN has_sweetness INTEGER NOT NULL DEFAULT 0');
-    }
-    if (!menuCols.contains('name_th')) {
-      _db.execute('ALTER TABLE menu_items ADD COLUMN name_th TEXT');
-    }
+    _addColumnIfMissing('menu_items', 'image_base64', 'TEXT');
+    _addColumnIfMissing('menu_items', 'has_sweetness', 'INTEGER NOT NULL DEFAULT 0');
+    _addColumnIfMissing('menu_items', 'name_th', 'TEXT');
 
     _db.execute('''
       CREATE TABLE IF NOT EXISTS orders (
@@ -708,17 +704,8 @@ class AppDb {
     // Backfill for databases created before kitchen status tracking existed —
     // those orders already happened, so 'completed' is the correct default.
     // New orders always set status explicitly to 'pending' on insert.
-    final orderCols = _db
-        .select("PRAGMA table_info(orders)")
-        .map((r) => r['name'])
-        .toSet();
-    if (!orderCols.contains('status')) {
-      _db.execute(
-          "ALTER TABLE orders ADD COLUMN status TEXT NOT NULL DEFAULT 'completed'");
-    }
-    if (!orderCols.contains('cancel_reason')) {
-      _db.execute('ALTER TABLE orders ADD COLUMN cancel_reason TEXT');
-    }
+    _addColumnIfMissing('orders', 'status', "TEXT NOT NULL DEFAULT 'completed'");
+    _addColumnIfMissing('orders', 'cancel_reason', 'TEXT');
 
     _db.execute('''
       CREATE TABLE IF NOT EXISTS order_items (
@@ -736,20 +723,9 @@ class AppDb {
     // Historical rows belong to orders that are already 'completed' (see
     // above), so 'pending' is just a harmless default — nothing reads item
     // status on a completed order.
-    final itemCols = _db
-        .select("PRAGMA table_info(order_items)")
-        .map((r) => r['name'])
-        .toSet();
-    if (!itemCols.contains('status')) {
-      _db.execute(
-          "ALTER TABLE order_items ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'");
-    }
-    if (!itemCols.contains('sweetness')) {
-      _db.execute('ALTER TABLE order_items ADD COLUMN sweetness TEXT');
-    }
-    if (!itemCols.contains('menu_item_name_th')) {
-      _db.execute('ALTER TABLE order_items ADD COLUMN menu_item_name_th TEXT');
-    }
+    _addColumnIfMissing('order_items', 'status', "TEXT NOT NULL DEFAULT 'pending'");
+    _addColumnIfMissing('order_items', 'sweetness', 'TEXT');
+    _addColumnIfMissing('order_items', 'menu_item_name_th', 'TEXT');
 
     // Singleton row (id always 1) holding the shop's own details, set once
     // via POST /setup.
@@ -763,16 +739,8 @@ class AppDb {
         receipt_footer TEXT
       )
     ''');
-    final shopCols = _db
-        .select("PRAGMA table_info(shop_config)")
-        .map((r) => r['name'])
-        .toSet();
-    if (!shopCols.contains('promptpay_id')) {
-      _db.execute('ALTER TABLE shop_config ADD COLUMN promptpay_id TEXT');
-    }
-    if (!shopCols.contains('promptpay_label')) {
-      _db.execute('ALTER TABLE shop_config ADD COLUMN promptpay_label TEXT');
-    }
+    _addColumnIfMissing('shop_config', 'promptpay_id', 'TEXT');
+    _addColumnIfMissing('shop_config', 'promptpay_label', 'TEXT');
 
     // Customer-display advertising slideshow — shop-wide, not per-station.
     // `type` is 'image' or 'video' (an animated GIF is stored/served as
@@ -789,16 +757,10 @@ class AppDb {
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       )
     ''');
-    final adSlideCols = _db
-        .select('PRAGMA table_info(ad_slides)')
-        .map((r) => r['name'])
-        .toSet();
-    if (!adSlideCols.contains('muted')) {
-      // Video only (ignored/meaningless for images) — defaults to muted
-      // since unexpected audio on a customer-facing display is the
-      // riskier default for a shop floor.
-      _db.execute('ALTER TABLE ad_slides ADD COLUMN muted INTEGER NOT NULL DEFAULT 1');
-    }
+    // Video only (ignored/meaningless for images) — defaults to muted since
+    // unexpected audio on a customer-facing display is the riskier default
+    // for a shop floor.
+    _addColumnIfMissing('ad_slides', 'muted', 'INTEGER NOT NULL DEFAULT 1');
 
     // Promotions — see PromotionService (client) for how these get evaluated
     // against a cart. Nullable mechanics columns are only meaningful for the
@@ -866,32 +828,16 @@ class AppDb {
       )
     ''');
 
-    final orderCols2 =
-        _db.select("PRAGMA table_info(orders)").map((r) => r['name']).toSet();
-    if (!orderCols2.contains('discount_total')) {
-      _db.execute(
-          'ALTER TABLE orders ADD COLUMN discount_total REAL NOT NULL DEFAULT 0');
-    }
-    final orderItemCols2 = _db
-        .select("PRAGMA table_info(order_items)")
-        .map((r) => r['name'])
-        .toSet();
-    if (!orderItemCols2.contains('discount_amount')) {
-      _db.execute(
-          'ALTER TABLE order_items ADD COLUMN discount_amount REAL NOT NULL DEFAULT 0');
-    }
+    _addColumnIfMissing('orders', 'discount_total', 'REAL NOT NULL DEFAULT 0');
+    _addColumnIfMissing('order_items', 'discount_amount', 'REAL NOT NULL DEFAULT 0');
 
     // Which staff member rang up this order — nullable since orders placed
     // before this column existed have neither. `created_by_name` is a
     // snapshot of the actor's display name at order time (same reasoning as
     // `order_items.menu_item_name`: a later rename/deletion of that staff
     // account shouldn't break past sales attribution in Reports).
-    if (!orderCols2.contains('created_by_user_id')) {
-      _db.execute('ALTER TABLE orders ADD COLUMN created_by_user_id INTEGER');
-    }
-    if (!orderCols2.contains('created_by_name')) {
-      _db.execute('ALTER TABLE orders ADD COLUMN created_by_name TEXT');
-    }
+    _addColumnIfMissing('orders', 'created_by_user_id', 'INTEGER');
+    _addColumnIfMissing('orders', 'created_by_name', 'TEXT');
   }
 
   // ── Shop config ──────────────────────────────────────────────────────────────
@@ -1567,17 +1513,42 @@ class AppDb {
         row['created_by_name'] as String?,
       );
 
-  List<DbOrder> getOrders({String? date}) {
+  /// [date] filters to a single calendar day; [from]/[to] filter to a
+  /// half-open range (`from` inclusive, `to` exclusive) over `created_at` —
+  /// both ISO-8601 strings, either bound optional. `date` takes precedence
+  /// if both are somehow given.
+  List<DbOrder> getOrders({String? date, String? from, String? to}) {
     final buffer = StringBuffer(
       'SELECT o.id, o.order_number, o.created_at, o.payment_method, '
       'o.amount_paid, o.total, o.status, o.cancel_reason, o.discount_total, '
       'o.created_by_user_id, o.created_by_name FROM orders o',
     );
     final args = <Object?>[];
+    final conditions = <String>[];
 
     if (date != null) {
-      buffer.write(' WHERE DATE(o.created_at) = ?');
+      conditions.add('DATE(o.created_at) = ?');
       args.add(date);
+    } else {
+      if (from != null) {
+        // created_at is stored as a naive local-time string (`createOrder`
+        // uses Dart's `DateTime.now().toIso8601String()`, not SQL's UTC
+        // `datetime('now')`) — 'T'-separated with microseconds, no offset.
+        // Both sides need datetime() so they land on the exact same
+        // space-separated/no-fractional-seconds text form (a pure reformat,
+        // not a timezone conversion, since neither side carries a real
+        // offset) — wrapping only one side left a 'T' vs ' ' mismatch that
+        // made every `<` comparison silently always false.
+        conditions.add('datetime(o.created_at) >= datetime(?)');
+        args.add(from);
+      }
+      if (to != null) {
+        conditions.add('datetime(o.created_at) < datetime(?)');
+        args.add(to);
+      }
+    }
+    if (conditions.isNotEmpty) {
+      buffer.write(' WHERE ${conditions.join(' AND ')}');
     }
     buffer.write(' ORDER BY o.id DESC');
 
@@ -1645,13 +1616,26 @@ class AppDb {
   }
 
 
-  Map<String, dynamic> getOrderStats({String? date}) {
-    final where = date != null
-        ? "WHERE status != 'cancelled' AND DATE(created_at) = '$date'"
-        : "WHERE status != 'cancelled'";
+  Map<String, dynamic> getOrderStats({String? date, String? from, String? to}) {
+    final conditions = ["status != 'cancelled'"];
+    final args = <Object?>[];
+    if (date != null) {
+      conditions.add('DATE(created_at) = ?');
+      args.add(date);
+    } else {
+      if (from != null) {
+        conditions.add('datetime(created_at) >= datetime(?)');
+        args.add(from);
+      }
+      if (to != null) {
+        conditions.add('datetime(created_at) < datetime(?)');
+        args.add(to);
+      }
+    }
     final rows = _db.select(
       'SELECT COUNT(*) AS cnt, COALESCE(SUM(total), 0) AS rev '
-      'FROM orders $where',
+      'FROM orders WHERE ${conditions.join(' AND ')}',
+      args,
     );
     final row = rows.first;
     return {

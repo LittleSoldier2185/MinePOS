@@ -7,6 +7,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/formatting.dart';
+import '../../core/widgets/confirm_dialog.dart';
 import '../../l10n/app_localizations.dart';
 import '../cashier/models/order_item.dart';
 import '../cashier/services/menu_service.dart';
@@ -48,25 +50,15 @@ class _CustomerDisplayScreenState extends State<CustomerDisplayScreen> {
   }
 
   Future<void> _confirmExit() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.exitCustomerDisplayTitle),
-        content:
-            Text(AppLocalizations.of(context)!.exitCustomerDisplayContent),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(AppLocalizations.of(context)!.cancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(AppLocalizations.of(context)!.exitButton),
-          ),
-        ],
-      ),
+    final ok = await confirmDialog(
+      context,
+      title: AppLocalizations.of(context)!.exitCustomerDisplayTitle,
+      content: AppLocalizations.of(context)!.exitCustomerDisplayContent,
+      confirmLabel: AppLocalizations.of(context)!.exitButton,
+      cancelLabel: AppLocalizations.of(context)!.cancel,
+      destructive: false,
     );
-    if (ok == true && mounted) {
+    if (ok && mounted) {
       MenuService.instance.reset();
       OrderService.instance.reset();
       ShopConfigService.instance.reset();
@@ -77,8 +69,6 @@ class _CustomerDisplayScreenState extends State<CustomerDisplayScreen> {
       );
     }
   }
-
-  String _baht(double v) => '฿${v.toStringAsFixed(0)}';
 
   @override
   Widget build(BuildContext context) {
@@ -133,11 +123,11 @@ class _CustomerDisplayScreenState extends State<CustomerDisplayScreen> {
     }
     switch (_svc.state) {
       case CustomerDisplayState.cart:
-        return _CartView(svc: _svc, baht: _baht);
+        return _CartView(svc: _svc, baht: baht);
       case CustomerDisplayState.promptpay:
-        return _PromptPayView(svc: _svc, baht: _baht);
+        return _PromptPayView(svc: _svc, baht: baht);
       case CustomerDisplayState.thankYou:
-        return _ThankYouView(svc: _svc, baht: _baht);
+        return _ThankYouView(svc: _svc, baht: baht);
       case CustomerDisplayState.idle:
         // Ads only play while actively connected — a dropped connection
         // falls back to the plain idle screen instead of looping slides

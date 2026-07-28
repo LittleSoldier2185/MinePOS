@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/responsive/breakpoints.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/formatting.dart';
 import '../../l10n/app_localizations.dart';
 import '../home/mobile_bottom_nav.dart';
 import 'models/order.dart';
@@ -20,8 +21,6 @@ class OrderHistoryScreen extends StatefulWidget {
 
 class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   List<Order> get _orders => OrderService.instance.orders;
-
-  String _baht(double v) => '฿${v.toStringAsFixed(0)}';
 
   @override
   void initState() {
@@ -98,7 +97,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
       } else {
         children.add(const Divider(height: 1));
       }
-      children.add(_OrderTile(order: order, baht: _baht));
+      children.add(_OrderTile(order: order, baht: baht));
     }
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8),
