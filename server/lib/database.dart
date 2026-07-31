@@ -137,6 +137,10 @@ class DbMenuItem {
       };
 }
 
+/// Valid values for [DbAdSlide.transition] — how the customer-display
+/// slideshow animates in when it advances to this slide.
+const kAdTransitions = {'none', 'fade', 'slideLeft'};
+
 class DbAdSlide {
   DbAdSlide({
     required this.id,
@@ -145,6 +149,9 @@ class DbAdSlide {
     required this.position,
     this.durationSeconds,
     this.muted = true,
+    this.name,
+    this.expiresAt,
+    this.transition = 'fade',
   });
 
   final String id;
@@ -160,6 +167,19 @@ class DbAdSlide {
   /// Only meaningful for video — images have no audio to mute.
   final bool muted;
 
+  /// Admin-facing label — never shown on the customer display itself, just
+  /// helps tell slides apart in Settings.
+  final String? name;
+
+  /// Null means this slide runs forever until manually removed.
+  final DateTime? expiresAt;
+
+  /// One of [kAdTransitions] — how the slideshow animates in when it
+  /// advances to this slide.
+  final String transition;
+
+  bool get isExpired => expiresAt != null && DateTime.now().isAfter(expiresAt!);
+
   factory DbAdSlide._fromRow(Row row) => DbAdSlide(
         id: row['id'] as String,
         type: row['type'] as String,
@@ -167,6 +187,9 @@ class DbAdSlide {
         position: row['position'] as int,
         durationSeconds: row['duration_seconds'] as int?,
         muted: (row['muted'] as int) != 0,
+        name: row['name'] as String?,
+        expiresAt: row['expires_at'] != null ? DateTime.parse(row['expires_at'] as String) : null,
+        transition: row['transition'] as String? ?? 'fade',
       );
 
   Map<String, dynamic> toJson() => {
@@ -174,6 +197,9 @@ class DbAdSlide {
         'type': type,
         'durationSeconds': durationSeconds,
         'muted': muted,
+        'name': name,
+        'expiresAt': expiresAt?.toIso8601String(),
+        'transition': transition,
         // Relative path only — both the authenticated GET /ads response
         // (Settings screen) and the unauthenticated WebSocket broadcast
         // (customer display) share this one field, client prefixes baseUrl.
@@ -271,6 +297,7 @@ class DbOrder {
     required this.status,
     this.amountPaid,
     this.cancelReason,
+    this.note,
     this.discountTotal = 0,
     this.appliedPromotions = const [],
     this.createdByUserId,
@@ -293,6 +320,12 @@ class DbOrder {
   /// Set only when [status] is 'cancelled' — the reason chosen (plus any
   /// free-text detail) at cancel time.
   final String? cancelReason;
+
+  /// Cashier's free-text special instructions for the kitchen (e.g. "no
+  /// milk"). Included in [toJson] same as every other field — the receipt
+  /// simply never renders it (see `ReceiptScreen`), there's no server-side
+  /// filtering involved.
+  final String? note;
 
   /// Sum of every applied promotion's discount — same number as summing
   /// [appliedPromotions], kept as its own column for cheap Reports queries.
@@ -319,6 +352,7 @@ class DbOrder {
         'total': total,
         'amountPaid': amountPaid,
         'cancelReason': cancelReason,
+        'note': note,
         'items': items.map((i) => i.toJson()).toList(),
         'discountTotal': discountTotal,
         'appliedPromotions': appliedPromotions.map((p) => p.toJson()).toList(),
@@ -376,7 +410,7 @@ class DbPromotion {
     required this.active,
     required this.scopeType,
     this.scopeItemIds = const [],
-    this.scopeCategory,
+    this.scopeCategories = const [],
     this.excludeItemIds = const [],
     this.percentValue,
     this.flatAmount,
@@ -405,7 +439,7 @@ class DbPromotion {
 
   final String scopeType;
   final List<String> scopeItemIds;
-  final String? scopeCategory;
+  final List<String> scopeCategories;
   final List<String> excludeItemIds;
 
   final double? percentValue;
@@ -444,7 +478,7 @@ class DbPromotion {
         active: (row['active'] as int) == 1,
         scopeType: row['scope_type'] as String,
         scopeItemIds: _decodeStringList(row['scope_item_ids'] as String?),
-        scopeCategory: row['scope_category'] as String?,
+        scopeCategories: _decodeCategoryList(row['scope_category'] as String?),
         excludeItemIds: _decodeStringList(row['exclude_item_ids'] as String?),
         percentValue: (row['percent_value'] as num?)?.toDouble(),
         flatAmount: (row['flat_amount'] as num?)?.toDouble(),
@@ -473,6 +507,19 @@ class DbPromotion {
     return (jsonDecode(json) as List).cast<String>();
   }
 
+  /// Like [_decodeStringList], but tolerant of the pre-multi-category
+  /// format: `scope_category` used to hold a single plain category name
+  /// (not JSON at all), so a bare string that fails to decode as JSON is
+  /// treated as a one-element list rather than an error.
+  static List<String> _decodeCategoryList(String? raw) {
+    if (raw == null || raw.isEmpty) return const [];
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is List) return decoded.cast<String>();
+    } catch (_) {}
+    return [raw];
+  }
+
   static List<Map<String, dynamic>> _decodeTiered(String? json) {
     if (json == null) return const [];
     return (jsonDecode(json) as List).cast<Map<String, dynamic>>();
@@ -485,7 +532,7 @@ class DbPromotion {
         'active': active,
         'scopeType': scopeType,
         'scopeItemIds': scopeItemIds,
-        'scopeCategory': scopeCategory,
+        'scopeCategories': scopeCategories,
         'excludeItemIds': excludeItemIds,
         'percentValue': percentValue,
         'flatAmount': flatAmount,
@@ -706,6 +753,9 @@ class AppDb {
     // New orders always set status explicitly to 'pending' on insert.
     _addColumnIfMissing('orders', 'status', "TEXT NOT NULL DEFAULT 'completed'");
     _addColumnIfMissing('orders', 'cancel_reason', 'TEXT');
+    // Cashier's free-text special instructions (e.g. "no milk") — kitchen-only,
+    // deliberately never selected by the receipt template.
+    _addColumnIfMissing('orders', 'note', 'TEXT');
 
     _db.execute('''
       CREATE TABLE IF NOT EXISTS order_items (
@@ -761,6 +811,17 @@ class AppDb {
     // unexpected audio on a customer-facing display is the riskier default
     // for a shop floor.
     _addColumnIfMissing('ad_slides', 'muted', 'INTEGER NOT NULL DEFAULT 1');
+    // Admin-facing label only — never shown on the customer display itself.
+    _addColumnIfMissing('ad_slides', 'name', 'TEXT');
+    // Null means "runs forever until manually removed" — set either from a
+    // fixed calendar date or a "expires in N days" duration computed at
+    // save time (both collapse to the same absolute instant here).
+    _addColumnIfMissing('ad_slides', 'expires_at', 'TEXT');
+    // How this slide animates in when the slideshow advances to it — one of
+    // 'none' | 'fade' | 'slideLeft' (see kAdTransitions). Defaults to 'fade'
+    // rather than 'none' so existing/new slides look intentional out of the
+    // box without every shop having to configure it.
+    _addColumnIfMissing('ad_slides', 'transition', "TEXT NOT NULL DEFAULT 'fade'");
 
     // Promotions — see PromotionService (client) for how these get evaluated
     // against a cart. Nullable mechanics columns are only meaningful for the
@@ -838,6 +899,17 @@ class AppDb {
     // account shouldn't break past sales attribution in Reports).
     _addColumnIfMissing('orders', 'created_by_user_id', 'INTEGER');
     _addColumnIfMissing('orders', 'created_by_name', 'TEXT');
+
+    // Admin-defined display order for menu categories — a separate
+    // singleton-row table rather than a `shop_config` column, since
+    // `setShopConfig` does a full-row `INSERT OR REPLACE` that would
+    // silently null this out on every unrelated shop-details save.
+    _db.execute('''
+      CREATE TABLE IF NOT EXISTS category_order (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        order_json TEXT NOT NULL DEFAULT '[]'
+      )
+    ''');
   }
 
   // ── Shop config ──────────────────────────────────────────────────────────────
@@ -896,6 +968,7 @@ class AppDb {
     _db.execute('DELETE FROM otp_tokens');
     _db.execute('DELETE FROM users');
     _db.execute('DELETE FROM shop_config');
+    _db.execute('DELETE FROM category_order');
     _db.execute('DELETE FROM ad_slides');
     _db.execute('DELETE FROM promotion_codes');
     _db.execute('DELETE FROM promotions');
@@ -1111,6 +1184,40 @@ class AppDb {
     return getMenuItem(id);
   }
 
+  /// Renames every item currently in [from] to [to] (a category is just a
+  /// free-text field on each item — there's no separate categories table to
+  /// rename a row in). Also renames [from] in the stored category order, if
+  /// present, so a customized position survives the rename. Returns the
+  /// items that changed, for the caller to broadcast.
+  List<DbMenuItem> renameCategory({required String from, required String to}) {
+    final affected = _db
+        .select('SELECT id FROM menu_items WHERE category = ?', [from])
+        .map((r) => r['id'] as String)
+        .toList();
+    _db.execute('UPDATE menu_items SET category = ? WHERE category = ?', [to, from]);
+
+    final order = getCategoryOrder();
+    final i = order.indexOf(from);
+    if (i != -1) {
+      order[i] = to;
+      setCategoryOrder(order);
+    }
+    return affected.map((id) => getMenuItem(id)!).toList();
+  }
+
+  List<String> getCategoryOrder() {
+    final rows = _db.select('SELECT order_json FROM category_order WHERE id = 1');
+    if (rows.isEmpty) return [];
+    return (jsonDecode(rows.first['order_json'] as String) as List).cast<String>();
+  }
+
+  void setCategoryOrder(List<String> order) {
+    _db.execute(
+      'INSERT OR REPLACE INTO category_order (id, order_json) VALUES (1, ?)',
+      [jsonEncode(order)],
+    );
+  }
+
   // ── Ad slides (customer-display advertising slideshow) ──────────────────────
 
   List<DbAdSlide> getAdSlides() {
@@ -1128,15 +1235,18 @@ class AppDb {
     required String type,
     required String filename,
     int? durationSeconds,
+    String? name,
+    DateTime? expiresAt,
+    String transition = 'fade',
   }) {
     final id = _uuid.v4().substring(0, 8);
     final position = _db
         .select('SELECT COUNT(*) AS c FROM ad_slides')
         .first['c'] as int;
     _db.execute(
-      'INSERT INTO ad_slides (id, type, filename, duration_seconds, position) '
-      'VALUES (?, ?, ?, ?, ?)',
-      [id, type, filename, durationSeconds, position],
+      'INSERT INTO ad_slides (id, type, filename, duration_seconds, position, name, expires_at, transition) '
+      'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, type, filename, durationSeconds, position, name, expiresAt?.toIso8601String(), transition],
     );
     return getAdSlide(id)!;
   }
@@ -1149,10 +1259,32 @@ class AppDb {
     return getAdSlide(id);
   }
 
+  DbAdSlide? updateAdSlideTransition(String id, String transition) {
+    _db.execute(
+      'UPDATE ad_slides SET transition = ? WHERE id = ?',
+      [transition, id],
+    );
+    return getAdSlide(id);
+  }
+
   DbAdSlide? updateAdSlideMuted(String id, bool muted) {
     _db.execute(
       'UPDATE ad_slides SET muted = ? WHERE id = ?',
       [muted ? 1 : 0, id],
+    );
+    return getAdSlide(id);
+  }
+
+  DbAdSlide? updateAdSlideName(String id, String? name) {
+    _db.execute('UPDATE ad_slides SET name = ? WHERE id = ?', [name, id]);
+    return getAdSlide(id);
+  }
+
+  /// [expiresAt] null clears it — the slide then runs forever until removed.
+  DbAdSlide? updateAdSlideExpiry(String id, DateTime? expiresAt) {
+    _db.execute(
+      'UPDATE ad_slides SET expires_at = ? WHERE id = ?',
+      [expiresAt?.toIso8601String(), id],
     );
     return getAdSlide(id);
   }
@@ -1205,7 +1337,7 @@ class AppDb {
     bool active = true,
     required String scopeType,
     List<String> scopeItemIds = const [],
-    String? scopeCategory,
+    List<String> scopeCategories = const [],
     List<String> excludeItemIds = const [],
     double? percentValue,
     double? flatAmount,
@@ -1235,7 +1367,7 @@ class AppDb {
         active ? 1 : 0,
         scopeType,
         scopeItemIds.isEmpty ? null : jsonEncode(scopeItemIds),
-        scopeCategory,
+        scopeCategories.isEmpty ? null : jsonEncode(scopeCategories),
         excludeItemIds.isEmpty ? null : jsonEncode(excludeItemIds),
         percentValue,
         flatAmount,
@@ -1265,7 +1397,7 @@ class AppDb {
     required bool active,
     required String scopeType,
     List<String> scopeItemIds = const [],
-    String? scopeCategory,
+    List<String> scopeCategories = const [],
     List<String> excludeItemIds = const [],
     double? percentValue,
     double? flatAmount,
@@ -1296,7 +1428,7 @@ class AppDb {
         active ? 1 : 0,
         scopeType,
         scopeItemIds.isEmpty ? null : jsonEncode(scopeItemIds),
-        scopeCategory,
+        scopeCategories.isEmpty ? null : jsonEncode(scopeCategories),
         excludeItemIds.isEmpty ? null : jsonEncode(excludeItemIds),
         percentValue,
         flatAmount,
@@ -1386,6 +1518,7 @@ class AppDb {
     List<Map<String, dynamic>> promotions = const [],
     int? createdByUserId,
     String? createdByName,
+    String? note,
   }) {
     final orderNumber = _nextOrderNumber();
     final now = DateTime.now().toIso8601String();
@@ -1400,9 +1533,9 @@ class AppDb {
 
     _db.execute(
       'INSERT INTO orders (order_number, created_at, payment_method, amount_paid, total, status, discount_total, '
-      'created_by_user_id, created_by_name) '
-      "VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?)",
-      [orderNumber, now, paymentMethod, amountPaid, total, discountTotal, createdByUserId, createdByName],
+      'created_by_user_id, created_by_name, note) '
+      "VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)",
+      [orderNumber, now, paymentMethod, amountPaid, total, discountTotal, createdByUserId, createdByName, note],
     );
     final orderId = _db.lastInsertRowId;
 
@@ -1448,7 +1581,7 @@ class AppDb {
     }
 
     return _buildOrder(orderId, orderNumber, now, paymentMethod, amountPaid, total, 'pending', null, discountTotal,
-        createdByUserId, createdByName);
+        createdByUserId, createdByName, note);
   }
 
   DbOrder _buildOrder(
@@ -1463,6 +1596,7 @@ class AppDb {
     double discountTotal,
     int? createdByUserId,
     String? createdByName,
+    String? note,
   ) {
     final itemRows = _db.select(
       'SELECT * FROM order_items WHERE order_id = ?',
@@ -1496,6 +1630,7 @@ class AppDb {
           .toList(),
       createdByUserId: createdByUserId,
       createdByName: createdByName,
+      note: note,
     );
   }
 
@@ -1511,6 +1646,7 @@ class AppDb {
         (row['discount_total'] as num?)?.toDouble() ?? 0,
         row['created_by_user_id'] as int?,
         row['created_by_name'] as String?,
+        row['note'] as String?,
       );
 
   /// [date] filters to a single calendar day; [from]/[to] filter to a
@@ -1521,7 +1657,7 @@ class AppDb {
     final buffer = StringBuffer(
       'SELECT o.id, o.order_number, o.created_at, o.payment_method, '
       'o.amount_paid, o.total, o.status, o.cancel_reason, o.discount_total, '
-      'o.created_by_user_id, o.created_by_name FROM orders o',
+      'o.created_by_user_id, o.created_by_name, o.note FROM orders o',
     );
     final args = <Object?>[];
     final conditions = <String>[];
@@ -1560,7 +1696,7 @@ class AppDb {
   List<DbOrder> getActiveOrders() {
     final rows = _db.select(
       "SELECT id, order_number, created_at, payment_method, amount_paid, total, status, cancel_reason, discount_total, "
-      "created_by_user_id, created_by_name "
+      "created_by_user_id, created_by_name, note "
       "FROM orders WHERE status NOT IN ('completed', 'cancelled') ORDER BY id ASC",
     );
     return rows.map(_rowToOrder).toList();
@@ -1569,7 +1705,7 @@ class AppDb {
   DbOrder? getOrderById(int id) {
     final rows = _db.select(
       'SELECT id, order_number, created_at, payment_method, amount_paid, total, status, cancel_reason, discount_total, '
-      'created_by_user_id, created_by_name '
+      'created_by_user_id, created_by_name, note '
       'FROM orders WHERE id = ?',
       [id],
     );

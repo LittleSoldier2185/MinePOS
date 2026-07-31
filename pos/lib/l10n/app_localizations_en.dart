@@ -662,6 +662,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get proceedToPayButton => 'PROCEED TO PAY';
 
   @override
+  String get heldOrderResumedMessage => 'Resumed your held order';
+
+  @override
+  String get searchMenuHint => 'Search menu';
+
+  @override
+  String get noSearchResultsMessage => 'No matching items';
+
+  @override
+  String get orderNoteHint =>
+      'Note for kitchen (e.g. no milk) — not printed on receipt';
+
+  @override
+  String get comboBundlesTitle => 'Combo Bundles';
+
+  @override
+  String comboPriceLabel(String price) {
+    return 'Bundle price $price';
+  }
+
+  @override
   String get paymentAppBarTitle => 'Payment';
 
   @override
@@ -860,6 +881,46 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get addItemTooltip => 'Add item';
+
+  @override
+  String get sortMenuTooltip => 'Sort';
+
+  @override
+  String get sortDefaultOption => 'Default order';
+
+  @override
+  String get sortNameAscOption => 'Name (A-Z)';
+
+  @override
+  String get sortNameDescOption => 'Name (Z-A)';
+
+  @override
+  String get sortPriceAscOption => 'Price (Low to High)';
+
+  @override
+  String get sortPriceDescOption => 'Price (High to Low)';
+
+  @override
+  String get manageCategoriesTooltip => 'Manage categories';
+
+  @override
+  String get manageCategoriesTitle => 'Categories';
+
+  @override
+  String get manageCategoriesHint =>
+      'Drag to reorder. Tap the pencil to rename a category — every item in it moves to the new name.';
+
+  @override
+  String get renameCategoryTitle => 'Rename Category';
+
+  @override
+  String get renameCategoryLabel => 'Category name';
+
+  @override
+  String get renameCategoryEmptyError => 'Category name is required';
+
+  @override
+  String get renameCategorySnackbar => 'Category renamed';
 
   @override
   String get noItemsEmpty => 'No items in this category.';
@@ -1218,6 +1279,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get languageSectionLabel => 'LANGUAGE';
 
   @override
+  String get kitchenDisplaySectionLabel => 'KITCHEN DISPLAY';
+
+  @override
+  String get kitchenShowImagesLabel => 'Show menu photos in Focus Mode';
+
+  @override
   String get englishOption => 'English';
 
   @override
@@ -1518,6 +1585,63 @@ class AppLocalizationsEn extends AppLocalizations {
   String get advertisingUnmuteTooltip => 'Unmute';
 
   @override
+  String get advertisingEditTooltip => 'Edit details';
+
+  @override
+  String get advertisingUnnamedSlideLabel => 'Unnamed ad';
+
+  @override
+  String get adMediaDetailsTitle => 'Media Details';
+
+  @override
+  String get adMediaNameLabel => 'Name (optional)';
+
+  @override
+  String get adMediaNameHint => 'e.g. BOGO Latte Promo';
+
+  @override
+  String get adMediaDurationLabel => 'Duration (seconds)';
+
+  @override
+  String get adMediaTransitionLabel => 'Transition';
+
+  @override
+  String get adTransitionNoneOption => 'None';
+
+  @override
+  String get adTransitionFadeOption => 'Fade';
+
+  @override
+  String get adTransitionSlideOption => 'Slide';
+
+  @override
+  String get adMediaExpiryLabel => 'Expires';
+
+  @override
+  String get adExpiryNeverOption => 'Never (until removed)';
+
+  @override
+  String adExpiryInDaysOption(int days) {
+    return 'In $days days';
+  }
+
+  @override
+  String get adExpiryCustomDateOption => 'Pick a date…';
+
+  @override
+  String get adMediaNeverExpiresLabel => 'Never expires';
+
+  @override
+  String adMediaExpiresOnLabel(String date) {
+    return 'Expires $date';
+  }
+
+  @override
+  String adMediaExpiredOnLabel(String date) {
+    return 'Expired $date';
+  }
+
+  @override
   String get dangerZoneSectionLabel => 'DANGER ZONE';
 
   @override
@@ -1707,6 +1831,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String updateItemErrorSnackbar(String error) {
     return 'Could not update item: $error';
   }
+
+  @override
+  String get focusModeTitle => 'Focus Mode';
+
+  @override
+  String get startPreparingButton => 'Start Preparing';
+
+  @override
+  String get readyToServeButton => 'Ready to Serve';
+
+  @override
+  String get customerViewTooltip => 'Customer view';
 
   @override
   String accessRestrictedMessage(String feature) {

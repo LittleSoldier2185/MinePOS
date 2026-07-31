@@ -7,7 +7,15 @@ import '../../l10n/app_localizations.dart';
 import '../cashier/services/menu_service.dart';
 import 'services/promotion_admin_service.dart';
 
-const _kPromotionTypes = ['percent', 'flat', 'bogo', 'code', 'combo', 'min_spend', 'tiered'];
+const _kPromotionTypes = [
+  'percent',
+  'flat',
+  'bogo',
+  'code',
+  'combo',
+  'min_spend',
+  'tiered',
+];
 
 /// Full-page editor for one promotion — pushed from Settings → Promotions
 /// (too many conditional fields to fit a bottom sheet, unlike the simpler
@@ -27,41 +35,64 @@ class PromotionEditorScreen extends StatefulWidget {
 class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
   Promotion? _saved;
 
-  late final _nameController = TextEditingController(text: widget.existing?.name ?? '');
-  late final _percentController =
-      TextEditingController(text: widget.existing?.percentValue?.toStringAsFixed(0) ?? '');
-  late final _flatController = TextEditingController(text: widget.existing?.flatAmount?.toStringAsFixed(0) ?? '');
-  late final _maxCapController =
-      TextEditingController(text: widget.existing?.maxDiscountCap?.toStringAsFixed(0) ?? '');
-  late final _minSpendController =
-      TextEditingController(text: widget.existing?.minSpendAmount?.toStringAsFixed(0) ?? '');
-  late final _bogoBuyController = TextEditingController(text: widget.existing?.bogoBuyQty?.toString() ?? '2');
-  late final _bogoGetController = TextEditingController(text: widget.existing?.bogoGetQty?.toString() ?? '1');
-  late final _bogoDiscountController =
-      TextEditingController(text: widget.existing?.bogoGetDiscountPercent?.toStringAsFixed(0) ?? '100');
-  late final _comboPriceController =
-      TextEditingController(text: widget.existing?.comboPrice?.toStringAsFixed(0) ?? '');
-  late final _approvalThresholdController =
-      TextEditingController(text: widget.existing?.approvalThresholdAmount?.toStringAsFixed(0) ?? '');
+  late final _nameController = TextEditingController(
+    text: widget.existing?.name ?? '',
+  );
+  late final _percentController = TextEditingController(
+    text: widget.existing?.percentValue?.toStringAsFixed(0) ?? '',
+  );
+  late final _flatController = TextEditingController(
+    text: widget.existing?.flatAmount?.toStringAsFixed(0) ?? '',
+  );
+  late final _maxCapController = TextEditingController(
+    text: widget.existing?.maxDiscountCap?.toStringAsFixed(0) ?? '',
+  );
+  late final _minSpendController = TextEditingController(
+    text: widget.existing?.minSpendAmount?.toStringAsFixed(0) ?? '',
+  );
+  late final _bogoBuyController = TextEditingController(
+    text: widget.existing?.bogoBuyQty?.toString() ?? '2',
+  );
+  late final _bogoGetController = TextEditingController(
+    text: widget.existing?.bogoGetQty?.toString() ?? '1',
+  );
+  late final _bogoDiscountController = TextEditingController(
+    text: widget.existing?.bogoGetDiscountPercent?.toStringAsFixed(0) ?? '100',
+  );
+  late final _comboPriceController = TextEditingController(
+    text: widget.existing?.comboPrice?.toStringAsFixed(0) ?? '',
+  );
+  late final _approvalThresholdController = TextEditingController(
+    text: widget.existing?.approvalThresholdAmount?.toStringAsFixed(0) ?? '',
+  );
   late final _newCodeController = TextEditingController();
   late final _newCodeMaxUsesController = TextEditingController();
 
   late String _type = widget.existing?.type ?? 'percent';
   late bool _active = widget.existing?.active ?? true;
   late String _scopeType = widget.existing?.scopeType ?? 'shop';
-  late Set<String> _scopeItemIds = {...(widget.existing?.scopeItemIds ?? const [])};
-  late String? _scopeCategory = widget.existing?.scopeCategory;
-  late Set<String> _excludeItemIds = {...(widget.existing?.excludeItemIds ?? const [])};
-  late String _rewardKind = (widget.existing?.flatAmount != null && widget.existing?.percentValue == null)
+  late Set<String> _scopeItemIds = {
+    ...(widget.existing?.scopeItemIds ?? const []),
+  };
+  final Set<String> _scopeCategories = {};
+  late Set<String> _excludeItemIds = {
+    ...(widget.existing?.excludeItemIds ?? const []),
+  };
+  late String _rewardKind =
+      (widget.existing?.flatAmount != null &&
+          widget.existing?.percentValue == null)
       ? 'flat'
       : 'percent';
   final List<_TieredRow> _tiered = [];
   late DateTime? _startDate = widget.existing?.startDate;
   late DateTime? _endDate = widget.existing?.endDate;
-  late Set<int>? _daysOfWeek = widget.existing?.daysOfWeek == null ? null : {...widget.existing!.daysOfWeek!};
+  late Set<int>? _daysOfWeek = widget.existing?.daysOfWeek == null
+      ? null
+      : {...widget.existing!.daysOfWeek!};
   late String? _timeStart = widget.existing?.timeStart;
   late String? _timeEnd = widget.existing?.timeEnd;
-  late bool _requiresApproval = widget.existing?.requiresManagerApproval ?? false;
+  late bool _requiresApproval =
+      widget.existing?.requiresManagerApproval ?? false;
 
   bool _saving = false;
   String? _error;
@@ -70,11 +101,14 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
   void initState() {
     super.initState();
     _saved = widget.existing;
+    _scopeCategories.addAll(widget.existing?.scopeCategories ?? const []);
     for (final t in widget.existing?.tiered ?? const []) {
-      _tiered.add(_TieredRow(
-        qty: TextEditingController(text: '${t['qty']}'),
-        price: TextEditingController(text: '${t['price']}'),
-      ));
+      _tiered.add(
+        _TieredRow(
+          qty: TextEditingController(text: '${t['qty']}'),
+          price: TextEditingController(text: '${t['price']}'),
+        ),
+      );
     }
   }
 
@@ -99,8 +133,10 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
     super.dispose();
   }
 
-  double? _parse(TextEditingController c) => c.text.trim().isEmpty ? null : double.tryParse(c.text.trim());
-  int? _parseInt(TextEditingController c) => c.text.trim().isEmpty ? null : int.tryParse(c.text.trim());
+  double? _parse(TextEditingController c) =>
+      c.text.trim().isEmpty ? null : double.tryParse(c.text.trim());
+  int? _parseInt(TextEditingController c) =>
+      c.text.trim().isEmpty ? null : int.tryParse(c.text.trim());
 
   Promotion _buildPromotion() {
     final isCombo = _type == 'combo';
@@ -110,26 +146,49 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
       type: _type,
       active: _active,
       scopeType: isCombo ? 'item' : _scopeType,
-      scopeItemIds: (isCombo || _scopeType == 'item') ? _scopeItemIds.toList() : const [],
-      scopeCategory: _scopeType == 'category' && !isCombo ? _scopeCategory : null,
-      excludeItemIds: _scopeType == 'shop' && !isCombo ? _excludeItemIds.toList() : const [],
-      percentValue: (_type == 'percent' || ((_type == 'code' || _type == 'min_spend') && _rewardKind == 'percent'))
+      scopeItemIds: (isCombo || _scopeType == 'item')
+          ? _scopeItemIds.toList()
+          : const [],
+      scopeCategories: _scopeType == 'category' && !isCombo
+          ? _scopeCategories.toList()
+          : const [],
+      excludeItemIds: _scopeType == 'shop' && !isCombo
+          ? _excludeItemIds.toList()
+          : const [],
+      percentValue:
+          (_type == 'percent' ||
+              ((_type == 'code' || _type == 'min_spend') &&
+                  _rewardKind == 'percent'))
           ? _parse(_percentController)
           : null,
-      flatAmount: (_type == 'flat' || ((_type == 'code' || _type == 'min_spend') && _rewardKind == 'flat'))
+      flatAmount:
+          (_type == 'flat' ||
+              ((_type == 'code' || _type == 'min_spend') &&
+                  _rewardKind == 'flat'))
           ? _parse(_flatController)
           : null,
       maxDiscountCap: _type == 'percent' ? _parse(_maxCapController) : null,
       minSpendAmount: _type == 'min_spend' ? _parse(_minSpendController) : null,
       bogoBuyQty: _type == 'bogo' ? _parseInt(_bogoBuyController) : null,
       bogoGetQty: _type == 'bogo' ? _parseInt(_bogoGetController) : null,
-      bogoGetDiscountPercent: _type == 'bogo' ? _parse(_bogoDiscountController) : null,
+      bogoGetDiscountPercent: _type == 'bogo'
+          ? _parse(_bogoDiscountController)
+          : null,
       comboPrice: isCombo ? _parse(_comboPriceController) : null,
       tiered: _type == 'tiered'
           ? _tiered
-              .where((r) => r.qty.text.trim().isNotEmpty && r.price.text.trim().isNotEmpty)
-              .map((r) => {'qty': int.parse(r.qty.text.trim()), 'price': double.parse(r.price.text.trim())})
-              .toList()
+                .where(
+                  (r) =>
+                      r.qty.text.trim().isNotEmpty &&
+                      r.price.text.trim().isNotEmpty,
+                )
+                .map(
+                  (r) => {
+                    'qty': int.parse(r.qty.text.trim()),
+                    'price': double.parse(r.price.text.trim()),
+                  },
+                )
+                .toList()
           : const [],
       startDate: _startDate,
       endDate: _endDate,
@@ -137,7 +196,9 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
       timeStart: _timeStart,
       timeEnd: _timeEnd,
       requiresManagerApproval: _requiresApproval,
-      approvalThresholdAmount: _requiresApproval ? _parse(_approvalThresholdController) : null,
+      approvalThresholdAmount: _requiresApproval
+          ? _parse(_approvalThresholdController)
+          : null,
       codes: _saved?.codes ?? const [],
     );
   }
@@ -154,11 +215,14 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
     });
     try {
       final promotion = _buildPromotion();
-      final result =
-          _saved == null ? await PromotionAdminService.instance.create(promotion) : await PromotionAdminService.instance.update(_saved!.id, promotion);
+      final result = _saved == null
+          ? await PromotionAdminService.instance.create(promotion)
+          : await PromotionAdminService.instance.update(_saved!.id, promotion);
       if (!mounted) return;
       setState(() => _saved = result);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.promotionSavedMessage)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.promotionSavedMessage)));
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = '$e');
@@ -170,9 +234,15 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
   Future<void> _addCode() async {
     final code = _newCodeController.text.trim();
     if (code.isEmpty || _saved == null) return;
-    final maxUses = _newCodeMaxUsesController.text.trim().isEmpty ? null : int.tryParse(_newCodeMaxUsesController.text.trim());
+    final maxUses = _newCodeMaxUsesController.text.trim().isEmpty
+        ? null
+        : int.tryParse(_newCodeMaxUsesController.text.trim());
     try {
-      final added = await PromotionAdminService.instance.addCode(_saved!.id, code, maxUses: maxUses);
+      final added = await PromotionAdminService.instance.addCode(
+        _saved!.id,
+        code,
+        maxUses: maxUses,
+      );
       if (!mounted) return;
       setState(() {
         _saved = _saved!.copyWith(codes: [..._saved!.codes, added]);
@@ -191,7 +261,9 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
       await PromotionAdminService.instance.deleteCode(_saved!.id, code.id);
       if (!mounted) return;
       setState(() {
-        _saved = _saved!.copyWith(codes: _saved!.codes.where((c) => c.id != code.id).toList());
+        _saved = _saved!.copyWith(
+          codes: _saved!.codes.where((c) => c.id != code.id).toList(),
+        );
       });
     } catch (e) {
       if (!mounted) return;
@@ -219,11 +291,15 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
   Future<void> _pickTime({required bool isStart}) async {
     final current = isStart ? _timeStart : _timeEnd;
     final initial = current != null
-        ? TimeOfDay(hour: int.parse(current.split(':')[0]), minute: int.parse(current.split(':')[1]))
+        ? TimeOfDay(
+            hour: int.parse(current.split(':')[0]),
+            minute: int.parse(current.split(':')[1]),
+          )
         : TimeOfDay.now();
     final picked = await showTimePicker(context: context, initialTime: initial);
     if (picked == null) return;
-    final formatted = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+    final formatted =
+        '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
     setState(() {
       if (isStart) {
         _timeStart = formatted;
@@ -240,7 +316,11 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_saved == null ? l10n.promotionEditorNewTitle : l10n.promotionEditorEditTitle),
+        title: Text(
+          _saved == null
+              ? l10n.promotionEditorNewTitle
+              : l10n.promotionEditorEditTitle,
+        ),
         backgroundColor: Colors.white,
         foregroundColor: AppColors.ink,
         elevation: 0,
@@ -250,7 +330,11 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            AppTextField(label: l10n.promotionNameLabel, controller: _nameController, hintText: l10n.promotionNameHint),
+            AppTextField(
+              label: l10n.promotionNameLabel,
+              controller: _nameController,
+              hintText: l10n.promotionNameHint,
+            ),
             const SizedBox(height: 14),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
@@ -259,22 +343,38 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
               title: Text(l10n.promotionActiveLabel),
             ),
             const SizedBox(height: 8),
-            Text(l10n.promotionTypeLabel, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.muted)),
+            Text(
+              l10n.promotionTypeLabel,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.muted,
+              ),
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: _kPromotionTypes
-                  .map((t) => ChoiceChip(
-                        label: Text(_typeLabel(l10n, t)),
-                        selected: _type == t,
-                        onSelected: (_) => setState(() => _type = t),
-                      ))
+                  .map(
+                    (t) => ChoiceChip(
+                      label: Text(_typeLabel(l10n, t)),
+                      selected: _type == t,
+                      onSelected: (_) => setState(() => _type = t),
+                    ),
+                  )
                   .toList(),
             ),
             const SizedBox(height: 20),
             if (_type != 'combo') ...[
-              Text(l10n.promotionScopeLabel, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.muted)),
+              Text(
+                l10n.promotionScopeLabel,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.muted,
+                ),
+              ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -298,43 +398,73 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
               ),
               const SizedBox(height: 12),
               if (_scopeType == 'item')
-                _ItemPicker(selected: _scopeItemIds, onChanged: (s) => setState(() => _scopeItemIds = s)),
+                _ItemPicker(
+                  selected: _scopeItemIds,
+                  onChanged: (s) => setState(() => _scopeItemIds = s),
+                ),
               if (_scopeType == 'category')
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: menu.categories
-                      .map((c) => ChoiceChip(
-                            label: Text(c),
-                            selected: _scopeCategory == c,
-                            onSelected: (_) => setState(() => _scopeCategory = c),
-                          ))
+                      .map(
+                        (c) => FilterChip(
+                          label: Text(c),
+                          selected: _scopeCategories.contains(c),
+                          onSelected: (sel) => setState(
+                            () => sel
+                                ? _scopeCategories.add(c)
+                                : _scopeCategories.remove(c),
+                          ),
+                        ),
+                      )
                       .toList(),
                 ),
               if (_scopeType == 'shop') ...[
-                Text(l10n.promotionExcludeItemsLabel, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+                Text(
+                  l10n.promotionExcludeItemsLabel,
+                  style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                ),
                 const SizedBox(height: 8),
-                _ItemPicker(selected: _excludeItemIds, onChanged: (s) => setState(() => _excludeItemIds = s)),
+                _ItemPicker(
+                  selected: _excludeItemIds,
+                  onChanged: (s) => setState(() => _excludeItemIds = s),
+                ),
               ],
               const SizedBox(height: 20),
             ],
             ..._typeSpecificFields(l10n, menu),
             const SizedBox(height: 20),
-            Text(l10n.promotionScheduleLabel, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.muted)),
+            Text(
+              l10n.promotionScheduleLabel,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.muted,
+              ),
+            ),
             const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => _pickDate(isStart: true),
-                    child: Text(_startDate == null ? l10n.promotionStartDateLabel : DateFormat.yMd().format(_startDate!)),
+                    child: Text(
+                      _startDate == null
+                          ? l10n.promotionStartDateLabel
+                          : DateFormat.yMd().format(_startDate!),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => _pickDate(isStart: false),
-                    child: Text(_endDate == null ? l10n.promotionEndDateLabel : DateFormat.yMd().format(_endDate!)),
+                    child: Text(
+                      _endDate == null
+                          ? l10n.promotionEndDateLabel
+                          : DateFormat.yMd().format(_endDate!),
+                    ),
                   ),
                 ),
                 if (_startDate != null || _endDate != null)
@@ -348,7 +478,10 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            Text(l10n.promotionDaysOfWeekLabel, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+            Text(
+              l10n.promotionDaysOfWeekLabel,
+              style: const TextStyle(fontSize: 12, color: AppColors.muted),
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 6,
@@ -360,8 +493,12 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
                 // correctly) keeps this self-consistent by construction;
                 // `intl` (already a dependency) then gives locale-correct
                 // short names without hand-translating 7 more strings.
-                final thisMonday = DateTime.now().subtract(Duration(days: DateTime.now().weekday - 1));
-                final label = DateFormat.E().format(thisMonday.add(Duration(days: i)));
+                final thisMonday = DateTime.now().subtract(
+                  Duration(days: DateTime.now().weekday - 1),
+                );
+                final label = DateFormat.E().format(
+                  thisMonday.add(Duration(days: i)),
+                );
                 final selected = _daysOfWeek?.contains(i) ?? false;
                 return FilterChip(
                   label: Text(label),
@@ -384,14 +521,20 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => _pickTime(isStart: true),
-                    child: Text(_timeStart == null ? l10n.promotionTimeStartLabel : _timeStart!),
+                    child: Text(
+                      _timeStart == null
+                          ? l10n.promotionTimeStartLabel
+                          : _timeStart!,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => _pickTime(isStart: false),
-                    child: Text(_timeEnd == null ? l10n.promotionTimeEndLabel : _timeEnd!),
+                    child: Text(
+                      _timeEnd == null ? l10n.promotionTimeEndLabel : _timeEnd!,
+                    ),
                   ),
                 ),
                 if (_timeStart != null || _timeEnd != null)
@@ -421,15 +564,30 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
             ],
             if (_type == 'code' && _saved != null) ...[
               const SizedBox(height: 20),
-              Text(l10n.promotionCodesLabel, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.muted)),
+              Text(
+                l10n.promotionCodesLabel,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.muted,
+                ),
+              ),
               const SizedBox(height: 8),
               for (final code in _saved!.codes)
                 Card(
                   child: ListTile(
                     title: Text(code.code),
-                    subtitle: Text(l10n.promotionCodeUsageLabel(code.usedCount, code.maxUses?.toString() ?? '∞')),
+                    subtitle: Text(
+                      l10n.promotionCodeUsageLabel(
+                        code.usedCount,
+                        code.maxUses?.toString() ?? '∞',
+                      ),
+                    ),
                     trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline, color: AppColors.terracottaDark),
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        color: AppColors.terracottaDark,
+                      ),
                       onPressed: () => _deleteCode(code),
                     ),
                   ),
@@ -438,7 +596,10 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
                 children: [
                   Expanded(
                     flex: 2,
-                    child: AppTextField(label: l10n.promotionNewCodeLabel, controller: _newCodeController),
+                    child: AppTextField(
+                      label: l10n.promotionNewCodeLabel,
+                      controller: _newCodeController,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -453,12 +614,21 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
               const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
-                child: OutlinedButton(onPressed: _addCode, child: Text(l10n.promotionAddCodeButton)),
+                child: OutlinedButton(
+                  onPressed: _addCode,
+                  child: Text(l10n.promotionAddCodeButton),
+                ),
               ),
             ],
             if (_error != null) ...[
               const SizedBox(height: 12),
-              Text(_error!, style: const TextStyle(color: AppColors.terracottaDark, fontSize: 12)),
+              Text(
+                _error!,
+                style: const TextStyle(
+                  color: AppColors.terracottaDark,
+                  fontSize: 12,
+                ),
+              ),
             ],
             const SizedBox(height: 20),
             SizedBox(
@@ -469,7 +639,10 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
                     ? const SizedBox(
                         width: 18,
                         height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : Text(l10n.promotionSaveButton),
               ),
@@ -484,28 +657,55 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
     switch (_type) {
       case 'percent':
         return [
-          AppTextField(label: l10n.promotionPercentLabel, controller: _percentController, keyboardType: TextInputType.number),
+          AppTextField(
+            label: l10n.promotionPercentLabel,
+            controller: _percentController,
+            keyboardType: TextInputType.number,
+          ),
           const SizedBox(height: 14),
-          AppTextField(label: l10n.promotionMaxCapLabel, controller: _maxCapController, keyboardType: TextInputType.number),
+          AppTextField(
+            label: l10n.promotionMaxCapLabel,
+            controller: _maxCapController,
+            keyboardType: TextInputType.number,
+          ),
         ];
       case 'flat':
         return [
-          AppTextField(label: l10n.promotionFlatAmountLabel, controller: _flatController, keyboardType: TextInputType.number),
+          AppTextField(
+            label: l10n.promotionFlatAmountLabel,
+            controller: _flatController,
+            keyboardType: TextInputType.number,
+          ),
         ];
       case 'bogo':
         return [
-          AppTextField(label: l10n.promotionBogoBuyQtyLabel, controller: _bogoBuyController, keyboardType: TextInputType.number),
-          const SizedBox(height: 14),
-          AppTextField(label: l10n.promotionBogoGetQtyLabel, controller: _bogoGetController, keyboardType: TextInputType.number),
+          AppTextField(
+            label: l10n.promotionBogoBuyQtyLabel,
+            controller: _bogoBuyController,
+            keyboardType: TextInputType.number,
+          ),
           const SizedBox(height: 14),
           AppTextField(
-              label: l10n.promotionBogoDiscountLabel, controller: _bogoDiscountController, keyboardType: TextInputType.number),
+            label: l10n.promotionBogoGetQtyLabel,
+            controller: _bogoGetController,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 14),
+          AppTextField(
+            label: l10n.promotionBogoDiscountLabel,
+            controller: _bogoDiscountController,
+            keyboardType: TextInputType.number,
+          ),
         ];
       case 'code':
       case 'min_spend':
         return [
           if (_type == 'min_spend') ...[
-            AppTextField(label: l10n.promotionMinSpendLabel, controller: _minSpendController, keyboardType: TextInputType.number),
+            AppTextField(
+              label: l10n.promotionMinSpendLabel,
+              controller: _minSpendController,
+              keyboardType: TextInputType.number,
+            ),
             const SizedBox(height: 14),
           ],
           Wrap(
@@ -525,21 +725,42 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
           ),
           const SizedBox(height: 14),
           if (_rewardKind == 'percent')
-            AppTextField(label: l10n.promotionPercentLabel, controller: _percentController, keyboardType: TextInputType.number)
+            AppTextField(
+              label: l10n.promotionPercentLabel,
+              controller: _percentController,
+              keyboardType: TextInputType.number,
+            )
           else
-            AppTextField(label: l10n.promotionFlatAmountLabel, controller: _flatController, keyboardType: TextInputType.number),
+            AppTextField(
+              label: l10n.promotionFlatAmountLabel,
+              controller: _flatController,
+              keyboardType: TextInputType.number,
+            ),
         ];
       case 'combo':
         return [
-          AppTextField(label: l10n.promotionComboPriceLabel, controller: _comboPriceController, keyboardType: TextInputType.number),
+          AppTextField(
+            label: l10n.promotionComboPriceLabel,
+            controller: _comboPriceController,
+            keyboardType: TextInputType.number,
+          ),
           const SizedBox(height: 14),
-          Text(l10n.promotionComboItemsLabel, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+          Text(
+            l10n.promotionComboItemsLabel,
+            style: const TextStyle(fontSize: 12, color: AppColors.muted),
+          ),
           const SizedBox(height: 8),
-          _ItemPicker(selected: _scopeItemIds, onChanged: (s) => setState(() => _scopeItemIds = s)),
+          _ItemPicker(
+            selected: _scopeItemIds,
+            onChanged: (s) => setState(() => _scopeItemIds = s),
+          ),
         ];
       case 'tiered':
         return [
-          Text(l10n.promotionTieredLabel, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+          Text(
+            l10n.promotionTieredLabel,
+            style: const TextStyle(fontSize: 12, color: AppColors.muted),
+          ),
           const SizedBox(height: 8),
           for (var i = 0; i < _tiered.length; i++)
             Padding(
@@ -548,12 +769,18 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
                 children: [
                   Expanded(
                     child: AppTextField(
-                        label: l10n.promotionTieredQtyLabel, controller: _tiered[i].qty, keyboardType: TextInputType.number),
+                      label: l10n.promotionTieredQtyLabel,
+                      controller: _tiered[i].qty,
+                      keyboardType: TextInputType.number,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: AppTextField(
-                        label: l10n.promotionTieredPriceLabel, controller: _tiered[i].price, keyboardType: TextInputType.number),
+                      label: l10n.promotionTieredPriceLabel,
+                      controller: _tiered[i].price,
+                      keyboardType: TextInputType.number,
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close, size: 18),
@@ -568,7 +795,13 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
             ),
           OutlinedButton.icon(
             onPressed: () => setState(
-                () => _tiered.add(_TieredRow(qty: TextEditingController(), price: TextEditingController()))),
+              () => _tiered.add(
+                _TieredRow(
+                  qty: TextEditingController(),
+                  price: TextEditingController(),
+                ),
+              ),
+            ),
             icon: const Icon(Icons.add, size: 16),
             label: Text(l10n.promotionTieredAddRow),
           ),
@@ -579,15 +812,15 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
   }
 
   String _typeLabel(AppLocalizations l10n, String type) => switch (type) {
-        'percent' => l10n.promotionTypePercent,
-        'flat' => l10n.promotionTypeFlat,
-        'bogo' => l10n.promotionTypeBogo,
-        'code' => l10n.promotionTypeCode,
-        'combo' => l10n.promotionTypeCombo,
-        'min_spend' => l10n.promotionTypeMinSpend,
-        'tiered' => l10n.promotionTypeTiered,
-        _ => type,
-      };
+    'percent' => l10n.promotionTypePercent,
+    'flat' => l10n.promotionTypeFlat,
+    'bogo' => l10n.promotionTypeBogo,
+    'code' => l10n.promotionTypeCode,
+    'combo' => l10n.promotionTypeCombo,
+    'min_spend' => l10n.promotionTypeMinSpend,
+    'tiered' => l10n.promotionTypeTiered,
+    _ => type,
+  };
 }
 
 class _TieredRow {

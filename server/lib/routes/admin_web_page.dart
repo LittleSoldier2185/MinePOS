@@ -199,7 +199,7 @@ const String adminWebPageHtml = r'''
   }
 
   /* ── Login ─────────────────────────────────────────────────────────── */
-  #login { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  #login, #createShop { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
   .login-card { width: 100%; max-width: 340px; text-align: center; }
   .login-logo {
     width: 52px; height: 52px; margin: 0 auto 18px; border-radius: 8px;
@@ -243,7 +243,7 @@ const String adminWebPageHtml = r'''
 </head>
 <body>
 
-<div id="login">
+<div id="login" style="display:none;">
   <div class="card login-card">
     <div class="login-logo">M</div>
     <h2>MinePOS Shop Manager</h2>
@@ -254,6 +254,39 @@ const String adminWebPageHtml = r'''
     <input id="loginPass" type="password" autocomplete="current-password">
     <button id="loginBtn" onclick="doLogin()">Sign in</button>
     <div id="loginMsg" class="msg"></div>
+  </div>
+</div>
+
+<div id="createShop" style="display:none;">
+  <div class="card login-card">
+    <div class="login-logo">M</div>
+    <h2>Set Up Your Shop</h2>
+    <p class="sub" style="margin-bottom:12px;">This server has no shop set up yet.</p>
+    <div class="row" style="justify-content:center; gap:8px; margin-bottom:16px;">
+      <button id="setupModeNewBtn" class="small" onclick="setSetupMode('new')">Create New</button>
+      <button id="setupModeRestoreBtn" class="small secondary" onclick="setSetupMode('restore')">Import Backup</button>
+    </div>
+
+    <div id="setupNewPane">
+      <label>Shop name</label>
+      <input id="setupShopName">
+      <label>Owner username</label>
+      <input id="setupUsername" autocomplete="username">
+      <label>Owner password</label>
+      <input id="setupPassword" type="password" autocomplete="new-password">
+      <button id="createShopBtn" onclick="doCreateShop()">Create Shop</button>
+      <div id="createShopMsg" class="msg"></div>
+    </div>
+
+    <div id="setupRestorePane" class="hidden">
+      <p class="sub" style="text-align:left; margin-bottom:12px;">
+        Import a previously exported MinePOS backup (.db file) — this becomes this server's shop, accounts, menu and order history included.
+      </p>
+      <label>Backup file (.db)</label>
+      <input type="file" id="restoreFileInput" accept=".db">
+      <button id="restoreBtn" onclick="doRestoreBackup()">Import &amp; Restore</button>
+      <div id="restoreMsg" class="msg"></div>
+    </div>
   </div>
 </div>
 
@@ -457,8 +490,8 @@ const String adminWebPageHtml = r'''
             <h3>Applies to</h3>
             <div id="promoScopeChips"></div>
             <div id="promoScopeCategoryWrap" class="hidden">
-              <label>Category</label>
-              <select id="promoScopeCategory"></select>
+              <label>Categories (ctrl/cmd-click to select multiple)</label>
+              <select id="promoScopeCategory" multiple></select>
             </div>
             <div id="promoScopeItemsWrap" class="hidden">
               <label>Items</label>
@@ -576,6 +609,11 @@ const String adminWebPageHtml = r'''
         </div>
 
         <div class="stat-grid" id="reportsStats"></div>
+
+        <div class="card">
+          <h2>Sales Trend</h2>
+          <canvas id="reportsTrendCanvas" style="width:100%;height:160px;display:block;"></canvas>
+        </div>
 
         <div class="card">
           <div class="row"><h2 style="margin:0;">Orders</h2>
@@ -1052,7 +1090,7 @@ function renderPromoTable() {
       <td><div class="toggle-track ${p.active ? 'on' : ''}" onclick="togglePromoActive('${p.id}', ${p.active})"><div class="knob"></div></div></td>
       <td>${esc(p.name)}</td>
       <td>${esc(PROMO_TYPES.find(t => t[0] === p.type)?.[1] || p.type)}</td>
-      <td>${esc(p.scopeType === 'category' ? (p.scopeCategory || 'category') : p.scopeType)}</td>
+      <td>${esc(p.scopeType === 'category' ? ((p.scopeCategories || []).join(', ') || 'category') : p.scopeType)}</td>
       <td>
         <button class="small secondary" onclick="openPromoForm('${p.id}')">Edit</button>
         <button class="small danger" onclick="deletePromo('${p.id}')">Delete</button>
@@ -1071,7 +1109,7 @@ function promoToBody(p) {
   // active-toggle shortcut above and as the base for the real save below.
   return {
     name: p.name, type: p.type, active: p.active, scopeType: p.scopeType,
-    scopeItemIds: p.scopeItemIds, scopeCategory: p.scopeCategory, excludeItemIds: p.excludeItemIds,
+    scopeItemIds: p.scopeItemIds, scopeCategories: p.scopeCategories, excludeItemIds: p.excludeItemIds,
     percentValue: p.percentValue, flatAmount: p.flatAmount, maxDiscountCap: p.maxDiscountCap,
     minSpendAmount: p.minSpendAmount, bogoBuyQty: p.bogoBuyQty, bogoGetQty: p.bogoGetQty,
     bogoGetDiscountPercent: p.bogoGetDiscountPercent, comboPrice: p.comboPrice, tiered: p.tiered,
@@ -1159,12 +1197,15 @@ function renderPromoItemChecklists() {
   }
   const catSel = document.getElementById('promoScopeCategory');
   const cats = [...new Set(menuItems.map(i => i.category))];
-  const current = catSel.value;
+  const currentlySelected = new Set(Array.from(catSel.selectedOptions).map(o => o.value));
   catSel.innerHTML = cats.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
   if (promoEditingId) {
     const p = promoList.find(x => x.id === promoEditingId);
-    if (p && p.scopeCategory) catSel.value = p.scopeCategory;
-  } else if (current) catSel.value = current;
+    const wanted = new Set(p?.scopeCategories || []);
+    for (const opt of catSel.options) opt.selected = wanted.has(opt.value);
+  } else {
+    for (const opt of catSel.options) opt.selected = currentlySelected.has(opt.value);
+  }
 }
 function onItemCheckChange(listId, id, checked) {
   const set = listId === 'promoExcludeItemsList' ? promoExcludeItemIds : promoScopeItemIds;
@@ -1230,7 +1271,9 @@ async function savePromo() {
     name, type: promoType, active: document.getElementById('promoActive').checked,
     scopeType: isCombo ? 'item' : promoScopeType,
     scopeItemIds: isCombo ? [...promoScopeItemIds] : (promoScopeType === 'item' ? [...promoScopeItemIds] : []),
-    scopeCategory: !isCombo && promoScopeType === 'category' ? document.getElementById('promoScopeCategory').value : null,
+    scopeCategories: !isCombo && promoScopeType === 'category'
+      ? Array.from(document.getElementById('promoScopeCategory').selectedOptions).map(o => o.value)
+      : [],
     excludeItemIds: !isCombo && promoScopeType === 'shop' ? [...promoExcludeItemIds] : [],
     percentValue: promoType === 'percent' ? parseFloat(document.getElementById('promoPercentValue').value) || null
       : (usesReward && promoRewardKind === 'percent' ? parseFloat(document.getElementById('promoRewardPercentValue').value) || null : null),
@@ -1349,6 +1392,8 @@ function renderReports() {
     ['Cash', cashCount], ['PromptPay', orders.length - cashCount], ['Discounted', baht(discounted)],
   ].map(([l, v]) => `<div class="stat-card"><div class="v">${esc(v)}</div><div class="l">${esc(l).toUpperCase()}</div></div>`).join('');
 
+  renderReportsTrend(orders, start, end);
+
   document.getElementById('reportsOrdersBody').innerHTML = orders.map(o => `
     <tr>
       <td>#${String(o.orderNumber).padStart(3, '0')}</td>
@@ -1389,6 +1434,62 @@ function renderReports() {
 function renderRankedList(elId, entries, fmt) {
   const el = document.getElementById(elId);
   el.innerHTML = entries.map(([name, v]) => `<li>${fmt(name, v)}</li>`).join('') || '<li class="sub">Nothing in this range.</li>';
+}
+
+// Day-bucketed revenue bar chart — mirrors the mobile app's Sales Trend
+// graph in spirit (a per-bucket view of revenue over the selected range)
+// using nothing but the canvas 2D API, no charting library.
+function renderReportsTrend(orders, start, end) {
+  const canvas = document.getElementById('reportsTrendCanvas');
+  const dpr = window.devicePixelRatio || 1;
+  const cssWidth = canvas.clientWidth || canvas.parentElement.clientWidth;
+  const cssHeight = 160;
+  canvas.width = cssWidth * dpr;
+  canvas.height = cssHeight * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+  const dayMs = 24 * 60 * 60 * 1000;
+  const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const dayCount = Math.max(1, Math.round((end - startDay) / dayMs));
+  const buckets = new Array(dayCount).fill(0);
+  for (const o of orders) {
+    const idx = Math.floor((new Date(o.createdAt) - startDay) / dayMs);
+    if (idx >= 0 && idx < dayCount) buckets[idx] += o.total;
+  }
+  const maxValue = Math.max(1, ...buckets);
+
+  const padLeft = 44, padBottom = 18, padTop = 6;
+  const plotWidth = cssWidth - padLeft - 8;
+  const plotHeight = cssHeight - padBottom - padTop;
+  const barGap = 4;
+  const barWidth = Math.max(2, plotWidth / dayCount - barGap);
+
+  ctx.strokeStyle = '#e5d9cf'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padLeft, padTop); ctx.lineTo(padLeft, padTop + plotHeight); ctx.lineTo(padLeft + plotWidth, padTop + plotHeight);
+  ctx.stroke();
+
+  ctx.fillStyle = '#8a7c6f'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right';
+  ctx.fillText(baht(maxValue), padLeft - 6, padTop + 8);
+  ctx.fillText('฿0', padLeft - 6, padTop + plotHeight);
+
+  ctx.fillStyle = '#c7622d';
+  for (let i = 0; i < dayCount; i++) {
+    const h = (buckets[i] / maxValue) * plotHeight;
+    const x = padLeft + i * (plotWidth / dayCount);
+    ctx.fillRect(x, padTop + plotHeight - h, barWidth, h);
+  }
+
+  // At most ~6 date labels so they don't collide on a wide range.
+  const labelEvery = Math.max(1, Math.ceil(dayCount / 6));
+  ctx.fillStyle = '#8a7c6f'; ctx.textAlign = 'center';
+  for (let i = 0; i < dayCount; i += labelEvery) {
+    const d = new Date(startDay.getTime() + i * dayMs);
+    const x = padLeft + i * (plotWidth / dayCount) + barWidth / 2;
+    ctx.fillText(`${d.getMonth() + 1}/${d.getDate()}`, x, cssHeight - 4);
+  }
 }
 
 function exportCsv() {
@@ -1540,9 +1641,117 @@ async function deleteAdSlide(id) {
 }
 
 // ── Boot ─────────────────────────────────────────────────────────────────
-if (token && role === 'owner') {
-  document.getElementById('whoami').textContent = '(signed in)';
-  enterApp();
+// A brand-new server has no shop (and so no owner account) to sign into at
+// all — /health's `hasShop` is checked before deciding whether to show the
+// normal sign-in form or the one-time Create Shop form instead.
+async function boot() {
+  let hasShop = true;
+  try {
+    const health = await (await fetch('/health')).json();
+    hasShop = health.hasShop !== false;
+  } catch (e) {
+    // Can't reach the server at all — default to the sign-in form same as
+    // before this check existed; doLogin()'s own "Could not reach the
+    // server." message covers this case from there.
+  }
+  if (!hasShop) {
+    document.getElementById('createShop').style.display = 'flex';
+    return;
+  }
+  if (token && role === 'owner') {
+    document.getElementById('whoami').textContent = '(signed in)';
+    enterApp();
+  } else {
+    document.getElementById('login').style.display = 'flex';
+  }
+}
+boot();
+
+async function doCreateShop() {
+  const shopName = document.getElementById('setupShopName').value.trim();
+  const username = document.getElementById('setupUsername').value.trim();
+  const password = document.getElementById('setupPassword').value;
+  const msg = document.getElementById('createShopMsg');
+  msg.textContent = ''; msg.className = 'msg';
+  if (!shopName) { msg.textContent = 'Shop name is required.'; msg.className = 'msg err'; return; }
+  if (!username) { msg.textContent = 'Owner username is required.'; msg.className = 'msg err'; return; }
+  if (!password || password.length < 6) { msg.textContent = 'Password must be at least 6 characters.'; msg.className = 'msg err'; return; }
+  try {
+    const res = await fetch('/setup', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shopName, adminUsername: username, adminPassword: password }),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) { msg.textContent = (data && data.error) || 'Could not create the shop.'; msg.className = 'msg err'; return; }
+  } catch (e) {
+    msg.textContent = 'Could not reach the server.'; msg.className = 'msg err'; return;
+  }
+  // Shop created — sign the new owner straight in rather than making them
+  // retype the same credentials on a second screen.
+  document.getElementById('createShop').style.display = 'none';
+  document.getElementById('loginUser').value = username;
+  document.getElementById('loginPass').value = password;
+  document.getElementById('login').style.display = 'flex';
+  await doLogin();
+}
+
+function setSetupMode(mode) {
+  const isNew = mode === 'new';
+  document.getElementById('setupNewPane').classList.toggle('hidden', !isNew);
+  document.getElementById('setupRestorePane').classList.toggle('hidden', isNew);
+  document.getElementById('setupModeNewBtn').className = isNew ? 'small' : 'small secondary';
+  document.getElementById('setupModeRestoreBtn').className = isNew ? 'small secondary' : 'small';
+}
+
+// Imports a previously exported MinePOS backup (a raw .db file — see GET
+// /admin/backup) as this server's shop. Only reachable from the no-shop-yet
+// screen, matching /admin/restore's own "this server has no shop" gate —
+// same one-time bootstrap as Create Shop, just seeded from a file instead of
+// a blank slate.
+async function doRestoreBackup() {
+  const input = document.getElementById('restoreFileInput');
+  const msg = document.getElementById('restoreMsg');
+  const btn = document.getElementById('restoreBtn');
+  msg.textContent = ''; msg.className = 'msg';
+  const file = input.files && input.files[0];
+  if (!file) { msg.textContent = 'Choose a backup file first.'; msg.className = 'msg err'; return; }
+
+  btn.disabled = true;
+  msg.textContent = 'Uploading…'; msg.className = 'msg';
+  try {
+    const bytes = await file.arrayBuffer();
+    const res = await fetch('/admin/restore', {
+      method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: bytes,
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      msg.textContent = (data && data.error) || 'Could not restore that backup.';
+      msg.className = 'msg err'; btn.disabled = false; return;
+    }
+  } catch (e) {
+    msg.textContent = 'Could not reach the server.'; msg.className = 'msg err'; btn.disabled = false; return;
+  }
+
+  // The server now closes and reopens itself with the restored database —
+  // briefly unreachable while that happens, so poll /health until it's back
+  // instead of assuming any fixed delay, then reload to a clean boot() with
+  // the (now populated) shop.
+  msg.textContent = 'Restored — reconnecting…'; msg.className = 'msg';
+  let attempts = 0;
+  const poll = setInterval(async () => {
+    attempts++;
+    try {
+      const health = await (await fetch('/health')).json();
+      if (health.hasShop) { clearInterval(poll); location.reload(); }
+    } catch (e) {
+      // Not back up yet — keep polling.
+    }
+    if (attempts >= 30) {
+      clearInterval(poll);
+      msg.textContent = 'Restore may have finished — refresh the page to check.';
+      msg.className = 'msg err';
+    }
+  }, 1000);
 }
 </script>
 </body>

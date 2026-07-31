@@ -41,6 +41,7 @@ class Order {
     this.amountPaid,
     this.kitchenStatus = 'pending',
     this.cancelReason,
+    this.note,
     this.discountTotal = 0,
     this.appliedPromotions = const [],
     this.createdByUserId,
@@ -63,6 +64,11 @@ class Order {
   /// Set only when [kitchenStatus] is "cancelled" — the reason chosen (plus
   /// any free-text detail) at cancel time.
   final String? cancelReason;
+
+  /// Cashier's free-text special instructions for the kitchen (e.g. "no
+  /// milk") — shown on the Kitchen Display, deliberately never rendered on
+  /// the printed/on-screen receipt.
+  final String? note;
 
   /// Sum of every applied promotion's discount — see [appliedPromotions]
   /// for the per-promotion breakdown the receipt actually renders.
@@ -109,6 +115,7 @@ class Order {
     amountPaid: (json['amountPaid'] as num?)?.toDouble(),
     kitchenStatus: json['status'] as String? ?? 'pending',
     cancelReason: json['cancelReason'] as String?,
+    note: json['note'] as String?,
     discountTotal: (json['discountTotal'] as num?)?.toDouble() ?? 0,
     appliedPromotions: (json['appliedPromotions'] as List?)
             ?.map((j) => AppliedOrderPromotion.fromJson(j as Map<String, dynamic>))

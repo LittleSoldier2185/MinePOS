@@ -21,6 +21,7 @@ class AdSlide {
     required this.url,
     this.durationSeconds,
     this.muted = true,
+    this.transition = 'fade',
   });
 
   final String id;
@@ -38,12 +39,18 @@ class AdSlide {
   /// Only meaningful for video — images have no audio to mute.
   final bool muted;
 
+  /// How this slide animates in when the slideshow advances to it — one of
+  /// 'none' | 'fade' | 'slideLeft' (see server's `kAdTransitions`); an
+  /// unrecognized value falls back to 'fade', same server-side default.
+  final String transition;
+
   factory AdSlide.fromJson(Map<String, dynamic> json) => AdSlide(
         id: json['id'] as String,
         type: json['type'] as String,
         url: json['url'] as String,
         durationSeconds: json['durationSeconds'] as int?,
         muted: json['muted'] as bool? ?? true,
+        transition: json['transition'] as String? ?? 'fade',
       );
 }
 

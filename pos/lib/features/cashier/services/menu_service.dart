@@ -31,7 +31,12 @@ class MenuService extends ChangeNotifier {
     // Cold
     MenuItem(id: 'k1', name: 'Fresh Orange', category: 'Cold', price: 75),
     MenuItem(id: 'k2', name: 'Lemonade', category: 'Cold', price: 70),
-    MenuItem(id: 'k3', name: 'Strawberry Smoothie', category: 'Cold', price: 95),
+    MenuItem(
+      id: 'k3',
+      name: 'Strawberry Smoothie',
+      category: 'Cold',
+      price: 95,
+    ),
     MenuItem(id: 'k4', name: 'Mango Smoothie', category: 'Cold', price: 95),
     MenuItem(id: 'k5', name: 'Iced Chocolate', category: 'Cold', price: 90),
     // Food
@@ -43,15 +48,28 @@ class MenuService extends ChangeNotifier {
     MenuItem(id: 'f6', name: 'Waffle', category: 'Food', price: 110),
   ];
 
+  // Fallback order used until the shop's own custom order (if any) is
+  // fetched from the server — see [_customCategoryOrder].
   static const _categoryOrder = ['Coffee', 'Tea', 'Cold', 'Food'];
 
   final List<MenuItem> _items = List.of(_defaultItems);
   int _nextId = 1000;
 
+  /// Admin-defined category display order (Settings/Menu Management can
+  /// reorder categories) — empty until [fetchFromServer] loads it, in which
+  /// case [categories] falls back to the hardcoded [_categoryOrder] instead.
+  List<String> _customCategoryOrder = [];
+
   // ── Read ──────────────────────────────────────────────────────────────────
 
   List<String> get categories {
     final present = _items.map((m) => m.category).toSet();
+    if (_customCategoryOrder.isNotEmpty) {
+      return [
+        ..._customCategoryOrder.where(present.contains),
+        ...present.where((c) => !_customCategoryOrder.contains(c)),
+      ];
+    }
     return [
       ..._categoryOrder.where(present.contains),
       ...present.where((c) => !_categoryOrder.contains(c)),
@@ -61,8 +79,7 @@ class MenuService extends ChangeNotifier {
   List<MenuItem> itemsForCategory(String category) =>
       _items.where((m) => m.category == category && m.available).toList();
 
-  List<MenuItem> get allAvailable =>
-      _items.where((m) => m.available).toList();
+  List<MenuItem> get allAvailable => _items.where((m) => m.available).toList();
 
   List<MenuItem> get allItems => List.unmodifiable(_items);
 
@@ -71,7 +88,8 @@ class MenuService extends ChangeNotifier {
 
   // ── Server sync ───────────────────────────────────────────────────────────
 
-  /// Loads menu from server if connected; silently keeps local state on failure.
+  /// Loads menu (and its category order) from server if connected; silently
+  /// keeps local state on failure.
   Future<void> fetchFromServer() async {
     final client = ServerClient.instance;
     if (!client.isConnected) return;
@@ -83,11 +101,21 @@ class MenuService extends ChangeNotifier {
         final list = jsonDecode(res.body) as List;
         _items
           ..clear()
-          ..addAll(list.map(
-              (j) => MenuItem.fromJson(j as Map<String, dynamic>)));
-        notifyListeners();
+          ..addAll(
+            list.map((j) => MenuItem.fromJson(j as Map<String, dynamic>)),
+          );
       }
     } catch (_) {}
+    try {
+      final res = await http
+          .get(client.uri('/menu/categories/order'), headers: client.headers)
+          .timeout(const Duration(seconds: 8));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        _customCategoryOrder = (data['order'] as List).cast<String>();
+      }
+    } catch (_) {}
+    notifyListeners();
   }
 
   // ── Live sync ─────────────────────────────────────────────────────────────
@@ -130,8 +158,11 @@ class MenuService extends ChangeNotifier {
       case 'snapshot':
         _items
           ..clear()
-          ..addAll((msg['items'] as List)
-              .map((j) => MenuItem.fromJson(j as Map<String, dynamic>)));
+          ..addAll(
+            (msg['items'] as List).map(
+              (j) => MenuItem.fromJson(j as Map<String, dynamic>),
+            ),
+          );
       case 'item_changed':
         final item = MenuItem.fromJson(msg['item'] as Map<String, dynamic>);
         final i = _items.indexWhere((m) => m.id == item.id);
@@ -142,6 +173,8 @@ class MenuService extends ChangeNotifier {
         }
       case 'item_deleted':
         _items.removeWhere((m) => m.id == msg['id']);
+      case 'category_order_changed':
+        _customCategoryOrder = (msg['order'] as List).cast<String>();
     }
     notifyListeners();
   }
@@ -173,6 +206,7 @@ class MenuService extends ChangeNotifier {
     _items
       ..clear()
       ..addAll(_defaultItems);
+    _customCategoryOrder = [];
     notifyListeners();
   }
 
@@ -244,6 +278,45 @@ class MenuService extends ChangeNotifier {
     _serverToggle(id);
   }
 
+  /// Persists a new admin-chosen category display order. Applies locally
+  /// right away (rather than waiting on the /ws/menu echo, which every other
+  /// write here relies on) since — unlike an item id — there's nothing the
+  /// server could assign differently, so there's no risk of a duplicate/
+  /// mismatched entry to guard against.
+  Future<void> setCategoryOrder(List<String> order) async {
+    _customCategoryOrder = order;
+    notifyListeners();
+    final client = ServerClient.instance;
+    if (!client.isConnected) return;
+    try {
+      await http
+          .put(
+            client.uri('/menu/categories/order'),
+            headers: client.headers,
+            body: jsonEncode({'order': order}),
+          )
+          .timeout(const Duration(seconds: 8));
+    } catch (_) {}
+  }
+
+  /// Renames every item in category [from] to [to]. Relies on the /ws/menu
+  /// echo (one `item_changed` per affected item, plus a
+  /// `category_order_changed`) to apply the result locally, same as
+  /// [updateItem] et al.
+  Future<void> renameCategory(String from, String to) async {
+    final client = ServerClient.instance;
+    if (!client.isConnected) return;
+    try {
+      await http
+          .put(
+            client.uri('/menu/categories/rename'),
+            headers: client.headers,
+            body: jsonEncode({'from': from, 'to': to}),
+          )
+          .timeout(const Duration(seconds: 8));
+    } catch (_) {}
+  }
+
   // ── Server helpers ────────────────────────────────────────────────────────
 
   /// Returns the server-assigned item (with its real id) on success, or
@@ -253,12 +326,14 @@ class MenuService extends ChangeNotifier {
     if (!client.isConnected) return null;
     try {
       final res = await http
-          .post(client.uri('/menu'),
-              headers: client.headers, body: jsonEncode(item.toJson()))
+          .post(
+            client.uri('/menu'),
+            headers: client.headers,
+            body: jsonEncode(item.toJson()),
+          )
           .timeout(const Duration(seconds: 8));
       if (res.statusCode == 201) {
-        return MenuItem.fromJson(
-            jsonDecode(res.body) as Map<String, dynamic>);
+        return MenuItem.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
       }
       return null;
     } catch (_) {
@@ -271,8 +346,11 @@ class MenuService extends ChangeNotifier {
     if (!client.isConnected) return;
     try {
       await http
-          .put(client.uri('/menu/${item.id}'),
-              headers: client.headers, body: jsonEncode(item.toJson()))
+          .put(
+            client.uri('/menu/${item.id}'),
+            headers: client.headers,
+            body: jsonEncode(item.toJson()),
+          )
           .timeout(const Duration(seconds: 8));
     } catch (_) {}
   }

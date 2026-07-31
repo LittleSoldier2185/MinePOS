@@ -49,7 +49,20 @@ Response _list(Request req, AppDb db, ServerConfig config) {
   return jsonOk(slides.map((s) => s.toJson()).toList());
 }
 
-// POST /ads?ext=png&durationSeconds=8 — body is the raw file bytes.
+// Shared by upload/update: either an absolute `expiresAt` (ISO date) or a
+// relative `expiresInDays` (from *now*, at save time) — whichever query
+// param is present wins if both somehow are. Neither present means "leave
+// running forever" (upload) or "don't touch" (update, see _updateSlide).
+DateTime? _parseExpiry(Map<String, String> params) {
+  final days = int.tryParse(params['expiresInDays'] ?? '');
+  if (days != null) return DateTime.now().add(Duration(days: days));
+  final raw = params['expiresAt'];
+  if (raw == null || raw.isEmpty) return null;
+  return DateTime.tryParse(raw);
+}
+
+// POST /ads?ext=png&durationSeconds=8&name=BOGO+Latte&expiresInDays=7
+// (or &expiresAt=2026-08-06) — body is the raw file bytes.
 Future<Response> _upload(Request req, AppDb db, ServerConfig config) async {
   if (requireRoles(req, db, config.jwtSecret, _kAdEditors) == null) {
     return unauthorized();
@@ -67,6 +80,12 @@ Future<Response> _upload(Request req, AppDb db, ServerConfig config) async {
   if (type == 'image' && durationParam != null) {
     durationSeconds = int.tryParse(durationParam);
   }
+  final name = req.url.queryParameters['name']?.trim();
+  final expiresAt = _parseExpiry(req.url.queryParameters);
+  final transition = req.url.queryParameters['transition'];
+  if (transition != null && !kAdTransitions.contains(transition)) {
+    return jsonError('transition must be one of: ${kAdTransitions.join(', ')}');
+  }
 
   final bytes = await req.read().expand((chunk) => chunk).toList();
   if (bytes.isEmpty) return jsonError('Empty file body');
@@ -80,22 +99,28 @@ Future<Response> _upload(Request req, AppDb db, ServerConfig config) async {
     type: type,
     filename: filename,
     durationSeconds: type == 'image' ? (durationSeconds ?? 8) : null,
+    name: (name?.isEmpty ?? true) ? null : name,
+    expiresAt: expiresAt,
+    transition: transition ?? 'fade',
   );
   CustomerDisplayHub.instance.broadcastAdSlides(db.getAdSlides());
   return jsonOk(slide.toJson(), status: 201);
 }
 
-// PATCH /ads/:id  { durationSeconds? , muted? } — durationSeconds applies to
-// image/gif slides only, muted to video slides only; both are accepted
-// independently so either can be updated without touching the other.
+// PATCH /ads/:id  { durationSeconds?, muted?, name?, expiresAt?, expiresInDays?, transition? }
+// durationSeconds applies to image/gif slides only, muted to video slides
+// only; every field is independent so any subset can be updated at once.
+// `expiresAt: null` (present but null) or `expiresInDays: 0` both clear the
+// expiry — same "runs forever" meaning as never having set one.
 Future<Response> _updateSlide(
     Request req, String id, AppDb db, ServerConfig config) async {
   if (requireRoles(req, db, config.jwtSecret, _kAdEditors) == null) {
     return unauthorized();
   }
   final body = await parseJsonBody(req);
-  if (body == null || (!body.containsKey('durationSeconds') && !body.containsKey('muted'))) {
-    return jsonError('durationSeconds and/or muted is required');
+  final recognized = {'durationSeconds', 'muted', 'name', 'expiresAt', 'expiresInDays', 'transition'};
+  if (body == null || !recognized.any(body.containsKey)) {
+    return jsonError('At least one of ${recognized.join(', ')} is required');
   }
   if (body.containsKey('durationSeconds')) {
     final durationSeconds = (body['durationSeconds'] as num?)?.toInt();
@@ -108,6 +133,24 @@ Future<Response> _updateSlide(
     final muted = body['muted'] as bool?;
     if (muted == null) return jsonError('muted must be a boolean');
     db.updateAdSlideMuted(id, muted);
+  }
+  if (body.containsKey('name')) {
+    final name = (body['name'] as String?)?.trim();
+    db.updateAdSlideName(id, (name?.isEmpty ?? true) ? null : name);
+  }
+  if (body.containsKey('transition')) {
+    final transition = body['transition'] as String?;
+    if (transition == null || !kAdTransitions.contains(transition)) {
+      return jsonError('transition must be one of: ${kAdTransitions.join(', ')}');
+    }
+    db.updateAdSlideTransition(id, transition);
+  }
+  if (body.containsKey('expiresInDays')) {
+    final days = (body['expiresInDays'] as num?)?.toInt();
+    db.updateAdSlideExpiry(id, (days == null || days <= 0) ? null : DateTime.now().add(Duration(days: days)));
+  } else if (body.containsKey('expiresAt')) {
+    final raw = body['expiresAt'] as String?;
+    db.updateAdSlideExpiry(id, raw == null ? null : DateTime.tryParse(raw));
   }
   final updated = db.getAdSlide(id);
   if (updated == null) return notFound('Ad slide not found');

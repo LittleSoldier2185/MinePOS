@@ -26,8 +26,17 @@ class CustomerDisplayHub {
   /// Cached so a freshly-connecting subscriber can be sent the current list
   /// immediately (see [addSubscriber]) without needing a DB handle passed
   /// in just for that — set once via [broadcastAdSlides] whenever
-  /// `ad_routes.dart` changes the list.
-  List<Map<String, dynamic>> _adSlidesJson = const [];
+  /// `ad_routes.dart` changes the list. Kept as [DbAdSlide]s (not
+  /// pre-serialized JSON) so [_adSlidesMessage] can re-check [DbAdSlide.isExpired]
+  /// against the current time on every send, not just whatever was true the
+  /// moment this was last set.
+  //
+  // ponytail: this still only re-evaluates expiry when something changes it
+  // (a CRUD call) or a display (re)connects — a slide that expires while an
+  // already-connected display just sits idle keeps showing until the next
+  // such event. Add a periodic sweep (Timer.periodic + broadcastAdSlides)
+  // if that gap matters in practice.
+  List<DbAdSlide> _adSlides = const [];
 
   /// Real customer-facing display connections — what `/admin/presence`
   /// reports, distinct from cashier registers that merely publish here.
@@ -83,14 +92,20 @@ class CustomerDisplayHub {
     }
   }
 
-  String _adSlidesMessage() => jsonEncode({'type': 'ads', 'slides': _adSlidesJson});
+  String _adSlidesMessage() => jsonEncode({
+        'type': 'ads',
+        'slides': _adSlides.where((s) => !s.isExpired).map((s) => s.toJson()).toList(),
+      });
 
-  /// Called once at server startup (to seed [_adSlidesJson] from the DB
-  /// before any display connects) and again by `ad_routes.dart` whenever the
-  /// list changes — pushes shop-wide to every connected display, the same
-  /// as [_broadcastStations]; ads aren't per-station.
+  /// Called once at server startup (to seed [_adSlides] from the DB before
+  /// any display connects) and again by `ad_routes.dart` whenever the list
+  /// changes — pushes shop-wide to every connected display, the same as
+  /// [_broadcastStations]; ads aren't per-station. [slides] is every slide
+  /// (Settings needs to see/manage expired ones too) — filtering down to
+  /// what a customer display should actually see happens in
+  /// [_adSlidesMessage].
   void broadcastAdSlides(List<DbAdSlide> slides) {
-    _adSlidesJson = slides.map((s) => s.toJson()).toList();
+    _adSlides = slides;
     final encoded = _adSlidesMessage();
     for (final channel in _subscribers.keys) {
       try {

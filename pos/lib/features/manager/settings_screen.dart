@@ -28,6 +28,7 @@ import 'services/backup_service.dart';
 import 'services/promotion_admin_service.dart';
 import 'services/shop_config_service.dart';
 import 'services/shop_service.dart';
+import 'widgets/ad_media_details_sheet.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, this.embedded = false});
@@ -48,6 +49,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   AppLanguage? _language;
   String? _printerDeviceName;
   ReceiptPaperSize? _paperSize;
+  bool? _kitchenShowImages;
 
   final _shopFormKey = GlobalKey<FormState>();
   late final _shopNameController = TextEditingController();
@@ -68,7 +70,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _uploadingAd = false;
   double _uploadProgress = 0;
   String? _adsError;
-  final _adDurationControllers = <String, TextEditingController>{};
 
   List<Promotion> _promotions = [];
   bool _promotionsLoaded = false;
@@ -98,9 +99,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _shopFooterController.dispose();
     _shopPromptPayController.dispose();
     _shopPromptPayLabelController.dispose();
-    for (final c in _adDurationControllers.values) {
-      c.dispose();
-    }
     super.dispose();
   }
 
@@ -109,13 +107,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final language = await _svc.getLanguage();
     final deviceName = await _svc.getSelectedPrinterName();
     final paperSize = await _svc.getPaperSize();
+    final kitchenShowImages = await _svc.getKitchenShowImages();
     if (!mounted) return;
     setState(() {
       _printer = printer;
       _language = language;
       _printerDeviceName = deviceName;
       _paperSize = paperSize;
+      _kitchenShowImages = kitchenShowImages;
     });
+  }
+
+  Future<void> _setKitchenShowImages(bool show) async {
+    setState(() => _kitchenShowImages = show);
+    await _svc.setKitchenShowImages(show);
   }
 
   Future<void> _loadShopDetails() async {
@@ -165,7 +170,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.shopDetailsSavedMessage)),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.shopDetailsSavedMessage),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
@@ -183,12 +190,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() {
         _adSlides = slides;
         _adsLoaded = true;
-        for (final slide in slides) {
-          _adDurationControllers.putIfAbsent(
-            slide.id,
-            () => TextEditingController(text: '${slide.durationSeconds ?? 8}'),
-          );
-        }
       });
     } catch (_) {
       // Left un-loaded — the section just won't render until this device
@@ -203,6 +204,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     final path = result?.files.single.path;
     if (path == null) return;
+    final ext = path.split('.').last.toLowerCase();
+    final isVideo = {'mp4', 'webm', 'mov'}.contains(ext);
+
+    if (!mounted) return;
+    final details = await showAdMediaDetailsSheet(context, isVideo: isVideo);
+    if (details == null || !mounted) return;
 
     setState(() {
       _uploadingAd = true;
@@ -210,11 +217,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _adsError = null;
     });
     try {
-      final ext = path.split('.').last.toLowerCase();
       final bytes = await File(path).readAsBytes();
       await AdService.instance.upload(
         bytes,
         ext: ext,
+        durationSeconds: details.durationSeconds ?? 8,
+        name: details.name,
+        expiresAt: details.expiresAt,
+        transition: details.transition,
         onProgress: (p) {
           if (mounted) setState(() => _uploadProgress = p);
         },
@@ -228,14 +238,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _updateAdDuration(String id, String secondsText) async {
-    final seconds = int.tryParse(secondsText);
-    if (seconds == null || seconds <= 0) return;
+  Future<void> _editAdSlide(AdSlideInfo slide) async {
+    final details = await showAdMediaDetailsSheet(
+      context,
+      isVideo: slide.type == 'video',
+      initialName: slide.name,
+      initialDurationSeconds: slide.durationSeconds ?? 8,
+      initialTransition: slide.transition,
+      initialExpiresAt: slide.expiresAt,
+    );
+    if (details == null || !mounted) return;
+
+    final index = _adSlides.indexWhere((s) => s.id == slide.id);
+    if (index == -1) return;
+    final previous = _adSlides[index];
+    setState(() {
+      _adSlides = List.of(_adSlides)
+        ..[index] = previous.copyWith(
+          name: details.name,
+          clearName: details.name == null,
+          expiresAt: details.expiresAt,
+          clearExpiry: details.expiresAt == null,
+          transition: details.transition,
+          durationSeconds: details.durationSeconds,
+        );
+    });
     try {
-      await AdService.instance.updateDuration(id, seconds);
+      await AdService.instance.updateDetails(
+        slide.id,
+        name: details.name,
+        durationSeconds: details.durationSeconds,
+        transition: details.transition,
+        expiresAt: details.expiresAt,
+      );
     } catch (e) {
       if (!mounted) return;
-      setState(() => _adsError = '$e');
+      setState(() {
+        _adsError = '$e';
+        _adSlides = List.of(_adSlides)..[index] = previous;
+      });
     }
   }
 
@@ -244,14 +285,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (index == -1) return;
     final previous = _adSlides[index];
     setState(() {
-      _adSlides = List.of(_adSlides)
-        ..[index] = AdSlideInfo(
-          id: previous.id,
-          type: previous.type,
-          url: previous.url,
-          durationSeconds: previous.durationSeconds,
-          muted: muted,
-        );
+      _adSlides = List.of(_adSlides)..[index] = previous.copyWith(muted: muted);
     });
     try {
       await AdService.instance.updateMuted(id, muted);
@@ -267,7 +301,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _deleteAdSlide(String id) async {
     try {
       await AdService.instance.delete(id);
-      _adDurationControllers.remove(id)?.dispose();
       await _loadAds();
     } catch (e) {
       if (!mounted) return;
@@ -306,7 +339,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _openPromotionEditor({Promotion? existing}) async {
     await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => PromotionEditorScreen(existing: existing)),
+      MaterialPageRoute(
+        builder: (_) => PromotionEditorScreen(existing: existing),
+      ),
     );
     await _loadPromotions();
   }
@@ -374,7 +409,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () => Navigator.pop(context, ExtraDisplayMode.customer),
             child: Row(
               children: [
-                const Icon(Icons.tv_outlined, size: 18, color: AppColors.primary),
+                const Icon(
+                  Icons.tv_outlined,
+                  size: 18,
+                  color: AppColors.primary,
+                ),
                 const SizedBox(width: 12),
                 Text(l10n.roleSelectionCustomerTitle),
               ],
@@ -384,7 +423,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () => Navigator.pop(context, ExtraDisplayMode.kitchen),
             child: Row(
               children: [
-                const Icon(Icons.soup_kitchen_outlined, size: 18, color: AppColors.primary),
+                const Icon(
+                  Icons.soup_kitchen_outlined,
+                  size: 18,
+                  color: AppColors.primary,
+                ),
                 const SizedBox(width: 12),
                 Text(l10n.roleSelectionKitchenTitle),
               ],
@@ -397,7 +440,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final ok = await ExtraDisplayLauncher.open(mode);
     if (!mounted || ok) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(AppLocalizations.of(context)!.openExtraDisplayFailedMessage)),
+      SnackBar(
+        content: Text(
+          AppLocalizations.of(context)!.openExtraDisplayFailedMessage,
+        ),
+      ),
     );
   }
 
@@ -433,15 +480,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            path == null ? l10n.exportBackupCancelledMessage : l10n.exportBackupSavedMessage,
+            path == null
+                ? l10n.exportBackupCancelledMessage
+                : l10n.exportBackupSavedMessage,
           ),
         ),
       );
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.exportBackupFailedMessage)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.exportBackupFailedMessage)));
     } finally {
       if (mounted) setState(() => _exportingBackup = false);
     }
@@ -472,437 +521,466 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _accountCard(ServerClient client, AppLocalizations l10n) => _Card(
-        child: Column(
-          children: [
-            _InfoRow(
-              label: l10n.signedInAsLabel,
-              value: client.username ?? l10n.emDash,
-            ),
-            const Divider(height: 20),
-            _InfoRow(
-              label: l10n.roleLabel,
-              value:
-                  (client.role == 'worker'
-                          ? l10n.employeeRoleDisplay
-                          : (client.role == 'manager'
-                                ? l10n.managerRoleDisplay
-                                : l10n.ownerRoleDisplay))
-                      .toUpperCase(),
-            ),
-          ],
+    child: Column(
+      children: [
+        _InfoRow(
+          label: l10n.signedInAsLabel,
+          value: client.username ?? l10n.emDash,
         ),
-      );
+        const Divider(height: 20),
+        _InfoRow(
+          label: l10n.roleLabel,
+          value:
+              (client.role == 'worker'
+                      ? l10n.employeeRoleDisplay
+                      : (client.role == 'manager'
+                            ? l10n.managerRoleDisplay
+                            : l10n.ownerRoleDisplay))
+                  .toUpperCase(),
+        ),
+      ],
+    ),
+  );
 
   Widget _shopDetailsCard(AppLocalizations l10n) => _Card(
-        child: Form(
-          key: _shopFormKey,
-          child: Column(
-            children: [
-              AppTextField(
-                label: l10n.shopNameFieldLabel,
-                controller: _shopNameController,
-                hintText: l10n.shopNameFieldHint,
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? l10n.shopNameValidatorError
-                    : null,
-              ),
-              const SizedBox(height: 14),
-              AppTextField(
-                label: l10n.emailFieldLabel,
-                controller: _shopEmailController,
-                hintText: l10n.emailFieldHint,
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 14),
-              AppTextField(
-                label: l10n.addressFieldLabel,
-                controller: _shopAddressController,
-                hintText: l10n.optionalHint,
-              ),
-              const SizedBox(height: 14),
-              AppTextField(
-                label: l10n.taxIdFieldLabel,
-                controller: _shopTaxIdController,
-                hintText: l10n.optionalHint,
-              ),
-              const SizedBox(height: 14),
-              AppTextField(
-                label: l10n.receiptFooterFieldLabel,
-                controller: _shopFooterController,
-                hintText: l10n.receiptFooterFieldHint,
-              ),
-              const SizedBox(height: 14),
-              AppTextField(
-                label: l10n.promptpayIdFieldLabel,
-                controller: _shopPromptPayController,
-                hintText: l10n.promptpayIdFieldHint,
-                keyboardType: TextInputType.phone,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return null;
-                  final digits = PromptPayQr.sanitize(v);
-                  if (digits.length != 10 && digits.length != 13) {
-                    return l10n.promptpayIdValidatorError;
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 14),
-              AppTextField(
-                label: l10n.promptpayLabelFieldLabel,
-                controller: _shopPromptPayLabelController,
-                hintText: l10n.promptpayLabelFieldHint,
-              ),
-              if (_shopError != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  _shopError!,
-                  style: const TextStyle(
-                    color: AppColors.terracottaDark,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _savingShop ? null : _saveShopDetails,
-                  child: _savingShop
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : Text(l10n.saveChangesButton),
-                ),
-              ),
-            ],
+    child: Form(
+      key: _shopFormKey,
+      child: Column(
+        children: [
+          AppTextField(
+            label: l10n.shopNameFieldLabel,
+            controller: _shopNameController,
+            hintText: l10n.shopNameFieldHint,
+            validator: (v) => (v == null || v.trim().isEmpty)
+                ? l10n.shopNameValidatorError
+                : null,
           ),
-        ),
-      );
+          const SizedBox(height: 14),
+          AppTextField(
+            label: l10n.emailFieldLabel,
+            controller: _shopEmailController,
+            hintText: l10n.emailFieldHint,
+            keyboardType: TextInputType.emailAddress,
+          ),
+          const SizedBox(height: 14),
+          AppTextField(
+            label: l10n.addressFieldLabel,
+            controller: _shopAddressController,
+            hintText: l10n.optionalHint,
+          ),
+          const SizedBox(height: 14),
+          AppTextField(
+            label: l10n.taxIdFieldLabel,
+            controller: _shopTaxIdController,
+            hintText: l10n.optionalHint,
+          ),
+          const SizedBox(height: 14),
+          AppTextField(
+            label: l10n.receiptFooterFieldLabel,
+            controller: _shopFooterController,
+            hintText: l10n.receiptFooterFieldHint,
+          ),
+          const SizedBox(height: 14),
+          AppTextField(
+            label: l10n.promptpayIdFieldLabel,
+            controller: _shopPromptPayController,
+            hintText: l10n.promptpayIdFieldHint,
+            keyboardType: TextInputType.phone,
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return null;
+              final digits = PromptPayQr.sanitize(v);
+              if (digits.length != 10 && digits.length != 13) {
+                return l10n.promptpayIdValidatorError;
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 14),
+          AppTextField(
+            label: l10n.promptpayLabelFieldLabel,
+            controller: _shopPromptPayLabelController,
+            hintText: l10n.promptpayLabelFieldHint,
+          ),
+          if (_shopError != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              _shopError!,
+              style: const TextStyle(
+                color: AppColors.terracottaDark,
+                fontSize: 12,
+              ),
+            ),
+          ],
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _savingShop ? null : _saveShopDetails,
+              child: _savingShop
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(l10n.saveChangesButton),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 
   Widget _connectionCard(ServerClient client, AppLocalizations l10n) => _Card(
-        child: Column(
-          children: [
-            _InfoRow(
-              label: l10n.settingsServerAddressLabel,
-              value: client.baseUrl ?? l10n.emDash,
-            ),
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _disconnect,
-                icon: const Icon(Icons.link_off, size: 16),
-                label: Text(l10n.disconnectLabel),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.terracottaDark,
-                  side: const BorderSide(color: AppColors.terracottaDark),
-                ),
-              ),
-            ),
-          ],
+    child: Column(
+      children: [
+        _InfoRow(
+          label: l10n.settingsServerAddressLabel,
+          value: client.baseUrl ?? l10n.emDash,
         ),
-      );
-
-  Widget _printerCard(AppLocalizations l10n) => _Card(
-        child: Column(
-          children: [
-            _ChoiceRow(
-              icon: Icons.bluetooth,
-              label: l10n.bluetooth,
-              selected: _printer == PrinterChoice.bluetooth,
-              onTap: () => _setPrinter(PrinterChoice.bluetooth),
-            ),
-            const SizedBox(height: 8),
-            _ChoiceRow(
-              icon: Icons.usb,
-              label: l10n.usb,
-              selected: _printer == PrinterChoice.usb,
-              onTap: () => _setPrinter(PrinterChoice.usb),
-            ),
-            const SizedBox(height: 8),
-            _ChoiceRow(
-              icon: Icons.block,
-              label: l10n.noPrinterOption,
-              selected: _printer == PrinterChoice.skip,
-              onTap: () => _setPrinter(PrinterChoice.skip),
-            ),
-            if (_printer != PrinterChoice.skip) ...[
-              const Divider(height: 24),
-              _InfoRow(
-                label: l10n.selectedPrinterLabel,
-                value: _printerDeviceName ?? l10n.printerNotSelectedValue,
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _selectPrinterDevice,
-                  icon: const Icon(Icons.search, size: 16),
-                  label: Text(
-                    _printerDeviceName == null
-                        ? l10n.selectPrinterButton
-                        : l10n.changePrinterButton,
-                  ),
-                ),
-              ),
-              const Divider(height: 24),
-              Text(
-                l10n.paperSizeLabel,
-                style: const TextStyle(fontSize: 12, color: AppColors.muted),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: _ChoiceRow(
-                      icon: Icons.receipt_long,
-                      label: l10n.paperSize58,
-                      selected: _paperSize == ReceiptPaperSize.mm58,
-                      onTap: () => _setPaperSize(ReceiptPaperSize.mm58),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _ChoiceRow(
-                      icon: Icons.receipt_long,
-                      label: l10n.paperSize80,
-                      selected: _paperSize == ReceiptPaperSize.mm80,
-                      onTap: () => _setPaperSize(ReceiptPaperSize.mm80),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            const SizedBox(height: 10),
-            Text(
-              l10n.printerDiscoveryNote,
-              style: const TextStyle(
-                color: AppColors.muted,
-                fontSize: 11,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ],
-        ),
-      );
-
-  Widget _languageCard(AppLocalizations l10n) => _Card(
-        child: Column(
-          children: [
-            _ChoiceRow(
-              icon: Icons.language,
-              label: l10n.englishOption,
-              selected: _language == AppLanguage.english,
-              onTap: () => _setLanguage(AppLanguage.english),
-            ),
-            const SizedBox(height: 8),
-            _ChoiceRow(
-              icon: Icons.language,
-              label: l10n.thaiOption,
-              selected: _language == AppLanguage.thai,
-              onTap: () => _setLanguage(AppLanguage.thai),
-            ),
-          ],
-        ),
-      );
-
-  Widget _extraDisplayCard(AppLocalizations l10n) => _Card(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _openExtraDisplay,
-                icon: const Icon(Icons.open_in_new, size: 16),
-                label: Text(l10n.openExtraDisplayButton),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              l10n.openExtraDisplayHint,
-              style: const TextStyle(color: AppColors.muted, fontSize: 11),
-            ),
-          ],
-        ),
-      );
-
-  Widget _serverCard(BuildContext context, AppLocalizations l10n) => _Card(
-        child: SizedBox(
+        const SizedBox(height: 14),
+        SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const ServerStatusScreen()),
+            onPressed: _disconnect,
+            icon: const Icon(Icons.link_off, size: 16),
+            label: Text(l10n.disconnectLabel),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.terracottaDark,
+              side: const BorderSide(color: AppColors.terracottaDark),
             ),
-            icon: const Icon(Icons.dns_outlined, size: 16),
-            label: Text(l10n.serverStatusButton),
           ),
         ),
-      );
+      ],
+    ),
+  );
+
+  Widget _printerCard(AppLocalizations l10n) => _Card(
+    child: Column(
+      children: [
+        _ChoiceRow(
+          icon: Icons.bluetooth,
+          label: l10n.bluetooth,
+          selected: _printer == PrinterChoice.bluetooth,
+          onTap: () => _setPrinter(PrinterChoice.bluetooth),
+        ),
+        const SizedBox(height: 8),
+        _ChoiceRow(
+          icon: Icons.usb,
+          label: l10n.usb,
+          selected: _printer == PrinterChoice.usb,
+          onTap: () => _setPrinter(PrinterChoice.usb),
+        ),
+        const SizedBox(height: 8),
+        _ChoiceRow(
+          icon: Icons.block,
+          label: l10n.noPrinterOption,
+          selected: _printer == PrinterChoice.skip,
+          onTap: () => _setPrinter(PrinterChoice.skip),
+        ),
+        if (_printer != PrinterChoice.skip) ...[
+          const Divider(height: 24),
+          _InfoRow(
+            label: l10n.selectedPrinterLabel,
+            value: _printerDeviceName ?? l10n.printerNotSelectedValue,
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _selectPrinterDevice,
+              icon: const Icon(Icons.search, size: 16),
+              label: Text(
+                _printerDeviceName == null
+                    ? l10n.selectPrinterButton
+                    : l10n.changePrinterButton,
+              ),
+            ),
+          ),
+          const Divider(height: 24),
+          Text(
+            l10n.paperSizeLabel,
+            style: const TextStyle(fontSize: 12, color: AppColors.muted),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _ChoiceRow(
+                  icon: Icons.receipt_long,
+                  label: l10n.paperSize58,
+                  selected: _paperSize == ReceiptPaperSize.mm58,
+                  onTap: () => _setPaperSize(ReceiptPaperSize.mm58),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _ChoiceRow(
+                  icon: Icons.receipt_long,
+                  label: l10n.paperSize80,
+                  selected: _paperSize == ReceiptPaperSize.mm80,
+                  onTap: () => _setPaperSize(ReceiptPaperSize.mm80),
+                ),
+              ),
+            ],
+          ),
+        ],
+        const SizedBox(height: 10),
+        Text(
+          l10n.printerDiscoveryNote,
+          style: const TextStyle(
+            color: AppColors.muted,
+            fontSize: 11,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget _languageCard(AppLocalizations l10n) => _Card(
+    child: Column(
+      children: [
+        _ChoiceRow(
+          icon: Icons.language,
+          label: l10n.englishOption,
+          selected: _language == AppLanguage.english,
+          onTap: () => _setLanguage(AppLanguage.english),
+        ),
+        const SizedBox(height: 8),
+        _ChoiceRow(
+          icon: Icons.language,
+          label: l10n.thaiOption,
+          selected: _language == AppLanguage.thai,
+          onTap: () => _setLanguage(AppLanguage.thai),
+        ),
+      ],
+    ),
+  );
+
+  Widget _kitchenDisplayCard(AppLocalizations l10n) => _Card(
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            l10n.kitchenShowImagesLabel,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          ),
+        ),
+        Switch(
+          value: _kitchenShowImages!,
+          onChanged: _setKitchenShowImages,
+          activeThumbColor: AppColors.primary,
+        ),
+      ],
+    ),
+  );
+
+  Widget _extraDisplayCard(AppLocalizations l10n) => _Card(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _openExtraDisplay,
+            icon: const Icon(Icons.open_in_new, size: 16),
+            label: Text(l10n.openExtraDisplayButton),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          l10n.openExtraDisplayHint,
+          style: const TextStyle(color: AppColors.muted, fontSize: 11),
+        ),
+      ],
+    ),
+  );
+
+  Widget _serverCard(BuildContext context, AppLocalizations l10n) => _Card(
+    child: SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const ServerStatusScreen())),
+        icon: const Icon(Icons.dns_outlined, size: 16),
+        label: Text(l10n.serverStatusButton),
+      ),
+    ),
+  );
 
   Widget _backupCard(AppLocalizations l10n) => _Card(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _exportingBackup ? null : _exportBackup,
-                icon: _exportingBackup
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.download_outlined, size: 16),
-                label: Text(l10n.exportBackupButton),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              l10n.exportBackupHint,
-              style: const TextStyle(color: AppColors.muted, fontSize: 11),
-            ),
-          ],
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _exportingBackup ? null : _exportBackup,
+            icon: _exportingBackup
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.download_outlined, size: 16),
+            label: Text(l10n.exportBackupButton),
+          ),
         ),
-      );
+        const SizedBox(height: 8),
+        Text(
+          l10n.exportBackupHint,
+          style: const TextStyle(color: AppColors.muted, fontSize: 11),
+        ),
+      ],
+    ),
+  );
 
   Widget _advertisingCard(AppLocalizations l10n) => _Card(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              l10n.advertisingSectionHint,
-              style: const TextStyle(color: AppColors.muted, fontSize: 11),
-            ),
-            const SizedBox(height: 14),
-            if (_adSlides.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text(
-                  l10n.advertisingEmptyMessage,
-                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
-                ),
-              )
-            else
-              ReorderableListView(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                onReorderItem: _reorderAdSlide,
-                // The default drag handle overlays an icon on top of each
-                // item's trailing edge (Stack + Positioned, see
-                // ReorderableListView source) — that was landing directly on
-                // top of this row's own preview/mute/delete icon buttons.
-                // Using an explicit handle instead avoids the collision.
-                buildDefaultDragHandles: false,
-                children: [
-                  for (final (index, slide) in _adSlides.indexed)
-                    _AdSlideRow(
-                      key: ValueKey(slide.id),
-                      index: index,
-                      slide: slide,
-                      durationController: _adDurationControllers[slide.id]!,
-                      durationLabel: l10n.advertisingDurationLabel,
-                      playsUntilEndLabel: l10n.advertisingPlaysUntilEndLabel,
-                      deleteTooltip: l10n.advertisingDeleteSlideTooltip,
-                      previewTooltip: l10n.advertisingPreviewTooltip,
-                      muteTooltip: l10n.advertisingMuteTooltip,
-                      unmuteTooltip: l10n.advertisingUnmuteTooltip,
-                      onDurationChanged: (seconds) => _updateAdDuration(slide.id, seconds),
-                      onMutedChanged: (muted) => _updateAdMuted(slide.id, muted),
-                      onDelete: () => _deleteAdSlide(slide.id),
-                    ),
-                ],
-              ),
-            if (_adsError != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                _adsError!,
-                style: const TextStyle(color: AppColors.terracottaDark, fontSize: 12),
-              ),
-            ],
-            const SizedBox(height: 8),
-            if (_uploadingAd) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: _uploadProgress > 0 ? _uploadProgress : null,
-                  minHeight: 6,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '${(_uploadProgress * 100).round()}%',
-                style: const TextStyle(color: AppColors.muted, fontSize: 11),
-              ),
-              const SizedBox(height: 8),
-            ],
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _uploadingAd ? null : _pickAndUploadAd,
-                icon: const Icon(Icons.add_photo_alternate_outlined, size: 16),
-                label: Text(l10n.advertisingAddSlideButton),
-              ),
-            ),
-          ],
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.advertisingSectionHint,
+          style: const TextStyle(color: AppColors.muted, fontSize: 11),
         ),
-      );
+        const SizedBox(height: 14),
+        if (_adSlides.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              l10n.advertisingEmptyMessage,
+              style: const TextStyle(color: AppColors.muted, fontSize: 12),
+            ),
+          )
+        else
+          ReorderableListView(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            onReorderItem: _reorderAdSlide,
+            // The default drag handle overlays an icon on top of each
+            // item's trailing edge (Stack + Positioned, see
+            // ReorderableListView source) — that was landing directly on
+            // top of this row's own preview/mute/delete icon buttons.
+            // Using an explicit handle instead avoids the collision.
+            buildDefaultDragHandles: false,
+            children: [
+              for (final (index, slide) in _adSlides.indexed)
+                _AdSlideRow(
+                  key: ValueKey(slide.id),
+                  index: index,
+                  slide: slide,
+                  durationLabel: l10n.advertisingDurationLabel,
+                  playsUntilEndLabel: l10n.advertisingPlaysUntilEndLabel,
+                  deleteTooltip: l10n.advertisingDeleteSlideTooltip,
+                  previewTooltip: l10n.advertisingPreviewTooltip,
+                  muteTooltip: l10n.advertisingMuteTooltip,
+                  unmuteTooltip: l10n.advertisingUnmuteTooltip,
+                  editTooltip: l10n.advertisingEditTooltip,
+                  onMutedChanged: (muted) => _updateAdMuted(slide.id, muted),
+                  onDelete: () => _deleteAdSlide(slide.id),
+                  onEdit: () => _editAdSlide(slide),
+                ),
+            ],
+          ),
+        if (_adsError != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            _adsError!,
+            style: const TextStyle(
+              color: AppColors.terracottaDark,
+              fontSize: 12,
+            ),
+          ),
+        ],
+        const SizedBox(height: 8),
+        if (_uploadingAd) ...[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: _uploadProgress > 0 ? _uploadProgress : null,
+              minHeight: 6,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${(_uploadProgress * 100).round()}%',
+            style: const TextStyle(color: AppColors.muted, fontSize: 11),
+          ),
+          const SizedBox(height: 8),
+        ],
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _uploadingAd ? null : _pickAndUploadAd,
+            icon: const Icon(Icons.add_photo_alternate_outlined, size: 16),
+            label: Text(l10n.advertisingAddSlideButton),
+          ),
+        ),
+      ],
+    ),
+  );
 
   Widget _promotionsCard(AppLocalizations l10n) => _Card(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (_promotions.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text(
-                  l10n.promotionsEmptyMessage,
-                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_promotions.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              l10n.promotionsEmptyMessage,
+              style: const TextStyle(color: AppColors.muted, fontSize: 12),
+            ),
+          )
+        else
+          ..._promotions.map(
+            (promotion) => Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                title: Text(promotion.name),
+                subtitle: Text(_promotionTypeLabel(l10n, promotion)),
+                leading: Icon(
+                  promotion.active ? Icons.toggle_on : Icons.toggle_off,
+                  color: promotion.active ? AppColors.primary : AppColors.muted,
+                  size: 32,
                 ),
-              )
-            else
-              ..._promotions.map((promotion) => Card(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    child: ListTile(
-                      title: Text(promotion.name),
-                      subtitle: Text(_promotionTypeLabel(l10n, promotion)),
-                      leading: Icon(
-                        promotion.active ? Icons.toggle_on : Icons.toggle_off,
-                        color: promotion.active ? AppColors.primary : AppColors.muted,
-                        size: 32,
-                      ),
-                      onTap: () => _openPromotionEditor(existing: promotion),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline, color: AppColors.terracottaDark),
-                        onPressed: () => _confirmDeletePromotion(promotion),
-                      ),
-                    ),
-                  )),
-            if (_promotionsError != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                _promotionsError!,
-                style: const TextStyle(color: AppColors.terracottaDark, fontSize: 12),
-              ),
-            ],
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => _openPromotionEditor(),
-                icon: const Icon(Icons.sell_outlined, size: 16),
-                label: Text(l10n.promotionsAddButton),
+                onTap: () => _openPromotionEditor(existing: promotion),
+                trailing: IconButton(
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    color: AppColors.terracottaDark,
+                  ),
+                  onPressed: () => _confirmDeletePromotion(promotion),
+                ),
               ),
             ),
-          ],
+          ),
+        if (_promotionsError != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            _promotionsError!,
+            style: const TextStyle(
+              color: AppColors.terracottaDark,
+              fontSize: 12,
+            ),
+          ),
+        ],
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => _openPromotionEditor(),
+            icon: const Icon(Icons.sell_outlined, size: 16),
+            label: Text(l10n.promotionsAddButton),
+          ),
         ),
-      );
+      ],
+    ),
+  );
 
   String _promotionTypeLabel(AppLocalizations l10n, Promotion promotion) {
     final type = switch (promotion.type) {
@@ -917,38 +995,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
     };
     final scope = switch (promotion.scopeType) {
       'item' => l10n.promotionScopeItem,
-      'category' => promotion.scopeCategory ?? l10n.promotionScopeCategory,
+      'category' =>
+        promotion.scopeCategories.isEmpty
+            ? l10n.promotionScopeCategory
+            : promotion.scopeCategories.join(', '),
       _ => l10n.promotionScopeShop,
     };
     return '$type · $scope';
   }
 
   Widget _dangerZoneCard(AppLocalizations l10n) => _Card(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              l10n.removeShopWarningText,
-              style: const TextStyle(color: AppColors.muted, fontSize: 12),
-            ),
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _removeShop,
-                icon: const Icon(Icons.delete_forever, size: 16),
-                label: Text(l10n.removeShopButton),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.terracottaDark,
-                  side: const BorderSide(color: AppColors.terracottaDark),
-                ),
-              ),
-            ),
-          ],
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.removeShopWarningText,
+          style: const TextStyle(color: AppColors.muted, fontSize: 12),
         ),
-      );
+        const SizedBox(height: 14),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _removeShop,
+            icon: const Icon(Icons.delete_forever, size: 16),
+            label: Text(l10n.removeShopButton),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.terracottaDark,
+              side: const BorderSide(color: AppColors.terracottaDark),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 
-  Widget _embeddedShell(BuildContext context, AppLocalizations l10n, Widget body) {
+  Widget _embeddedShell(
+    BuildContext context,
+    AppLocalizations l10n,
+    Widget body,
+  ) {
     return Column(
       children: [
         Padding(
@@ -974,7 +1059,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
         const Divider(height: 1),
-        Expanded(child: Container(color: AppColors.background, child: body)),
+        Expanded(
+          child: Container(color: AppColors.background, child: body),
+        ),
       ],
     );
   }
@@ -984,7 +1071,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final client = ServerClient.instance;
     final l10n = AppLocalizations.of(context)!;
 
-    if (_printer == null || _language == null || _paperSize == null) {
+    if (_printer == null ||
+        _language == null ||
+        _paperSize == null ||
+        _kitchenShowImages == null) {
       const loading = Center(child: CircularProgressIndicator());
       return widget.embedded
           ? _embeddedShell(context, l10n, loading)
@@ -1031,6 +1121,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         label: l10n.languageSectionLabel,
         icon: Icons.language,
         builder: () => _languageCard(l10n),
+      ),
+      _SettingsSection(
+        label: l10n.kitchenDisplaySectionLabel,
+        icon: Icons.soup_kitchen_outlined,
+        builder: () => _kitchenDisplayCard(l10n),
       ),
       if (isWindowsDesktop)
         _SettingsSection(
@@ -1272,119 +1367,119 @@ class _RemoveShopSheetState extends State<_RemoveShopSheet> {
     return PopScope(
       canPop: !_deleting,
       child: Container(
-      margin: EdgeInsets.only(bottom: bottomInset),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-      child: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.terracottaLight,
-                    borderRadius: BorderRadius.circular(2),
+        margin: EdgeInsets.only(bottom: bottomInset),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+        child: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.terracottaLight,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                l10n.removeShopDialogTitle,
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                l10n.removeShopDialogWarning,
-                style: const TextStyle(
-                  color: AppColors.terracottaDark,
-                  fontSize: 12,
-                ),
-              ),
-              const SizedBox(height: 20),
-              AppTextField(
-                label: l10n.emailFieldLabel,
-                controller: _emailController,
-                hintText: l10n.removeShopEmailHint,
-                keyboardType: TextInputType.emailAddress,
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? l10n.emailRequiredValidatorError
-                    : null,
-              ),
-              const SizedBox(height: 14),
-              AppTextField(
-                label: l10n.usernameLabel,
-                controller: _usernameController,
-                hintText: ServerClient.instance.username,
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? l10n.usernameRequiredValidator
-                    : null,
-              ),
-              const SizedBox(height: 14),
-              AppTextField(
-                label: l10n.passwordLabel,
-                controller: _passwordController,
-                obscureText: true,
-                validator: (v) => (v == null || v.isEmpty)
-                    ? l10n.passwordRequiredValidator
-                    : null,
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 Text(
-                  _error!,
+                  l10n.removeShopDialogTitle,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  l10n.removeShopDialogWarning,
                   style: const TextStyle(
                     color: AppColors.terracottaDark,
                     fontSize: 12,
                   ),
                 ),
-              ],
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _deleting
-                          ? null
-                          : () => Navigator.of(context).pop(false),
-                      child: Text(l10n.cancel),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _deleting ? null : _confirm,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.terracottaDark,
-                      ),
-                      child: _deleting
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : Text(l10n.removeShopConfirmButton),
+                const SizedBox(height: 20),
+                AppTextField(
+                  label: l10n.emailFieldLabel,
+                  controller: _emailController,
+                  hintText: l10n.removeShopEmailHint,
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? l10n.emailRequiredValidatorError
+                      : null,
+                ),
+                const SizedBox(height: 14),
+                AppTextField(
+                  label: l10n.usernameLabel,
+                  controller: _usernameController,
+                  hintText: ServerClient.instance.username,
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? l10n.usernameRequiredValidator
+                      : null,
+                ),
+                const SizedBox(height: 14),
+                AppTextField(
+                  label: l10n.passwordLabel,
+                  controller: _passwordController,
+                  obscureText: true,
+                  validator: (v) => (v == null || v.isEmpty)
+                      ? l10n.passwordRequiredValidator
+                      : null,
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    _error!,
+                    style: const TextStyle(
+                      color: AppColors.terracottaDark,
+                      fontSize: 12,
                     ),
                   ),
                 ],
-              ),
-            ],
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _deleting
+                            ? null
+                            : () => Navigator.of(context).pop(false),
+                        child: Text(l10n.cancel),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _deleting ? null : _confirm,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.terracottaDark,
+                        ),
+                        child: _deleting
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Text(l10n.removeShopConfirmButton),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -1435,16 +1530,16 @@ class _AdSlideRow extends StatelessWidget {
     required super.key,
     required this.index,
     required this.slide,
-    required this.durationController,
     required this.durationLabel,
     required this.playsUntilEndLabel,
     required this.deleteTooltip,
     required this.previewTooltip,
     required this.muteTooltip,
     required this.unmuteTooltip,
-    required this.onDurationChanged,
+    required this.editTooltip,
     required this.onMutedChanged,
     required this.onDelete,
+    required this.onEdit,
   });
 
   /// Position within the reorderable list — needed by
@@ -1452,94 +1547,191 @@ class _AdSlideRow extends StatelessWidget {
   /// for this list (see call site).
   final int index;
   final AdSlideInfo slide;
-  final TextEditingController durationController;
   final String durationLabel;
   final String playsUntilEndLabel;
   final String deleteTooltip;
   final String previewTooltip;
   final String muteTooltip;
   final String unmuteTooltip;
-  final ValueChanged<String> onDurationChanged;
+  final String editTooltip;
   final ValueChanged<bool> onMutedChanged;
   final VoidCallback onDelete;
 
+  /// Opens the unified "Media Details" sheet (name/duration/transition/
+  /// expiry) — the single edit affordance for all four, replacing what used
+  /// to be a separate rename dialog + expiry-picker sheet + inline duration
+  /// field.
+  final VoidCallback onEdit;
+
+  String _expiryLabel(AppLocalizations l10n) {
+    final expiresAt = slide.expiresAt;
+    if (expiresAt == null) return l10n.adMediaNeverExpiresLabel;
+    final d = '${expiresAt.day}/${expiresAt.month}/${expiresAt.year % 100}';
+    return slide.isExpired
+        ? l10n.adMediaExpiredOnLabel(d)
+        : l10n.adMediaExpiresOnLabel(d);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final thumbnailUrl = 'http://${ServerClient.instance.baseUrl}${slide.url}';
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ReorderableDragStartListener(
-            index: index,
-            child: const Padding(
-              padding: EdgeInsets.only(right: 8),
-              child: Icon(Icons.drag_indicator, size: 18, color: AppColors.muted),
-            ),
-          ),
-          InkWell(
-            borderRadius: BorderRadius.circular(8),
-            onTap: () => showDialog(context: context, builder: (_) => _AdPreviewDialog(slide: slide)),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: SizedBox(
-                width: 52,
-                height: 52,
-                child: slide.type == 'video'
-                    ? const ColoredBox(
-                        color: AppColors.background,
-                        child: Icon(Icons.play_circle_outline, color: AppColors.muted),
-                      )
-                    : Image.network(thumbnailUrl, fit: BoxFit.cover),
+          Padding(
+            padding: const EdgeInsets.only(left: 26, bottom: 4),
+            child: Tooltip(
+              message: editTooltip,
+              child: InkWell(
+                onTap: onEdit,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        slide.name ?? l10n.advertisingUnnamedSlideLabel,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: slide.name == null
+                              ? AppColors.muted
+                              : AppColors.ink,
+                          fontStyle: slide.name == null
+                              ? FontStyle.italic
+                              : FontStyle.normal,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.all(2),
+                      child: Icon(
+                        Icons.edit_outlined,
+                        size: 14,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Icon(
+                      Icons.event_outlined,
+                      size: 13,
+                      color: slide.isExpired
+                          ? AppColors.terracottaDark
+                          : AppColors.muted,
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      _expiryLabel(l10n),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: slide.isExpired
+                            ? AppColors.terracottaDark
+                            : AppColors.muted,
+                        fontWeight: slide.isExpired
+                            ? FontWeight.w700
+                            : FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: slide.type == 'video'
-                ? Row(
-                    children: [
-                      Expanded(
-                        child: Text(playsUntilEndLabel,
-                            style: const TextStyle(fontSize: 12, color: AppColors.muted)),
-                      ),
-                      IconButton(
-                        icon: Icon(
-                          slide.muted ? Icons.volume_off_outlined : Icons.volume_up_outlined,
-                          size: 18,
+          Row(
+            children: [
+              ReorderableDragStartListener(
+                index: index,
+                child: const Padding(
+                  padding: EdgeInsets.only(right: 8),
+                  child: Icon(
+                    Icons.drag_indicator,
+                    size: 18,
+                    color: AppColors.muted,
+                  ),
+                ),
+              ),
+              InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => showDialog(
+                  context: context,
+                  builder: (_) => _AdPreviewDialog(slide: slide),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: SizedBox(
+                    width: 52,
+                    height: 52,
+                    child: slide.type == 'video'
+                        ? const ColoredBox(
+                            color: AppColors.background,
+                            child: Icon(
+                              Icons.play_circle_outline,
+                              color: AppColors.muted,
+                            ),
+                          )
+                        : Image.network(thumbnailUrl, fit: BoxFit.cover),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: slide.type == 'video'
+                    ? Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              playsUntilEndLabel,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.muted,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              slide.muted
+                                  ? Icons.volume_off_outlined
+                                  : Icons.volume_up_outlined,
+                              size: 18,
+                              color: AppColors.muted,
+                            ),
+                            tooltip: slide.muted ? unmuteTooltip : muteTooltip,
+                            onPressed: () => onMutedChanged(!slide.muted),
+                          ),
+                        ],
+                      )
+                    : Text(
+                        '${slide.durationSeconds ?? 8} $durationLabel',
+                        style: const TextStyle(
+                          fontSize: 12,
                           color: AppColors.muted,
                         ),
-                        tooltip: slide.muted ? unmuteTooltip : muteTooltip,
-                        onPressed: () => onMutedChanged(!slide.muted),
                       ),
-                    ],
-                  )
-                : Row(
-                    children: [
-                      SizedBox(
-                        width: 56,
-                        child: TextField(
-                          controller: durationController,
-                          keyboardType: TextInputType.number,
-                          style: const TextStyle(fontSize: 13),
-                          decoration: const InputDecoration(isDense: true),
-                          onSubmitted: onDurationChanged,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(durationLabel, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
-                    ],
-                  ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.visibility_outlined, size: 18, color: AppColors.muted),
-            tooltip: previewTooltip,
-            onPressed: () => showDialog(context: context, builder: (_) => _AdPreviewDialog(slide: slide)),
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.terracottaDark),
-            tooltip: deleteTooltip,
-            onPressed: onDelete,
+              ),
+              IconButton(
+                icon: const Icon(
+                  Icons.visibility_outlined,
+                  size: 18,
+                  color: AppColors.muted,
+                ),
+                tooltip: previewTooltip,
+                onPressed: () => showDialog(
+                  context: context,
+                  builder: (_) => _AdPreviewDialog(slide: slide),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(
+                  Icons.delete_outline,
+                  size: 18,
+                  color: AppColors.terracottaDark,
+                ),
+                tooltip: deleteTooltip,
+                onPressed: onDelete,
+              ),
+            ],
           ),
         ],
       ),
@@ -1575,7 +1767,9 @@ class _AdPreviewDialogState extends State<_AdPreviewDialog> {
       // the preview reflects reality — the adaptive controls still let the
       // owner/manager un-mute here to check the audio itself.
       player.setVolume(widget.slide.muted ? 0 : 100);
-      player.open(Media('http://${ServerClient.instance.baseUrl}${widget.slide.url}'));
+      player.open(
+        Media('http://${ServerClient.instance.baseUrl}${widget.slide.url}'),
+      );
     }
   }
 
@@ -1738,7 +1932,9 @@ class _PrinterPickerDialogState extends State<_PrinterPickerDialog> {
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      _scanned ? l10n.scanningForPrintersLabel : l10n.loadingPairedPrintersLabel,
+                      _scanned
+                          ? l10n.scanningForPrintersLabel
+                          : l10n.loadingPairedPrintersLabel,
                       style: const TextStyle(color: AppColors.muted),
                     ),
                   ],
@@ -1746,7 +1942,8 @@ class _PrinterPickerDialogState extends State<_PrinterPickerDialog> {
               );
             }
             if (snapshot.hasError) {
-              final isPermissionError = snapshot.error is PrinterPermissionException;
+              final isPermissionError =
+                  snapshot.error is PrinterPermissionException;
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Text(
@@ -1762,7 +1959,9 @@ class _PrinterPickerDialogState extends State<_PrinterPickerDialog> {
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Text(
-                  _scanned ? l10n.noPrintersFoundMessage : l10n.noPairedPrintersMessage,
+                  _scanned
+                      ? l10n.noPrintersFoundMessage
+                      : l10n.noPairedPrintersMessage,
                   style: const TextStyle(color: AppColors.muted),
                 ),
               );

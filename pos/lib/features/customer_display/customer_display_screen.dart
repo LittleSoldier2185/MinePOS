@@ -102,10 +102,19 @@ class _CustomerDisplayScreenState extends State<CustomerDisplayScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.tv_outlined, size: 12, color: Colors.white38),
+                        const Icon(
+                          Icons.tv_outlined,
+                          size: 12,
+                          color: Colors.white38,
+                        ),
                         const SizedBox(width: 4),
-                        Text(_svc.selectedStation!,
-                            style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                        Text(
+                          _svc.selectedStation!,
+                          style: const TextStyle(
+                            color: Colors.white38,
+                            fontSize: 11,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -132,7 +141,8 @@ class _CustomerDisplayScreenState extends State<CustomerDisplayScreen> {
         // Ads only play while actively connected — a dropped connection
         // falls back to the plain idle screen instead of looping slides
         // that reference a server that might no longer be reachable.
-        final canShowAds = _svc.connectionState == CustomerDisplayConnectionState.connected &&
+        final canShowAds =
+            _svc.connectionState == CustomerDisplayConnectionState.connected &&
             _svc.adSlides.isNotEmpty;
         return canShowAds ? _AdSlideshowView(svc: _svc) : const _IdleView();
     }
@@ -152,11 +162,19 @@ class _StationPickerView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.tv_outlined, color: AppColors.primaryLight, size: 56),
+            const Icon(
+              Icons.tv_outlined,
+              color: AppColors.primaryLight,
+              size: 56,
+            ),
             const SizedBox(height: 20),
             Text(
               l10n.selectStationTitle,
-              style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+              ),
             ),
             const SizedBox(height: 24),
             if (svc.stations.isEmpty)
@@ -178,7 +196,13 @@ class _StationPickerView extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       onPressed: () => svc.selectStation(s),
-                      child: Text(s, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                      child: Text(
+                        s,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -206,13 +230,20 @@ class _IdleView extends StatelessWidget {
               color: AppColors.primary,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.local_cafe, color: AppColors.accent, size: 44),
+            child: const Icon(
+              Icons.local_cafe,
+              color: AppColors.accent,
+              size: 44,
+            ),
           ),
           const SizedBox(height: 24),
           Text(
             AppLocalizations.of(context)!.welcomeToMinePosMessage,
             style: const TextStyle(
-                color: Colors.white, fontSize: 26, fontWeight: FontWeight.w700),
+              color: Colors.white,
+              fontSize: 26,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -257,7 +288,8 @@ class _AdSlideshowViewState extends State<_AdSlideshowView> {
     super.dispose();
   }
 
-  String _fullUrl(String relativeUrl) => 'http://${ServerClient.instance.baseUrl}$relativeUrl';
+  String _fullUrl(String relativeUrl) =>
+      'http://${ServerClient.instance.baseUrl}$relativeUrl';
 
   void _playCurrentSlide() {
     _timer?.cancel();
@@ -304,10 +336,36 @@ class _AdSlideshowViewState extends State<_AdSlideshowView> {
     // BoxFit.contain (not .cover) so the whole slide is always visible —
     // letterboxed against the screen's dark background instead of cropped —
     // regardless of the slide's own resolution/aspect ratio vs the display's.
-    return SizedBox.expand(
-      child: slide.type == 'video' && _controller != null
-          ? Video(controller: _controller!, fit: BoxFit.contain, controls: NoVideoControls)
-          : Image.network(_fullUrl(slide.url), fit: BoxFit.contain),
+    final content = KeyedSubtree(
+      key: ValueKey('$_index-${slide.id}'),
+      child: SizedBox.expand(
+        child: slide.type == 'video' && _controller != null
+            ? Video(
+                controller: _controller!,
+                fit: BoxFit.contain,
+                controls: NoVideoControls,
+              )
+            : Image.network(_fullUrl(slide.url), fit: BoxFit.contain),
+      ),
+    );
+
+    // The *arriving* slide's own transition choice drives the animation —
+    // 'none' collapses to a zero-duration switch (an instant cut, same as
+    // before this feature existed).
+    return AnimatedSwitcher(
+      duration: slide.transition == 'none'
+          ? Duration.zero
+          : const Duration(milliseconds: 600),
+      transitionBuilder: (child, animation) => slide.transition == 'slideLeft'
+          ? SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(1, 0),
+                end: Offset.zero,
+              ).animate(animation),
+              child: child,
+            )
+          : FadeTransition(opacity: animation, child: child),
+      child: content,
     );
   }
 }
@@ -329,14 +387,19 @@ class _CartView extends StatelessWidget {
               Text(
                 svc.orderNumber.isEmpty
                     ? AppLocalizations.of(context)!.customerDisplayOrderLabel
-                    : AppLocalizations.of(context)!
-                        .customerDisplayOrderWithNumber(svc.orderNumber),
+                    : AppLocalizations.of(
+                        context,
+                      )!.customerDisplayOrderWithNumber(svc.orderNumber),
                 style: const TextStyle(
-                    color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700),
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               Text(
-                AppLocalizations.of(context)!.itemsCount(
-                    svc.items.fold<int>(0, (s, i) => s + i.quantity)),
+                AppLocalizations.of(
+                  context,
+                )!.itemsCount(svc.items.fold<int>(0, (s, i) => s + i.quantity)),
                 style: const TextStyle(color: Colors.white54, fontSize: 14),
               ),
             ],
@@ -346,10 +409,13 @@ class _CartView extends StatelessWidget {
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 32),
             itemCount: svc.items.length,
-            separatorBuilder: (_, _) => const Divider(color: Colors.white12, height: 1),
+            separatorBuilder: (_, _) =>
+                const Divider(color: Colors.white12, height: 1),
             itemBuilder: (context, index) {
               final item = svc.items[index];
-              final name = item.menuItem.displayName(Localizations.localeOf(context));
+              final name = item.menuItem.displayName(
+                Localizations.localeOf(context),
+              );
               final label = item.sweetness == null
                   ? name
                   : '$name (${item.sweetness!.label(AppLocalizations.of(context)!)})';
@@ -357,15 +423,27 @@ class _CartView extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 child: Row(
                   children: [
-                    Text('${item.quantity}×',
-                        style: const TextStyle(color: Colors.white54, fontSize: 18)),
+                    Text(
+                      '${item.quantity}×',
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 18,
+                      ),
+                    ),
                     const SizedBox(width: 14),
                     Expanded(
-                      child: Text(label,
-                          style: const TextStyle(color: Colors.white, fontSize: 18)),
+                      child: Text(
+                        label,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                        ),
+                      ),
                     ),
-                    Text(baht(item.subtotal),
-                        style: const TextStyle(color: Colors.white, fontSize: 18)),
+                    Text(
+                      baht(item.subtotal),
+                      style: const TextStyle(color: Colors.white, fontSize: 18),
+                    ),
                   ],
                 ),
               );
@@ -388,11 +466,21 @@ class _CartView extends StatelessWidget {
                     Expanded(
                       child: Text(
                         svc.promotionNames.join(', '),
-                        style: const TextStyle(color: AppColors.primaryLight, fontSize: 14, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          color: AppColors.primaryLight,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                    Text('-${baht(svc.discountTotal)}',
-                        style: const TextStyle(color: AppColors.primaryLight, fontSize: 14, fontWeight: FontWeight.w600)),
+                    Text(
+                      '-${baht(svc.discountTotal)}',
+                      style: const TextStyle(
+                        color: AppColors.primaryLight,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -400,12 +488,17 @@ class _CartView extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(AppLocalizations.of(context)!.total,
-                      style: const TextStyle(color: Colors.white70, fontSize: 20)),
+                  Text(
+                    AppLocalizations.of(context)!.total,
+                    style: const TextStyle(color: Colors.white70, fontSize: 20),
+                  ),
                   Text(
                     baht(svc.total),
                     style: const TextStyle(
-                        color: AppColors.primaryLight, fontSize: 34, fontWeight: FontWeight.w800),
+                      color: AppColors.primaryLight,
+                      fontSize: 34,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ],
               ),
@@ -434,7 +527,10 @@ class _PromptPayView extends StatelessWidget {
                 ? l10n.customerDisplayOrderLabel
                 : l10n.customerDisplayOrderWithNumber(svc.orderNumber),
             style: const TextStyle(
-                color: Colors.white70, fontSize: 18, fontWeight: FontWeight.w600),
+              color: Colors.white70,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 20),
           Container(
@@ -452,14 +548,21 @@ class _PromptPayView extends StatelessWidget {
             Text(
               svc.promptPayLabel,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
           const SizedBox(height: 12),
           Text(
             baht(svc.total),
             style: const TextStyle(
-                color: AppColors.primaryLight, fontSize: 34, fontWeight: FontWeight.w800),
+              color: AppColors.primaryLight,
+              fontSize: 34,
+              fontWeight: FontWeight.w800,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -483,24 +586,35 @@ class _ThankYouView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.check_circle, color: AppColors.primaryLight, size: 84),
+          const Icon(
+            Icons.check_circle,
+            color: AppColors.primaryLight,
+            size: 84,
+          ),
           const SizedBox(height: 20),
           Text(
             AppLocalizations.of(context)!.thankYouMessage,
             style: const TextStyle(
-                color: Colors.white, fontSize: 30, fontWeight: FontWeight.w800),
+              color: Colors.white,
+              fontSize: 30,
+              fontWeight: FontWeight.w800,
+            ),
           ),
           const SizedBox(height: 12),
           Text(
-              AppLocalizations.of(context)!
-                  .totalPaidLabel(baht(svc.thankYouTotal)),
-              style: const TextStyle(color: Colors.white70, fontSize: 16)),
+            AppLocalizations.of(
+              context,
+            )!.totalPaidLabel(baht(svc.thankYouTotal)),
+            style: const TextStyle(color: Colors.white70, fontSize: 16),
+          ),
           if (svc.thankYouChange > 0) ...[
             const SizedBox(height: 4),
             Text(
-                AppLocalizations.of(context)!
-                    .changeMessageLabel(baht(svc.thankYouChange)),
-                style: const TextStyle(color: Colors.white70, fontSize: 16)),
+              AppLocalizations.of(
+                context,
+              )!.changeMessageLabel(baht(svc.thankYouChange)),
+              style: const TextStyle(color: Colors.white70, fontSize: 16),
+            ),
           ],
         ],
       ),

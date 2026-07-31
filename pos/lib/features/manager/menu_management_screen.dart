@@ -10,9 +10,11 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/access_restricted.dart';
 import '../../core/widgets/confirm_dialog.dart';
 import '../../core/widgets/image_crop_screen.dart';
+import '../../core/widgets/menu_sort_button.dart';
 import '../../l10n/app_localizations.dart';
 import '../cashier/models/menu_item.dart';
 import '../cashier/services/menu_service.dart';
+import 'category_management_screen.dart';
 
 class MenuManagementScreen extends StatefulWidget {
   const MenuManagementScreen({super.key});
@@ -25,6 +27,7 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
   final _svc = MenuService.instance;
   String _selectedCategory = 'All';
   bool _isGridView = true;
+  MenuSortMode _sortMode = MenuSortMode.defaultOrder;
 
   @override
   void initState() {
@@ -32,7 +35,15 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
     AppSettingsService.instance.getMenuGridView().then((v) {
       if (mounted) setState(() => _isGridView = v);
     });
+    AppSettingsService.instance.getMenuSortMode().then((v) {
+      if (mounted) setState(() => _sortMode = v);
+    });
     _svc.addListener(_onMenuChanged);
+  }
+
+  void _setSortMode(MenuSortMode mode) {
+    setState(() => _sortMode = mode);
+    AppSettingsService.instance.setMenuSortMode(mode);
   }
 
   @override
@@ -54,9 +65,12 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
 
   List<String> get _filterCategories => ['All', ..._svc.categories];
 
-  List<MenuItem> get _displayedItems => _selectedCategory == 'All'
-      ? _svc.allItems.toList()
-      : _svc.allItemsForCategory(_selectedCategory);
+  List<MenuItem> get _displayedItems {
+    final base = _selectedCategory == 'All'
+        ? _svc.allItems.toList()
+        : _svc.allItemsForCategory(_selectedCategory);
+    return sortMenuItems(base, _sortMode, Localizations.localeOf(context));
+  }
 
   void _toggleAvailability(String id) =>
       setState(() => _svc.toggleAvailability(id));
@@ -110,6 +124,16 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         actions: [
+          MenuSortButton(value: _sortMode, onChanged: _setSortMode),
+          IconButton(
+            icon: const Icon(Icons.category_outlined),
+            tooltip: l10n.manageCategoriesTooltip,
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const CategoryManagementScreen(),
+              ),
+            ),
+          ),
           IconButton(
             icon: Icon(_isGridView ? Icons.view_list : Icons.grid_view),
             tooltip: _isGridView ? l10n.listViewTooltip : l10n.gridViewTooltip,
@@ -596,195 +620,201 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
     return PopScope(
       canPop: !_saving,
       child: Container(
-      margin: EdgeInsets.only(bottom: bottomInset),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.terracottaLight,
-                  borderRadius: BorderRadius.circular(2),
+        margin: EdgeInsets.only(bottom: bottomInset),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.terracottaLight,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              _isEdit ? l10n.editItemFormTitle : l10n.addItemLabel,
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            Center(
-              child: GestureDetector(
-                onTap: _pickImage,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: _imageBase64 != null
-                      ? Image.memory(
-                          base64Decode(_imageBase64!),
-                          width: 80,
-                          height: 80,
-                          fit: BoxFit.cover,
-                        )
-                      : Container(
-                          width: 80,
-                          height: 80,
-                          color: AppColors.background,
-                          child: const Icon(
-                            Icons.add_a_photo_outlined,
-                            color: AppColors.muted,
+              const SizedBox(height: 16),
+              Text(
+                _isEdit ? l10n.editItemFormTitle : l10n.addItemLabel,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Center(
+                child: GestureDetector(
+                  onTap: _pickImage,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: _imageBase64 != null
+                        ? Image.memory(
+                            base64Decode(_imageBase64!),
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                          )
+                        : Container(
+                            width: 80,
+                            height: 80,
+                            color: AppColors.background,
+                            child: const Icon(
+                              Icons.add_a_photo_outlined,
+                              color: AppColors.muted,
+                            ),
                           ),
-                        ),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-            TextFormField(
-              controller: _nameCtrl,
-              decoration: InputDecoration(
-                labelText: l10n.itemNameLabel,
-                hintText: l10n.itemNameHint,
-                border: const OutlineInputBorder(),
+              const SizedBox(height: 20),
+              TextFormField(
+                controller: _nameCtrl,
+                decoration: InputDecoration(
+                  labelText: l10n.itemNameLabel,
+                  hintText: l10n.itemNameHint,
+                  border: const OutlineInputBorder(),
+                ),
+                textCapitalization: TextCapitalization.words,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? l10n.itemNameRequired
+                    : null,
               ),
-              textCapitalization: TextCapitalization.words,
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? l10n.itemNameRequired
-                  : null,
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _nameThCtrl,
-              decoration: InputDecoration(
-                labelText: l10n.itemNameThLabel,
-                hintText: l10n.itemNameThHint,
-                border: const OutlineInputBorder(),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _nameThCtrl,
+                decoration: InputDecoration(
+                  labelText: l10n.itemNameThLabel,
+                  hintText: l10n.itemNameThHint,
+                  border: const OutlineInputBorder(),
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _categoryCtrl,
-              decoration: InputDecoration(
-                labelText: l10n.categoryLabel,
-                hintText: l10n.categoryHint,
-                border: const OutlineInputBorder(),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _categoryCtrl,
+                decoration: InputDecoration(
+                  labelText: l10n.categoryLabel,
+                  hintText: l10n.categoryHint,
+                  border: const OutlineInputBorder(),
+                ),
+                textCapitalization: TextCapitalization.words,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? l10n.categoryRequired
+                    : null,
               ),
-              textCapitalization: TextCapitalization.words,
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? l10n.categoryRequired
-                  : null,
-            ),
-            if (widget.categories.isNotEmpty) ...[
+              if (widget.categories.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  children: widget.categories.map((cat) {
+                    final sel = _categoryCtrl.text.trim() == cat;
+                    return ChoiceChip(
+                      label: Text(cat, style: const TextStyle(fontSize: 11)),
+                      selected: sel,
+                      onSelected: (_) =>
+                          setState(() => _categoryCtrl.text = cat),
+                      selectedColor: AppColors.primary,
+                      labelStyle: TextStyle(
+                        color: sel ? AppColors.accent : AppColors.ink,
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                    );
+                  }).toList(),
+                ),
+              ],
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _priceCtrl,
+                decoration: InputDecoration(
+                  labelText: l10n.priceLabel,
+                  hintText: l10n.priceHint,
+                  border: const OutlineInputBorder(),
+                  prefixText: '฿ ',
+                ),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: false,
+                ),
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) {
+                    return l10n.priceRequired;
+                  }
+                  final n = int.tryParse(v.trim());
+                  if (n == null || n <= 0) return l10n.priceInvalid;
+                  return null;
+                },
+              ),
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    l10n.availableLabel,
+                    style: const TextStyle(fontSize: 14, color: AppColors.ink),
+                  ),
+                  Switch(
+                    value: _available,
+                    onChanged: (v) => setState(() => _available = v),
+                    activeThumbColor: AppColors.primary,
+                  ),
+                ],
+              ),
               const SizedBox(height: 8),
-              Wrap(
-                spacing: 6,
-                children: widget.categories.map((cat) {
-                  final sel = _categoryCtrl.text.trim() == cat;
-                  return ChoiceChip(
-                    label: Text(cat, style: const TextStyle(fontSize: 11)),
-                    selected: sel,
-                    onSelected: (_) => setState(() => _categoryCtrl.text = cat),
-                    selectedColor: AppColors.primary,
-                    labelStyle: TextStyle(
-                      color: sel ? AppColors.accent : AppColors.ink,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    l10n.hasSweetnessLabel,
+                    style: const TextStyle(fontSize: 14, color: AppColors.ink),
+                  ),
+                  Switch(
+                    value: _hasSweetness,
+                    onChanged: (v) => setState(() => _hasSweetness = v),
+                    activeThumbColor: AppColors.primary,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _saving
+                          ? null
+                          : () => Navigator.of(context).pop(false),
+                      child: Text(l10n.cancel),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
-                  );
-                }).toList(),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _saving ? null : _save,
+                      child: _saving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(
+                              _isEdit
+                                  ? l10n.saveChangesButton
+                                  : l10n.addItemLabel,
+                            ),
+                    ),
+                  ),
+                ],
               ),
             ],
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _priceCtrl,
-              decoration: InputDecoration(
-                labelText: l10n.priceLabel,
-                hintText: l10n.priceHint,
-                border: const OutlineInputBorder(),
-                prefixText: '฿ ',
-              ),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: false,
-              ),
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) {
-                  return l10n.priceRequired;
-                }
-                final n = int.tryParse(v.trim());
-                if (n == null || n <= 0) return l10n.priceInvalid;
-                return null;
-              },
-            ),
-            const SizedBox(height: 14),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  l10n.availableLabel,
-                  style: const TextStyle(fontSize: 14, color: AppColors.ink),
-                ),
-                Switch(
-                  value: _available,
-                  onChanged: (v) => setState(() => _available = v),
-                  activeThumbColor: AppColors.primary,
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  l10n.hasSweetnessLabel,
-                  style: const TextStyle(fontSize: 14, color: AppColors.ink),
-                ),
-                Switch(
-                  value: _hasSweetness,
-                  onChanged: (v) => setState(() => _hasSweetness = v),
-                  activeThumbColor: AppColors.primary,
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: _saving
-                        ? null
-                        : () => Navigator.of(context).pop(false),
-                    child: Text(l10n.cancel),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _saving ? null : _save,
-                    child: _saving
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(
-                            _isEdit ? l10n.saveChangesButton : l10n.addItemLabel,
-                          ),
-                  ),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
-      ),
       ),
     );
   }

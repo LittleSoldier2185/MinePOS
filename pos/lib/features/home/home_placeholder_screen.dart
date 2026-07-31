@@ -609,7 +609,7 @@ class _ContentPanelState extends State<_ContentPanel> {
   Widget build(BuildContext context) {
     final desktop = widget.desktop;
     final svc = OrderService.instance;
-    final todayList = svc.todaysOrders;
+    final todayList = svc.todaysCompletedOrders;
     final count = todayList.length;
     final revenue = svc.todaysRevenue;
     final avg = count > 0 ? revenue / count : 0.0;

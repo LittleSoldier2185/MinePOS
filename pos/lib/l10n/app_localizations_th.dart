@@ -656,6 +656,26 @@ class AppLocalizationsTh extends AppLocalizations {
   String get proceedToPayButton => 'ไปหน้าชำระเงิน';
 
   @override
+  String get heldOrderResumedMessage => 'กู้คืนออร์เดอร์ที่พักไว้แล้ว';
+
+  @override
+  String get searchMenuHint => 'ค้นหาเมนู';
+
+  @override
+  String get noSearchResultsMessage => 'ไม่พบสินค้าที่ตรงกัน';
+
+  @override
+  String get orderNoteHint => 'โน้ตถึงครัว (เช่น ไม่ใส่นม) — ไม่พิมพ์ในใบเสร็จ';
+
+  @override
+  String get comboBundlesTitle => 'ชุดคอมโบ';
+
+  @override
+  String comboPriceLabel(String price) {
+    return 'ราคาชุด $price';
+  }
+
+  @override
   String get paymentAppBarTitle => 'ชำระเงิน';
 
   @override
@@ -851,6 +871,46 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get addItemTooltip => 'เพิ่มเมนู';
+
+  @override
+  String get sortMenuTooltip => 'จัดเรียง';
+
+  @override
+  String get sortDefaultOption => 'ลำดับเริ่มต้น';
+
+  @override
+  String get sortNameAscOption => 'ชื่อ (ก-ฮ)';
+
+  @override
+  String get sortNameDescOption => 'ชื่อ (ฮ-ก)';
+
+  @override
+  String get sortPriceAscOption => 'ราคา (น้อยไปมาก)';
+
+  @override
+  String get sortPriceDescOption => 'ราคา (มากไปน้อย)';
+
+  @override
+  String get manageCategoriesTooltip => 'จัดการหมวดหมู่';
+
+  @override
+  String get manageCategoriesTitle => 'หมวดหมู่';
+
+  @override
+  String get manageCategoriesHint =>
+      'ลากเพื่อจัดลำดับใหม่ แตะไอคอนดินสอเพื่อเปลี่ยนชื่อหมวดหมู่ — สินค้าทุกชิ้นในหมวดนี้จะย้ายไปใช้ชื่อใหม่';
+
+  @override
+  String get renameCategoryTitle => 'เปลี่ยนชื่อหมวดหมู่';
+
+  @override
+  String get renameCategoryLabel => 'ชื่อหมวดหมู่';
+
+  @override
+  String get renameCategoryEmptyError => 'กรุณาระบุชื่อหมวดหมู่';
+
+  @override
+  String get renameCategorySnackbar => 'เปลี่ยนชื่อหมวดหมู่แล้ว';
 
   @override
   String get noItemsEmpty => 'ไม่มีรายการในหมวดหมู่นี้';
@@ -1209,6 +1269,12 @@ class AppLocalizationsTh extends AppLocalizations {
   String get languageSectionLabel => 'ภาษา';
 
   @override
+  String get kitchenDisplaySectionLabel => 'หน้าจอครัว';
+
+  @override
+  String get kitchenShowImagesLabel => 'แสดงรูปเมนูใน Focus Mode';
+
+  @override
   String get englishOption => 'English';
 
   @override
@@ -1504,6 +1570,63 @@ class AppLocalizationsTh extends AppLocalizations {
   String get advertisingUnmuteTooltip => 'เปิดเสียง';
 
   @override
+  String get advertisingEditTooltip => 'แก้ไขรายละเอียด';
+
+  @override
+  String get advertisingUnnamedSlideLabel => 'ยังไม่ได้ตั้งชื่อ';
+
+  @override
+  String get adMediaDetailsTitle => 'รายละเอียดสื่อ';
+
+  @override
+  String get adMediaNameLabel => 'ชื่อ (ไม่บังคับ)';
+
+  @override
+  String get adMediaNameHint => 'เช่น โปรโมชั่นซื้อ 1 แถม 1 ลาเต้';
+
+  @override
+  String get adMediaDurationLabel => 'ระยะเวลา (วินาที)';
+
+  @override
+  String get adMediaTransitionLabel => 'ทรานซิชัน';
+
+  @override
+  String get adTransitionNoneOption => 'ไม่มี';
+
+  @override
+  String get adTransitionFadeOption => 'จางเข้า';
+
+  @override
+  String get adTransitionSlideOption => 'เลื่อน';
+
+  @override
+  String get adMediaExpiryLabel => 'วันหมดอายุ';
+
+  @override
+  String get adExpiryNeverOption => 'ไม่มีวันหมดอายุ (จนกว่าจะลบ)';
+
+  @override
+  String adExpiryInDaysOption(int days) {
+    return 'อีก $days วัน';
+  }
+
+  @override
+  String get adExpiryCustomDateOption => 'เลือกวันที่…';
+
+  @override
+  String get adMediaNeverExpiresLabel => 'ไม่มีวันหมดอายุ';
+
+  @override
+  String adMediaExpiresOnLabel(String date) {
+    return 'หมดอายุ $date';
+  }
+
+  @override
+  String adMediaExpiredOnLabel(String date) {
+    return 'หมดอายุแล้ว $date';
+  }
+
+  @override
   String get dangerZoneSectionLabel => 'โซนอันตราย';
 
   @override
@@ -1693,6 +1816,18 @@ class AppLocalizationsTh extends AppLocalizations {
   String updateItemErrorSnackbar(String error) {
     return 'ไม่สามารถอัปเดตรายการได้: $error';
   }
+
+  @override
+  String get focusModeTitle => 'โฟกัสโหมด';
+
+  @override
+  String get startPreparingButton => 'เริ่มทำ';
+
+  @override
+  String get readyToServeButton => 'พร้อมเสิร์ฟ';
+
+  @override
+  String get customerViewTooltip => 'มุมมองลูกค้า';
 
   @override
   String accessRestrictedMessage(String feature) {

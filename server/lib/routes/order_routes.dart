@@ -40,7 +40,11 @@ Response _getStats(Request req, AppDb db, ServerConfig config) {
 // Body: { paymentMethod, amountPaid?, items: [{ menuItemId, menuItemName,
 //          menuItemCategory, price, quantity, discountAmount? }],
 //         promotions?: [{ promotionId, discountAmount, codeUsed?,
-//          approvedByUserId? }] }
+//          approvedByUserId? }], note? }
+// `note` is the cashier's free-text special instructions for the kitchen —
+// shown on the Kitchen Display, deliberately never on the receipt (that's a
+// client-side rendering choice; the server has no separate access control
+// for it).
 // `promotions` mirrors `PromotionService.evaluate()`'s output client-side —
 // same trust model as `items`' prices: the client already computed the
 // discount, this just persists it (into `order_promotions`, incrementing
@@ -85,6 +89,7 @@ Future<Response> _createOrder(
   }
 
   final amountPaid = (body['amountPaid'] as num?)?.toDouble();
+  final note = (body['note'] as String?)?.trim();
   final order = db.createOrder(
     paymentMethod: paymentMethod,
     amountPaid: amountPaid,
@@ -92,6 +97,7 @@ Future<Response> _createOrder(
     promotions: promotions,
     createdByUserId: actor.id,
     createdByName: (actor.name?.isNotEmpty ?? false) ? actor.name! : actor.username,
+    note: (note?.isEmpty ?? true) ? null : note,
   );
   KitchenHub.instance.broadcastOrderCreated(order);
   OrderHub.instance.broadcastOrderCreated(order);

@@ -35,52 +35,75 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   Future<List<Order>> _fetchForCurrentRange() {
     final range = _resolveRange();
-    return ReportsService.instance.fetchOrders(from: range.start, to: range.end);
+    return ReportsService.instance.fetchOrders(
+      from: range.start,
+      to: range.end,
+    );
   }
 
-  void _reload() => setState(() { _future = _fetchForCurrentRange(); });
+  void _reload() => setState(() {
+    _future = _fetchForCurrentRange();
+  });
 
   DateTimeRange _resolveRange() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     switch (_range) {
       case _QuickRange.today:
-        return DateTimeRange(start: today, end: today.add(const Duration(days: 1)));
+        return DateTimeRange(
+          start: today,
+          end: today.add(const Duration(days: 1)),
+        );
       case _QuickRange.yesterday:
         final y = today.subtract(const Duration(days: 1));
         return DateTimeRange(start: y, end: today);
       case _QuickRange.last7:
         return DateTimeRange(
-            start: today.subtract(const Duration(days: 6)),
-            end: today.add(const Duration(days: 1)));
+          start: today.subtract(const Duration(days: 6)),
+          end: today.add(const Duration(days: 1)),
+        );
       case _QuickRange.last30:
         return DateTimeRange(
-            start: today.subtract(const Duration(days: 29)),
-            end: today.add(const Duration(days: 1)));
+          start: today.subtract(const Duration(days: 29)),
+          end: today.add(const Duration(days: 1)),
+        );
       case _QuickRange.all:
-        return DateTimeRange(start: DateTime(2000), end: today.add(const Duration(days: 1)));
+        return DateTimeRange(
+          start: DateTime(2000),
+          end: today.add(const Duration(days: 1)),
+        );
       case _QuickRange.month:
         final m = _selectedMonth ?? DateTime(now.year, now.month);
-        return DateTimeRange(start: DateTime(m.year, m.month, 1), end: DateTime(m.year, m.month + 1, 1));
+        return DateTimeRange(
+          start: DateTime(m.year, m.month, 1),
+          end: DateTime(m.year, m.month + 1, 1),
+        );
       case _QuickRange.custom:
         return _customRange ??
-            DateTimeRange(start: today, end: today.add(const Duration(days: 1)));
+            DateTimeRange(
+              start: today,
+              end: today.add(const Duration(days: 1)),
+            );
     }
   }
 
   List<Order> _filter(List<Order> all) {
     final range = _resolveRange();
     return all
-        .where((o) =>
-            o.kitchenStatus != 'cancelled' &&
-            !o.createdAt.isBefore(range.start) &&
-            o.createdAt.isBefore(range.end))
+        .where(
+          (o) =>
+              o.kitchenStatus != 'cancelled' &&
+              !o.createdAt.isBefore(range.start) &&
+              o.createdAt.isBefore(range.end),
+        )
         .toList();
   }
 
   Future<void> _pickCustomRange() async {
-    final result =
-        await showDialog<DateTimeRange>(context: context, builder: (_) => _CustomRangeDialog(existing: _customRange));
+    final result = await showDialog<DateTimeRange>(
+      context: context,
+      builder: (_) => _CustomRangeDialog(existing: _customRange),
+    );
     if (result == null) return;
     setState(() {
       _range = _QuickRange.custom;
@@ -121,22 +144,28 @@ class _ReportsScreenState extends State<ReportsScreen> {
     setState(() => _exporting = true);
     try {
       final buffer = StringBuffer()
-        ..writeln('Order,Date,Time,Item,Quantity,Unit Price,Subtotal,Payment Method,Discount,Order Total');
+        ..writeln(
+          'Order,Date,Time,Item,Quantity,Unit Price,Subtotal,Payment Method,Discount,Order Total',
+        );
       for (final o in orders) {
-        final method = o.paymentMethod == PaymentMethod.cash ? 'Cash' : 'PromptPay';
+        final method = o.paymentMethod == PaymentMethod.cash
+            ? 'Cash'
+            : 'PromptPay';
         for (final item in o.items) {
-          buffer.writeln([
-            o.formattedNumber,
-            o.formattedDate.split(' ').first,
-            o.formattedDate.split(' ').last,
-            '"${item.menuItem.name.replaceAll('"', '""')}"',
-            item.quantity,
-            item.menuItem.price.toStringAsFixed(2),
-            item.subtotal.toStringAsFixed(2),
-            method,
-            o.discountTotal.toStringAsFixed(2),
-            o.total.toStringAsFixed(2),
-          ].join(','));
+          buffer.writeln(
+            [
+              o.formattedNumber,
+              o.formattedDate.split(' ').first,
+              o.formattedDate.split(' ').last,
+              '"${item.menuItem.name.replaceAll('"', '""')}"',
+              item.quantity,
+              item.menuItem.price.toStringAsFixed(2),
+              item.subtotal.toStringAsFixed(2),
+              method,
+              o.discountTotal.toStringAsFixed(2),
+              o.total.toStringAsFixed(2),
+            ].join(','),
+          );
         }
       }
       final range = _resolveRange();
@@ -146,12 +175,23 @@ class _ReportsScreenState extends State<ReportsScreen> {
       if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(path == null ? l10n.exportCancelledSnackbar : l10n.exportSuccessSnackbar(path))),
+        SnackBar(
+          content: Text(
+            path == null
+                ? l10n.exportCancelledSnackbar
+                : l10n.exportSuccessSnackbar(path),
+          ),
+        ),
       );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context)!.exportFailedSnackbar('$e')), backgroundColor: AppColors.terracottaDark),
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.exportFailedSnackbar('$e'),
+            ),
+            backgroundColor: AppColors.terracottaDark,
+          ),
         );
       }
     } finally {
@@ -190,11 +230,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.error_outline, size: 32, color: AppColors.muted),
+                    const Icon(
+                      Icons.error_outline,
+                      size: 32,
+                      color: AppColors.muted,
+                    ),
                     const SizedBox(height: 8),
-                    Text('${snapshot.error}',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: AppColors.muted)),
+                    Text(
+                      '${snapshot.error}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: AppColors.muted),
+                    ),
                     const SizedBox(height: 12),
                     OutlinedButton(onPressed: _reload, child: Text(l10n.retry)),
                   ],
@@ -205,16 +251,25 @@ class _ReportsScreenState extends State<ReportsScreen> {
           final orders = _filter(snapshot.data!);
           final revenue = orders.fold(0.0, (s, o) => s + o.total);
           final avg = orders.isNotEmpty ? revenue / orders.length : 0.0;
-          final cashCount = orders.where((o) => o.paymentMethod == PaymentMethod.cash).length;
-          final totalDiscounted = orders.fold(0.0, (s, o) => s + o.discountTotal);
+          final cashCount = orders
+              .where((o) => o.paymentMethod == PaymentMethod.cash)
+              .length;
+          final totalDiscounted = orders.fold(
+            0.0,
+            (s, o) => s + o.discountTotal,
+          );
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _RangeChips(
                 selected: _range,
-                customLabel: _customRange == null ? null : _formatCustomRange(_customRange!),
-                monthLabel: _selectedMonth == null ? null : _formatMonth(_selectedMonth!),
+                customLabel: _customRange == null
+                    ? null
+                    : _formatCustomRange(_customRange!),
+                monthLabel: _selectedMonth == null
+                    ? null
+                    : _formatMonth(_selectedMonth!),
                 onSelect: (r) {
                   if (r == _QuickRange.custom) {
                     _pickCustomRange();
@@ -236,12 +291,20 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     children: [
                       Row(
                         children: [
-                          _StatCard(label: l10n.reportsOrdersLabel, value: '${orders.length}'),
-                          const SizedBox(width: 10),
-                          _StatCard(label: l10n.revenueLabel, value: baht(revenue)),
+                          _StatCard(
+                            label: l10n.reportsOrdersLabel,
+                            value: '${orders.length}',
+                          ),
                           const SizedBox(width: 10),
                           _StatCard(
-                              label: l10n.avgOrderLabel, value: orders.isEmpty ? l10n.emDash : baht(avg)),
+                            label: l10n.revenueLabel,
+                            value: baht(revenue),
+                          ),
+                          const SizedBox(width: 10),
+                          _StatCard(
+                            label: l10n.avgOrderLabel,
+                            value: orders.isEmpty ? l10n.emDash : baht(avg),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 10),
@@ -249,43 +312,71 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         children: [
                           _StatCard(label: l10n.cash, value: '$cashCount'),
                           const SizedBox(width: 10),
-                          _StatCard(label: l10n.promptpay, value: '${orders.length - cashCount}'),
+                          _StatCard(
+                            label: l10n.promptpay,
+                            value: '${orders.length - cashCount}',
+                          ),
                           const SizedBox(width: 10),
-                          _StatCard(label: l10n.totalDiscountedLabel, value: baht(totalDiscounted)),
+                          _StatCard(
+                            label: l10n.totalDiscountedLabel,
+                            value: baht(totalDiscounted),
+                          ),
                         ],
                       ),
                       if (orders.isNotEmpty) ...[
                         const SizedBox(height: 16),
-                        _SalesTrendChart(orders: orders, range: _resolveRange(), l10n: l10n, baht: baht),
+                        _SalesTrendChart(
+                          orders: orders,
+                          range: _resolveRange(),
+                          l10n: l10n,
+                          baht: baht,
+                        ),
                         const SizedBox(height: 16),
                         _TopItemsCard(orders: orders, l10n: l10n, baht: baht),
                         const SizedBox(height: 16),
                         _StaffSalesCard(orders: orders, l10n: l10n, baht: baht),
                         if (totalDiscounted > 0) ...[
                           const SizedBox(height: 16),
-                          _PromotionBreakdownCard(orders: orders, l10n: l10n, baht: baht),
+                          _PromotionBreakdownCard(
+                            orders: orders,
+                            l10n: l10n,
+                            baht: baht,
+                          ),
                         ],
                       ],
                       const SizedBox(height: 16),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(l10n.ordersColumnHeader,
-                              style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.3,
-                                  color: AppColors.muted)),
+                          Text(
+                            l10n.ordersColumnHeader,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.3,
+                              color: AppColors.muted,
+                            ),
+                          ),
                           TextButton.icon(
-                            onPressed:
-                                (orders.isEmpty || _exporting) ? null : () => _export(orders),
+                            onPressed: (orders.isEmpty || _exporting)
+                                ? null
+                                : () => _export(orders),
                             icon: _exporting
                                 ? const SizedBox(
                                     width: 14,
                                     height: 14,
-                                    child: CircularProgressIndicator(strokeWidth: 2))
-                                : const Icon(Icons.file_download_outlined, size: 15),
-                            label: Text(l10n.exportCSVButton, style: const TextStyle(fontSize: 12)),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.file_download_outlined,
+                                    size: 15,
+                                  ),
+                            label: Text(
+                              l10n.exportCSVButton,
+                              style: const TextStyle(fontSize: 12),
+                            ),
                           ),
                         ],
                       ),
@@ -294,8 +385,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 24),
                           child: Center(
-                            child: Text(l10n.reportsNoOrdersEmpty,
-                                style: const TextStyle(color: AppColors.muted)),
+                            child: Text(
+                              l10n.reportsNoOrdersEmpty,
+                              style: const TextStyle(color: AppColors.muted),
+                            ),
                           ),
                         )
                       else
@@ -303,54 +396,79 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: AppColors.terracottaLight),
+                            border: Border.all(
+                              color: AppColors.terracottaLight,
+                            ),
                           ),
                           child: Column(
                             children: orders.asMap().entries.map((e) {
                               final isLast = e.key == orders.length - 1;
                               final o = e.value;
                               final method =
-                                  o.paymentMethod == PaymentMethod.cash ? l10n.cash : l10n.promptpay;
+                                  o.paymentMethod == PaymentMethod.cash
+                                  ? l10n.cash
+                                  : l10n.promptpay;
                               return Container(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 10,
+                                ),
                                 decoration: BoxDecoration(
                                   border: isLast
                                       ? null
                                       : const Border(
                                           bottom: BorderSide(
-                                              color: AppColors.terracottaLight, width: 0.5)),
+                                            color: AppColors.terracottaLight,
+                                            width: 0.5,
+                                          ),
+                                        ),
                                 ),
                                 child: Row(
                                   children: [
-                                    Text(o.formattedNumber,
-                                        style: const TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppColors.primary)),
+                                    Text(
+                                      o.formattedNumber,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
                                     const SizedBox(width: 10),
                                     Expanded(
-                                      child: Text(o.formattedDate,
-                                          style: const TextStyle(
-                                              fontSize: 12, color: AppColors.muted)),
+                                      child: Text(
+                                        o.formattedDate,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.muted,
+                                        ),
+                                      ),
                                     ),
                                     Container(
                                       padding: const EdgeInsets.symmetric(
-                                          horizontal: 6, vertical: 2),
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: AppColors.background,
                                         borderRadius: BorderRadius.circular(4),
                                       ),
-                                      child: Text(method,
-                                          style: const TextStyle(
-                                              fontSize: 9,
-                                              color: AppColors.muted,
-                                              fontWeight: FontWeight.w600)),
+                                      child: Text(
+                                        method,
+                                        style: const TextStyle(
+                                          fontSize: 9,
+                                          color: AppColors.muted,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
                                     ),
                                     const SizedBox(width: 8),
-                                    Text(baht(o.total),
-                                        style: const TextStyle(
-                                            fontSize: 13, fontWeight: FontWeight.w700)),
+                                    Text(
+                                      baht(o.total),
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               );
@@ -370,7 +488,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
 }
 
 class _RangeChips extends StatelessWidget {
-  const _RangeChips({required this.selected, required this.onSelect, this.customLabel, this.monthLabel});
+  const _RangeChips({
+    required this.selected,
+    required this.onSelect,
+    this.customLabel,
+    this.monthLabel,
+  });
   final _QuickRange selected;
   final ValueChanged<_QuickRange> onSelect;
   final String? customLabel;
@@ -398,11 +521,12 @@ class _RangeChips extends StatelessWidget {
         itemBuilder: (_, i) {
           final range = labels.keys.elementAt(i);
           final sel = range == selected;
-          final label = (range == _QuickRange.custom && sel && customLabel != null)
+          final label =
+              (range == _QuickRange.custom && sel && customLabel != null)
               ? customLabel!
               : (range == _QuickRange.month && sel && monthLabel != null)
-                  ? monthLabel!
-                  : labels[range]!;
+              ? monthLabel!
+              : labels[range]!;
           return GestureDetector(
             onTap: () => onSelect(range),
             child: AnimatedContainer(
@@ -411,7 +535,9 @@ class _RangeChips extends StatelessWidget {
               decoration: BoxDecoration(
                 color: sel ? AppColors.primary : Colors.white,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: sel ? AppColors.primary : AppColors.terracottaLight),
+                border: Border.all(
+                  color: sel ? AppColors.primary : AppColors.terracottaLight,
+                ),
               ),
               child: Center(
                 child: Text(
@@ -460,13 +586,30 @@ class _CustomRangeDialogState extends State<_CustomRangeDialog> {
     final existing = widget.existing;
     _startDate = existing == null
         ? DateTime(now.year, now.month, now.day)
-        : DateTime(existing.start.year, existing.start.month, existing.start.day);
-    _startTime = existing == null ? const TimeOfDay(hour: 0, minute: 0) : TimeOfDay.fromDateTime(existing.start);
-    final endInclusive = existing?.end.subtract(const Duration(minutes: 1)) ?? now;
-    _endDate = DateTime(endInclusive.year, endInclusive.month, endInclusive.day);
-    _endTime = existing == null ? const TimeOfDay(hour: 23, minute: 59) : TimeOfDay.fromDateTime(endInclusive);
-    _hourCtrl = TextEditingController(text: _startTime.hour.toString().padLeft(2, '0'));
-    _minuteCtrl = TextEditingController(text: _startTime.minute.toString().padLeft(2, '0'));
+        : DateTime(
+            existing.start.year,
+            existing.start.month,
+            existing.start.day,
+          );
+    _startTime = existing == null
+        ? const TimeOfDay(hour: 0, minute: 0)
+        : TimeOfDay.fromDateTime(existing.start);
+    final endInclusive =
+        existing?.end.subtract(const Duration(minutes: 1)) ?? now;
+    _endDate = DateTime(
+      endInclusive.year,
+      endInclusive.month,
+      endInclusive.day,
+    );
+    _endTime = existing == null
+        ? const TimeOfDay(hour: 23, minute: 59)
+        : TimeOfDay.fromDateTime(endInclusive);
+    _hourCtrl = TextEditingController(
+      text: _startTime.hour.toString().padLeft(2, '0'),
+    );
+    _minuteCtrl = TextEditingController(
+      text: _startTime.minute.toString().padLeft(2, '0'),
+    );
   }
 
   @override
@@ -476,8 +619,10 @@ class _CustomRangeDialogState extends State<_CustomRangeDialog> {
     super.dispose();
   }
 
-  DateTime get _selectedDate => _editing == _Editing.start ? _startDate : _endDate;
-  TimeOfDay get _selectedTime => _editing == _Editing.start ? _startTime : _endTime;
+  DateTime get _selectedDate =>
+      _editing == _Editing.start ? _startDate : _endDate;
+  TimeOfDay get _selectedTime =>
+      _editing == _Editing.start ? _startTime : _endTime;
 
   void _switchTo(_Editing editing) {
     setState(() {
@@ -499,8 +644,10 @@ class _CustomRangeDialogState extends State<_CustomRangeDialog> {
   }
 
   void _onTimeFieldChanged() {
-    final hour = int.tryParse(_hourCtrl.text)?.clamp(0, 23) ?? _selectedTime.hour;
-    final minute = int.tryParse(_minuteCtrl.text)?.clamp(0, 59) ?? _selectedTime.minute;
+    final hour =
+        int.tryParse(_hourCtrl.text)?.clamp(0, 23) ?? _selectedTime.hour;
+    final minute =
+        int.tryParse(_minuteCtrl.text)?.clamp(0, 59) ?? _selectedTime.minute;
     setState(() {
       if (_editing == _Editing.start) {
         _startTime = TimeOfDay(hour: hour, minute: minute);
@@ -517,8 +664,20 @@ class _CustomRangeDialogState extends State<_CustomRangeDialog> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final now = DateTime.now();
-    final start = DateTime(_startDate.year, _startDate.month, _startDate.day, _startTime.hour, _startTime.minute);
-    final end = DateTime(_endDate.year, _endDate.month, _endDate.day, _endTime.hour, _endTime.minute);
+    final start = DateTime(
+      _startDate.year,
+      _startDate.month,
+      _startDate.day,
+      _startTime.hour,
+      _startTime.minute,
+    );
+    final end = DateTime(
+      _endDate.year,
+      _endDate.month,
+      _endDate.day,
+      _endTime.hour,
+      _endTime.minute,
+    );
     final valid = !end.isBefore(start);
 
     return AlertDialog(
@@ -566,17 +725,34 @@ class _CustomRangeDialogState extends State<_CustomRangeDialog> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _DigitField(controller: _hourCtrl, onChanged: _onTimeFieldChanged),
+                    _DigitField(
+                      controller: _hourCtrl,
+                      onChanged: _onTimeFieldChanged,
+                    ),
                     const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 8),
-                      child: Text(':', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w700)),
+                      child: Text(
+                        ':',
+                        style: TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
-                    _DigitField(controller: _minuteCtrl, onChanged: _onTimeFieldChanged),
+                    _DigitField(
+                      controller: _minuteCtrl,
+                      onChanged: _onTimeFieldChanged,
+                    ),
                     if (!valid) ...[
                       const SizedBox(width: 12),
                       Expanded(
-                        child: Text(l10n.endBeforeStartError,
-                            style: const TextStyle(fontSize: 11, color: AppColors.terracottaDark)),
+                        child: Text(
+                          l10n.endBeforeStartError,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.terracottaDark,
+                          ),
+                        ),
                       ),
                     ],
                   ],
@@ -587,13 +763,20 @@ class _CustomRangeDialogState extends State<_CustomRangeDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.cancel),
+        ),
         FilledButton(
           onPressed: !valid
               ? null
               : () => Navigator.pop(
                   context,
-                  DateTimeRange(start: start, end: end.add(const Duration(minutes: 1)))),
+                  DateTimeRange(
+                    start: start,
+                    end: end.add(const Duration(minutes: 1)),
+                  ),
+                ),
           child: Text(l10n.applyButton),
         ),
       ],
@@ -602,7 +785,12 @@ class _CustomRangeDialogState extends State<_CustomRangeDialog> {
 }
 
 class _EndpointChip extends StatelessWidget {
-  const _EndpointChip({required this.label, required this.value, required this.selected, required this.onTap});
+  const _EndpointChip({
+    required this.label,
+    required this.value,
+    required this.selected,
+    required this.onTap,
+  });
   final String label;
   final String value;
   final bool selected;
@@ -617,21 +805,29 @@ class _EndpointChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? AppColors.primary : AppColors.background,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: selected ? AppColors.primary : AppColors.terracottaLight),
+          border: Border.all(
+            color: selected ? AppColors.primary : AppColors.terracottaLight,
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label,
-                style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: selected ? AppColors.accent : AppColors.muted)),
-            Text(value,
-                style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: selected ? AppColors.accent : AppColors.ink)),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: selected ? AppColors.accent : AppColors.muted,
+              ),
+            ),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: selected ? AppColors.accent : AppColors.ink,
+              ),
+            ),
           ],
         ),
       ),
@@ -668,7 +864,11 @@ class _DigitField extends StatelessWidget {
 }
 
 class _TopItemsCard extends StatelessWidget {
-  const _TopItemsCard({required this.orders, required this.l10n, required this.baht});
+  const _TopItemsCard({
+    required this.orders,
+    required this.l10n,
+    required this.baht,
+  });
   final List<Order> orders;
   final AppLocalizations l10n;
   final String Function(double) baht;
@@ -679,7 +879,10 @@ class _TopItemsCard extends StatelessWidget {
     for (final o in orders) {
       for (final item in o.items) {
         final prev = totals[item.menuItem.name] ?? (0, 0.0);
-        totals[item.menuItem.name] = (prev.$1 + item.quantity, prev.$2 + item.subtotal);
+        totals[item.menuItem.name] = (
+          prev.$1 + item.quantity,
+          prev.$2 + item.subtotal,
+        );
       }
     }
     final top = totals.entries.toList()
@@ -689,12 +892,15 @@ class _TopItemsCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(l10n.topSellingItemsHeader,
-            style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.3,
-                color: AppColors.muted)),
+        Text(
+          l10n.topSellingItemsHeader,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.3,
+            color: AppColors.muted,
+          ),
+        ),
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
@@ -708,31 +914,58 @@ class _TopItemsCard extends StatelessWidget {
               final name = e.value.key;
               final (qty, revenue) = e.value.value;
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   border: isLast
                       ? null
                       : const Border(
-                          bottom: BorderSide(color: AppColors.terracottaLight, width: 0.5)),
+                          bottom: BorderSide(
+                            color: AppColors.terracottaLight,
+                            width: 0.5,
+                          ),
+                        ),
                 ),
                 child: Row(
                   children: [
                     SizedBox(
                       width: 20,
-                      child: Text('${e.key + 1}',
-                          style: const TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                      child: Text(
+                        '${e.key + 1}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
                     ),
                     Expanded(
-                      child: Text(name,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                          overflow: TextOverflow.ellipsis),
+                      child: Text(
+                        name,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    Text('$qty ${l10n.soldSuffix}',
-                        style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+                    Text(
+                      '$qty ${l10n.soldSuffix}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.muted,
+                      ),
+                    ),
                     const SizedBox(width: 10),
-                    Text(baht(revenue),
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                    Text(
+                      baht(revenue),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ],
                 ),
               );
@@ -745,7 +978,11 @@ class _TopItemsCard extends StatelessWidget {
 }
 
 class _StaffSalesCard extends StatelessWidget {
-  const _StaffSalesCard({required this.orders, required this.l10n, required this.baht});
+  const _StaffSalesCard({
+    required this.orders,
+    required this.l10n,
+    required this.baht,
+  });
   final List<Order> orders;
   final AppLocalizations l10n;
   final String Function(double) baht;
@@ -758,17 +995,21 @@ class _StaffSalesCard extends StatelessWidget {
       final prev = totals[name] ?? (0, 0.0);
       totals[name] = (prev.$1 + 1, prev.$2 + o.total);
     }
-    final ranked = totals.entries.toList()..sort((a, b) => b.value.$2.compareTo(a.value.$2));
+    final ranked = totals.entries.toList()
+      ..sort((a, b) => b.value.$2.compareTo(a.value.$2));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(l10n.staffSalesHeader,
-            style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.3,
-                color: AppColors.muted)),
+        Text(
+          l10n.staffSalesHeader,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.3,
+            color: AppColors.muted,
+          ),
+        ),
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
@@ -782,25 +1023,47 @@ class _StaffSalesCard extends StatelessWidget {
               final name = e.value.key;
               final (count, revenue) = e.value.value;
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   border: isLast
                       ? null
                       : const Border(
-                          bottom: BorderSide(color: AppColors.terracottaLight, width: 0.5)),
+                          bottom: BorderSide(
+                            color: AppColors.terracottaLight,
+                            width: 0.5,
+                          ),
+                        ),
                 ),
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text(name,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                          overflow: TextOverflow.ellipsis),
+                      child: Text(
+                        name,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    Text('$count ${l10n.ordersSuffix}',
-                        style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+                    Text(
+                      '$count ${l10n.ordersSuffix}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.muted,
+                      ),
+                    ),
                     const SizedBox(width: 10),
-                    Text(baht(revenue),
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                    Text(
+                      baht(revenue),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ],
                 ),
               );
@@ -813,7 +1076,11 @@ class _StaffSalesCard extends StatelessWidget {
 }
 
 class _PromotionBreakdownCard extends StatelessWidget {
-  const _PromotionBreakdownCard({required this.orders, required this.l10n, required this.baht});
+  const _PromotionBreakdownCard({
+    required this.orders,
+    required this.l10n,
+    required this.baht,
+  });
   final List<Order> orders;
   final AppLocalizations l10n;
   final String Function(double) baht;
@@ -827,17 +1094,21 @@ class _PromotionBreakdownCard extends StatelessWidget {
         totals[promo.name] = (prev.$1 + 1, prev.$2 + promo.discountAmount);
       }
     }
-    final ranked = totals.entries.toList()..sort((a, b) => b.value.$2.compareTo(a.value.$2));
+    final ranked = totals.entries.toList()
+      ..sort((a, b) => b.value.$2.compareTo(a.value.$2));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(l10n.promotionBreakdownHeader,
-            style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.3,
-                color: AppColors.muted)),
+        Text(
+          l10n.promotionBreakdownHeader,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.3,
+            color: AppColors.muted,
+          ),
+        ),
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
@@ -851,25 +1122,48 @@ class _PromotionBreakdownCard extends StatelessWidget {
               final name = e.value.key;
               final (uses, discounted) = e.value.value;
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   border: isLast
                       ? null
                       : const Border(
-                          bottom: BorderSide(color: AppColors.terracottaLight, width: 0.5)),
+                          bottom: BorderSide(
+                            color: AppColors.terracottaLight,
+                            width: 0.5,
+                          ),
+                        ),
                 ),
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text(name,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                          overflow: TextOverflow.ellipsis),
+                      child: Text(
+                        name,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    Text('$uses ${l10n.usedSuffix}',
-                        style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+                    Text(
+                      '$uses ${l10n.usedSuffix}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.muted,
+                      ),
+                    ),
                     const SizedBox(width: 10),
-                    Text('-${baht(discounted)}',
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                    Text(
+                      '-${baht(discounted)}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
                   ],
                 ),
               );
@@ -884,7 +1178,12 @@ class _PromotionBreakdownCard extends StatelessWidget {
 enum _Granularity { minute, hour, day, month }
 
 class _SalesTrendChart extends StatefulWidget {
-  const _SalesTrendChart({required this.orders, required this.range, required this.l10n, required this.baht});
+  const _SalesTrendChart({
+    required this.orders,
+    required this.range,
+    required this.l10n,
+    required this.baht,
+  });
   final List<Order> orders;
   final DateTimeRange range;
   final AppLocalizations l10n;
@@ -897,38 +1196,19 @@ class _SalesTrendChart extends StatefulWidget {
 class _SalesTrendChartState extends State<_SalesTrendChart> {
   int? _selectedIndex;
   double _zoom = 1.0;
-  double _scaleStartZoom = 1.0;
   static const double _maxZoom = 8.0;
+  final _hScrollController = ScrollController();
 
-  // ponytail: zoom always narrows around the range's midpoint (no panning) —
-  // add drag-to-pan if users want to zoom into an edge, not just the center.
-  DateTimeRange _zoomedRange(DateTimeRange full) {
-    if (_zoom <= 1.0) return full;
-    final fullMicros = full.end.difference(full.start).inMicroseconds;
-    final viewMicros = (fullMicros / _zoom).round();
-    final minStart = full.start.microsecondsSinceEpoch;
-    final maxEnd = full.end.microsecondsSinceEpoch;
-    final center = minStart + fullMicros ~/ 2;
-    var start = center - viewMicros ~/ 2;
-    var end = start + viewMicros;
-    if (start < minStart) {
-      end += minStart - start;
-      start = minStart;
-    }
-    if (end > maxEnd) {
-      start -= end - maxEnd;
-      end = maxEnd;
-    }
-    return DateTimeRange(
-      start: DateTime.fromMicrosecondsSinceEpoch(start.clamp(minStart, maxEnd)),
-      end: DateTime.fromMicrosecondsSinceEpoch(end.clamp(minStart, maxEnd)),
-    );
+  @override
+  void dispose() {
+    _hScrollController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final orders = widget.orders;
-    final range = _zoomedRange(widget.range);
+    final range = widget.range;
     final l10n = widget.l10n;
     final baht = widget.baht;
     // The narrower the range, the finer the buckets: minutes for a short
@@ -954,18 +1234,23 @@ class _SalesTrendChartState extends State<_SalesTrendChart> {
     }
 
     DateTime bucketOf(DateTime d) => switch (granularity) {
-          _Granularity.minute =>
-            DateTime(d.year, d.month, d.day, d.hour, (d.minute ~/ minuteStep) * minuteStep),
-          _Granularity.hour => DateTime(d.year, d.month, d.day, d.hour),
-          _Granularity.day => DateTime(d.year, d.month, d.day),
-          _Granularity.month => DateTime(d.year, d.month),
-        };
+      _Granularity.minute => DateTime(
+        d.year,
+        d.month,
+        d.day,
+        d.hour,
+        (d.minute ~/ minuteStep) * minuteStep,
+      ),
+      _Granularity.hour => DateTime(d.year, d.month, d.day, d.hour),
+      _Granularity.day => DateTime(d.year, d.month, d.day),
+      _Granularity.month => DateTime(d.year, d.month),
+    };
     DateTime step(DateTime d) => switch (granularity) {
-          _Granularity.minute => d.add(Duration(minutes: minuteStep)),
-          _Granularity.hour => d.add(const Duration(hours: 1)),
-          _Granularity.day => DateTime(d.year, d.month, d.day + 1),
-          _Granularity.month => DateTime(d.year, d.month + 1),
-        };
+      _Granularity.minute => d.add(Duration(minutes: minuteStep)),
+      _Granularity.hour => d.add(const Duration(hours: 1)),
+      _Granularity.day => DateTime(d.year, d.month, d.day + 1),
+      _Granularity.month => DateTime(d.year, d.month + 1),
+    };
 
     final totals = <DateTime, double>{};
     for (final o in orders) {
@@ -980,23 +1265,32 @@ class _SalesTrendChartState extends State<_SalesTrendChart> {
         ? orders.map((o) => o.createdAt).reduce((a, b) => a.isBefore(b) ? a : b)
         : range.start;
     final buckets = <DateTime>[];
-    for (var cursor = bucketOf(startFrom); cursor.isBefore(range.end); cursor = step(cursor)) {
+    for (
+      var cursor = bucketOf(startFrom);
+      cursor.isBefore(range.end);
+      cursor = step(cursor)
+    ) {
       buckets.add(cursor);
     }
     final values = buckets.map((d) => totals[d] ?? 0.0).toList();
     final maxValue = values.fold(0.0, (m, v) => v > m ? v : m);
 
     String label(DateTime d) => switch (granularity) {
-          _Granularity.minute =>
-            '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}',
-          _Granularity.hour => '${d.hour.toString().padLeft(2, '0')}:00',
-          _Granularity.day => '${d.day}',
-          _Granularity.month => '${d.month}/${d.year % 100}',
-        };
+      _Granularity.minute =>
+        '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}',
+      _Granularity.hour => '${d.hour.toString().padLeft(2, '0')}:00',
+      _Granularity.day => '${d.day}',
+      _Granularity.month => '${d.month}/${d.year % 100}',
+    };
     // Show at most ~6 labels so they don't collide on narrow ranges.
-    final labelEvery = (buckets.length / 6).ceil().clamp(1, buckets.isEmpty ? 1 : buckets.length);
+    final labelEvery = (buckets.length / 6).ceil().clamp(
+      1,
+      buckets.isEmpty ? 1 : buckets.length,
+    );
     // Guard against a selection left over from a range/filter change that shrank the bucket count.
-    final selected = (_selectedIndex != null && _selectedIndex! < values.length) ? _selectedIndex : null;
+    final selected = (_selectedIndex != null && _selectedIndex! < values.length)
+        ? _selectedIndex
+        : null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1004,12 +1298,15 @@ class _SalesTrendChartState extends State<_SalesTrendChart> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(l10n.salesTrendHeader,
-                style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.3,
-                    color: AppColors.muted)),
+            Text(
+              l10n.salesTrendHeader,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.3,
+                color: AppColors.muted,
+              ),
+            ),
             Row(
               children: [
                 _ZoomButton(
@@ -1017,24 +1314,29 @@ class _SalesTrendChartState extends State<_SalesTrendChart> {
                   onTap: _zoom <= 1.0
                       ? null
                       : () => setState(() {
-                            _zoom = (_zoom / 2).clamp(1.0, _maxZoom);
-                            _selectedIndex = null;
-                          }),
+                          _zoom = (_zoom / 2).clamp(1.0, _maxZoom);
+                          _selectedIndex = null;
+                        }),
                 ),
                 SizedBox(
                   width: 28,
-                  child: Text('${_zoom.round()}x',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 10, color: AppColors.muted)),
+                  child: Text(
+                    '${_zoom.round()}x',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: AppColors.muted,
+                    ),
+                  ),
                 ),
                 _ZoomButton(
                   icon: Icons.add,
                   onTap: _zoom >= _maxZoom
                       ? null
                       : () => setState(() {
-                            _zoom = (_zoom * 2).clamp(1.0, _maxZoom);
-                            _selectedIndex = null;
-                          }),
+                          _zoom = (_zoom * 2).clamp(1.0, _maxZoom);
+                          _selectedIndex = null;
+                        }),
                 ),
               ],
             ),
@@ -1055,9 +1357,14 @@ class _SalesTrendChartState extends State<_SalesTrendChart> {
                 height: 14,
                 child: selected == null
                     ? null
-                    : Text('${label(buckets[selected])}  ·  ${baht(values[selected])}',
+                    : Text(
+                        '${label(buckets[selected])}  ·  ${baht(values[selected])}',
                         style: const TextStyle(
-                            fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
               ),
               const SizedBox(height: 4),
               Row(
@@ -1069,66 +1376,93 @@ class _SalesTrendChartState extends State<_SalesTrendChart> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text(baht(maxValue),
-                            style: const TextStyle(fontSize: 8, color: AppColors.muted),
-                            overflow: TextOverflow.ellipsis),
+                        Text(
+                          baht(maxValue),
+                          style: const TextStyle(
+                            fontSize: 8,
+                            color: AppColors.muted,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                         const Spacer(),
-                        const Text('฿0', style: TextStyle(fontSize: 8, color: AppColors.muted)),
+                        const Text(
+                          '฿0',
+                          style: TextStyle(fontSize: 8, color: AppColors.muted),
+                        ),
                       ],
                     ),
                   ),
                   const SizedBox(width: 6),
                   Expanded(
-                    child: Column(
-                      children: [
-                        SizedBox(
-                          height: 100,
-                          child: LayoutBuilder(
-                            builder: (context, constraints) {
-                              return GestureDetector(
-                                behavior: HitTestBehavior.opaque,
-                                onTapDown: (details) {
-                                  if (values.isEmpty) return;
-                                  final slot = constraints.maxWidth / values.length;
-                                  final idx = (details.localPosition.dx / slot).floor().clamp(0, values.length - 1);
-                                  setState(() => _selectedIndex = idx);
-                                },
-                                onScaleStart: (_) => _scaleStartZoom = _zoom,
-                                onScaleUpdate: (details) {
-                                  // Pinch only — ignore single-finger drags so they don't fight with tap-to-select.
-                                  if (details.pointerCount < 2) return;
-                                  setState(() {
-                                    _zoom = (_scaleStartZoom * details.scale).clamp(1.0, _maxZoom);
-                                    _selectedIndex = null;
-                                  });
-                                },
-                                child: CustomPaint(
-                                  size: Size.infinite,
-                                  painter: _LineChartPainter(
-                                    values: values,
-                                    maxValue: maxValue,
-                                    color: AppColors.primary,
-                                    highlightIndex: selected,
+                    child: LayoutBuilder(
+                      builder: (context, outerConstraints) {
+                        // Zooming widens the plotted content rather than
+                        // narrowing the time window shown — the Scrollbar
+                        // below is how the now off-screen left/right side
+                        // stays reachable instead of only ever seeing
+                        // whatever's centered.
+                        final contentWidth = outerConstraints.maxWidth * _zoom;
+                        return Scrollbar(
+                          controller: _hScrollController,
+                          thumbVisibility: true,
+                          child: SingleChildScrollView(
+                            controller: _hScrollController,
+                            scrollDirection: Axis.horizontal,
+                            child: SizedBox(
+                              width: contentWidth,
+                              child: Column(
+                                children: [
+                                  SizedBox(
+                                    height: 100,
+                                    child: GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onTapDown: (details) {
+                                        if (values.isEmpty) return;
+                                        final slot =
+                                            contentWidth / values.length;
+                                        final idx =
+                                            (details.localPosition.dx / slot)
+                                                .floor()
+                                                .clamp(0, values.length - 1);
+                                        setState(() => _selectedIndex = idx);
+                                      },
+                                      child: CustomPaint(
+                                        size: Size.infinite,
+                                        painter: _LineChartPainter(
+                                          values: values,
+                                          maxValue: maxValue,
+                                          color: AppColors.primary,
+                                          highlightIndex: selected,
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: List.generate(buckets.length, (i) {
-                            return Expanded(
-                              child: Text(
-                                i % labelEvery == 0 ? label(buckets[i]) : '',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(fontSize: 8, color: AppColors.muted),
-                                overflow: TextOverflow.ellipsis,
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: List.generate(buckets.length, (
+                                      i,
+                                    ) {
+                                      return Expanded(
+                                        child: Text(
+                                          i % labelEvery == 0
+                                              ? label(buckets[i])
+                                              : '',
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            fontSize: 8,
+                                            color: AppColors.muted,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      );
+                                    }),
+                                  ),
+                                ],
                               ),
-                            );
-                          }),
-                        ),
-                      ],
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -1161,7 +1495,12 @@ class _ZoomButton extends StatelessWidget {
 }
 
 class _LineChartPainter extends CustomPainter {
-  _LineChartPainter({required this.values, required this.maxValue, required this.color, this.highlightIndex});
+  _LineChartPainter({
+    required this.values,
+    required this.maxValue,
+    required this.color,
+    this.highlightIndex,
+  });
   final List<double> values;
   final double maxValue;
   final Color color;
@@ -1213,12 +1552,20 @@ class _LineChartPainter extends CustomPainter {
       final guidePaint = Paint()
         ..color = color.withValues(alpha: 0.4)
         ..strokeWidth = 1;
-      canvas.drawLine(Offset(p.dx, topInset), Offset(p.dx, size.height), guidePaint);
+      canvas.drawLine(
+        Offset(p.dx, topInset),
+        Offset(p.dx, size.height),
+        guidePaint,
+      );
       canvas.drawCircle(p, 5, Paint()..color = Colors.white);
-      canvas.drawCircle(p, 5, Paint()
-        ..color = color
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2);
+      canvas.drawCircle(
+        p,
+        5,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2,
+      );
     }
   }
 
@@ -1248,12 +1595,23 @@ class _StatCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(value,
-                style: const TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.ink)),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.ink,
+              ),
+            ),
             const SizedBox(height: 2),
-            Text(label,
-                style: const TextStyle(fontSize: 10, color: AppColors.muted, letterSpacing: 0.3)),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 10,
+                color: AppColors.muted,
+                letterSpacing: 0.3,
+              ),
+            ),
           ],
         ),
       ),

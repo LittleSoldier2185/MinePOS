@@ -1268,6 +1268,42 @@ abstract class AppLocalizations {
   /// **'PROCEED TO PAY'**
   String get proceedToPayButton;
 
+  /// No description provided for @heldOrderResumedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Resumed your held order'**
+  String get heldOrderResumedMessage;
+
+  /// No description provided for @searchMenuHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search menu'**
+  String get searchMenuHint;
+
+  /// No description provided for @noSearchResultsMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching items'**
+  String get noSearchResultsMessage;
+
+  /// No description provided for @orderNoteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Note for kitchen (e.g. no milk) — not printed on receipt'**
+  String get orderNoteHint;
+
+  /// No description provided for @comboBundlesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Combo Bundles'**
+  String get comboBundlesTitle;
+
+  /// No description provided for @comboPriceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Bundle price {price}'**
+  String comboPriceLabel(String price);
+
   /// No description provided for @paymentAppBarTitle.
   ///
   /// In en, this message translates to:
@@ -1609,6 +1645,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add item'**
   String get addItemTooltip;
+
+  /// No description provided for @sortMenuTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort'**
+  String get sortMenuTooltip;
+
+  /// No description provided for @sortDefaultOption.
+  ///
+  /// In en, this message translates to:
+  /// **'Default order'**
+  String get sortDefaultOption;
+
+  /// No description provided for @sortNameAscOption.
+  ///
+  /// In en, this message translates to:
+  /// **'Name (A-Z)'**
+  String get sortNameAscOption;
+
+  /// No description provided for @sortNameDescOption.
+  ///
+  /// In en, this message translates to:
+  /// **'Name (Z-A)'**
+  String get sortNameDescOption;
+
+  /// No description provided for @sortPriceAscOption.
+  ///
+  /// In en, this message translates to:
+  /// **'Price (Low to High)'**
+  String get sortPriceAscOption;
+
+  /// No description provided for @sortPriceDescOption.
+  ///
+  /// In en, this message translates to:
+  /// **'Price (High to Low)'**
+  String get sortPriceDescOption;
+
+  /// No description provided for @manageCategoriesTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage categories'**
+  String get manageCategoriesTooltip;
+
+  /// No description provided for @manageCategoriesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Categories'**
+  String get manageCategoriesTitle;
+
+  /// No description provided for @manageCategoriesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag to reorder. Tap the pencil to rename a category — every item in it moves to the new name.'**
+  String get manageCategoriesHint;
+
+  /// No description provided for @renameCategoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename Category'**
+  String get renameCategoryTitle;
+
+  /// No description provided for @renameCategoryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Category name'**
+  String get renameCategoryLabel;
+
+  /// No description provided for @renameCategoryEmptyError.
+  ///
+  /// In en, this message translates to:
+  /// **'Category name is required'**
+  String get renameCategoryEmptyError;
+
+  /// No description provided for @renameCategorySnackbar.
+  ///
+  /// In en, this message translates to:
+  /// **'Category renamed'**
+  String get renameCategorySnackbar;
 
   /// No description provided for @noItemsEmpty.
   ///
@@ -2282,6 +2396,18 @@ abstract class AppLocalizations {
   /// **'LANGUAGE'**
   String get languageSectionLabel;
 
+  /// No description provided for @kitchenDisplaySectionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'KITCHEN DISPLAY'**
+  String get kitchenDisplaySectionLabel;
+
+  /// No description provided for @kitchenShowImagesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Show menu photos in Focus Mode'**
+  String get kitchenShowImagesLabel;
+
   /// No description provided for @englishOption.
   ///
   /// In en, this message translates to:
@@ -2804,6 +2930,108 @@ abstract class AppLocalizations {
   /// **'Unmute'**
   String get advertisingUnmuteTooltip;
 
+  /// No description provided for @advertisingEditTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit details'**
+  String get advertisingEditTooltip;
+
+  /// No description provided for @advertisingUnnamedSlideLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Unnamed ad'**
+  String get advertisingUnnamedSlideLabel;
+
+  /// No description provided for @adMediaDetailsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Media Details'**
+  String get adMediaDetailsTitle;
+
+  /// No description provided for @adMediaNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name (optional)'**
+  String get adMediaNameLabel;
+
+  /// No description provided for @adMediaNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. BOGO Latte Promo'**
+  String get adMediaNameHint;
+
+  /// No description provided for @adMediaDurationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration (seconds)'**
+  String get adMediaDurationLabel;
+
+  /// No description provided for @adMediaTransitionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Transition'**
+  String get adMediaTransitionLabel;
+
+  /// No description provided for @adTransitionNoneOption.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get adTransitionNoneOption;
+
+  /// No description provided for @adTransitionFadeOption.
+  ///
+  /// In en, this message translates to:
+  /// **'Fade'**
+  String get adTransitionFadeOption;
+
+  /// No description provided for @adTransitionSlideOption.
+  ///
+  /// In en, this message translates to:
+  /// **'Slide'**
+  String get adTransitionSlideOption;
+
+  /// No description provided for @adMediaExpiryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Expires'**
+  String get adMediaExpiryLabel;
+
+  /// No description provided for @adExpiryNeverOption.
+  ///
+  /// In en, this message translates to:
+  /// **'Never (until removed)'**
+  String get adExpiryNeverOption;
+
+  /// No description provided for @adExpiryInDaysOption.
+  ///
+  /// In en, this message translates to:
+  /// **'In {days} days'**
+  String adExpiryInDaysOption(int days);
+
+  /// No description provided for @adExpiryCustomDateOption.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a date…'**
+  String get adExpiryCustomDateOption;
+
+  /// No description provided for @adMediaNeverExpiresLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Never expires'**
+  String get adMediaNeverExpiresLabel;
+
+  /// No description provided for @adMediaExpiresOnLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Expires {date}'**
+  String adMediaExpiresOnLabel(String date);
+
+  /// No description provided for @adMediaExpiredOnLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired {date}'**
+  String adMediaExpiredOnLabel(String date);
+
   /// No description provided for @dangerZoneSectionLabel.
   ///
   /// In en, this message translates to:
@@ -3157,6 +3385,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not update item: {error}'**
   String updateItemErrorSnackbar(String error);
+
+  /// No description provided for @focusModeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus Mode'**
+  String get focusModeTitle;
+
+  /// No description provided for @startPreparingButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Preparing'**
+  String get startPreparingButton;
+
+  /// No description provided for @readyToServeButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to Serve'**
+  String get readyToServeButton;
+
+  /// No description provided for @customerViewTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer view'**
+  String get customerViewTooltip;
 
   /// No description provided for @accessRestrictedMessage.
   ///

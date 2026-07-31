@@ -15,6 +15,7 @@ Promotion _promo({
   String scopeType = 'shop',
   List<String> scopeItemIds = const [],
   String? scopeCategory,
+  List<String>? scopeCategories,
   List<String> excludeItemIds = const [],
   double? percentValue,
   double? flatAmount,
@@ -41,7 +42,7 @@ Promotion _promo({
       active: true,
       scopeType: scopeType,
       scopeItemIds: scopeItemIds,
-      scopeCategory: scopeCategory,
+      scopeCategories: scopeCategories ?? (scopeCategory == null ? const [] : [scopeCategory]),
       excludeItemIds: excludeItemIds,
       percentValue: percentValue,
       flatAmount: flatAmount,
@@ -81,6 +82,41 @@ void main() {
       promotions: [_promo(id: 'p1', type: 'percent', percentValue: 20, maxDiscountCap: 30)],
     );
     expect(result.totalDiscount, 30);
+  });
+
+  test('category scope with multiple categories matches items in any of them', () {
+    final result = PromotionService.evaluate(
+      items: [_line(latte, 1), _line(croissant, 1), _line(muffin, 1)],
+      promotions: [
+        _promo(
+          id: 'p1',
+          type: 'percent',
+          scopeType: 'category',
+          scopeCategories: ['Drink', 'Pastry'],
+          percentValue: 10,
+        ),
+      ],
+    );
+    // Every item here is Drink or Pastry, so the full subtotal (100+60+40=200) qualifies.
+    expect(result.totalDiscount, 20);
+  });
+
+  test('category scope excludes items outside every listed category', () {
+    final bagel = _item('bagel', 'Bakery', 50);
+    final result = PromotionService.evaluate(
+      items: [_line(latte, 1), _line(bagel, 1)],
+      promotions: [
+        _promo(
+          id: 'p1',
+          type: 'percent',
+          scopeType: 'category',
+          scopeCategories: ['Drink', 'Pastry'],
+          percentValue: 10,
+        ),
+      ],
+    );
+    // Only the latte (Drink) counts — bagel is Bakery, not in scopeCategories.
+    expect(result.totalDiscount, 10);
   });
 
   test('flat: never discounts below the matching subtotal', () {

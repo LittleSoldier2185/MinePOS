@@ -18,7 +18,7 @@ class Promotion {
     required this.active,
     required this.scopeType,
     this.scopeItemIds = const [],
-    this.scopeCategory,
+    this.scopeCategories = const [],
     this.excludeItemIds = const [],
     this.percentValue,
     this.flatAmount,
@@ -46,7 +46,7 @@ class Promotion {
 
   final String scopeType;
   final List<String> scopeItemIds;
-  final String? scopeCategory;
+  final List<String> scopeCategories;
   final List<String> excludeItemIds;
 
   final double? percentValue;
@@ -71,89 +71,98 @@ class Promotion {
   final List<PromotionCode> codes;
 
   factory Promotion.fromJson(Map<String, dynamic> json) => Promotion(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        type: json['type'] as String,
-        active: json['active'] as bool,
-        scopeType: json['scopeType'] as String,
-        scopeItemIds: (json['scopeItemIds'] as List).cast<String>(),
-        scopeCategory: json['scopeCategory'] as String?,
-        excludeItemIds: (json['excludeItemIds'] as List).cast<String>(),
-        percentValue: (json['percentValue'] as num?)?.toDouble(),
-        flatAmount: (json['flatAmount'] as num?)?.toDouble(),
-        maxDiscountCap: (json['maxDiscountCap'] as num?)?.toDouble(),
-        minSpendAmount: (json['minSpendAmount'] as num?)?.toDouble(),
-        bogoBuyQty: json['bogoBuyQty'] as int?,
-        bogoGetQty: json['bogoGetQty'] as int?,
-        bogoGetDiscountPercent: (json['bogoGetDiscountPercent'] as num?)?.toDouble(),
-        comboPrice: (json['comboPrice'] as num?)?.toDouble(),
-        tiered: (json['tiered'] as List).cast<Map<String, dynamic>>(),
-        startDate: json['startDate'] != null ? DateTime.parse(json['startDate'] as String) : null,
-        endDate: json['endDate'] != null ? DateTime.parse(json['endDate'] as String) : null,
-        daysOfWeek: (json['daysOfWeek'] as List?)?.cast<int>(),
-        timeStart: json['timeStart'] as String?,
-        timeEnd: json['timeEnd'] as String?,
-        requiresManagerApproval: json['requiresManagerApproval'] as bool? ?? false,
-        approvalThresholdAmount: (json['approvalThresholdAmount'] as num?)?.toDouble(),
-        codes: (json['codes'] as List).map((c) => PromotionCode.fromJson(c as Map<String, dynamic>)).toList(),
-      );
+    id: json['id'] as String,
+    name: json['name'] as String,
+    type: json['type'] as String,
+    active: json['active'] as bool,
+    scopeType: json['scopeType'] as String,
+    scopeItemIds: (json['scopeItemIds'] as List).cast<String>(),
+    scopeCategories:
+        (json['scopeCategories'] as List?)?.cast<String>() ?? const [],
+    excludeItemIds: (json['excludeItemIds'] as List).cast<String>(),
+    percentValue: (json['percentValue'] as num?)?.toDouble(),
+    flatAmount: (json['flatAmount'] as num?)?.toDouble(),
+    maxDiscountCap: (json['maxDiscountCap'] as num?)?.toDouble(),
+    minSpendAmount: (json['minSpendAmount'] as num?)?.toDouble(),
+    bogoBuyQty: json['bogoBuyQty'] as int?,
+    bogoGetQty: json['bogoGetQty'] as int?,
+    bogoGetDiscountPercent: (json['bogoGetDiscountPercent'] as num?)
+        ?.toDouble(),
+    comboPrice: (json['comboPrice'] as num?)?.toDouble(),
+    tiered: (json['tiered'] as List).cast<Map<String, dynamic>>(),
+    startDate: json['startDate'] != null
+        ? DateTime.parse(json['startDate'] as String)
+        : null,
+    endDate: json['endDate'] != null
+        ? DateTime.parse(json['endDate'] as String)
+        : null,
+    daysOfWeek: (json['daysOfWeek'] as List?)?.cast<int>(),
+    timeStart: json['timeStart'] as String?,
+    timeEnd: json['timeEnd'] as String?,
+    requiresManagerApproval: json['requiresManagerApproval'] as bool? ?? false,
+    approvalThresholdAmount: (json['approvalThresholdAmount'] as num?)
+        ?.toDouble(),
+    codes: (json['codes'] as List)
+        .map((c) => PromotionCode.fromJson(c as Map<String, dynamic>))
+        .toList(),
+  );
 
   Map<String, dynamic> toRequestJson() => {
-        'name': name,
-        'type': type,
-        'active': active,
-        'scopeType': scopeType,
-        'scopeItemIds': scopeItemIds,
-        'scopeCategory': scopeCategory,
-        'excludeItemIds': excludeItemIds,
-        'percentValue': percentValue,
-        'flatAmount': flatAmount,
-        'maxDiscountCap': maxDiscountCap,
-        'minSpendAmount': minSpendAmount,
-        'bogoBuyQty': bogoBuyQty,
-        'bogoGetQty': bogoGetQty,
-        'bogoGetDiscountPercent': bogoGetDiscountPercent,
-        'comboPrice': comboPrice,
-        'tiered': tiered,
-        'startDate': startDate?.toIso8601String(),
-        'endDate': endDate?.toIso8601String(),
-        'daysOfWeek': daysOfWeek,
-        'timeStart': timeStart,
-        'timeEnd': timeEnd,
-        'requiresManagerApproval': requiresManagerApproval,
-        'approvalThresholdAmount': approvalThresholdAmount,
-      };
+    'name': name,
+    'type': type,
+    'active': active,
+    'scopeType': scopeType,
+    'scopeItemIds': scopeItemIds,
+    'scopeCategories': scopeCategories,
+    'excludeItemIds': excludeItemIds,
+    'percentValue': percentValue,
+    'flatAmount': flatAmount,
+    'maxDiscountCap': maxDiscountCap,
+    'minSpendAmount': minSpendAmount,
+    'bogoBuyQty': bogoBuyQty,
+    'bogoGetQty': bogoGetQty,
+    'bogoGetDiscountPercent': bogoGetDiscountPercent,
+    'comboPrice': comboPrice,
+    'tiered': tiered,
+    'startDate': startDate?.toIso8601String(),
+    'endDate': endDate?.toIso8601String(),
+    'daysOfWeek': daysOfWeek,
+    'timeStart': timeStart,
+    'timeEnd': timeEnd,
+    'requiresManagerApproval': requiresManagerApproval,
+    'approvalThresholdAmount': approvalThresholdAmount,
+  };
 
   /// Only [codes] is ever actually swapped in practice (after add/delete
   /// code) — every other field flows through the editor's own controllers/
   /// state instead of round-tripping through this object mid-edit.
   Promotion copyWith({List<PromotionCode>? codes}) => Promotion(
-        id: id,
-        name: name,
-        type: type,
-        active: active,
-        scopeType: scopeType,
-        scopeItemIds: scopeItemIds,
-        scopeCategory: scopeCategory,
-        excludeItemIds: excludeItemIds,
-        percentValue: percentValue,
-        flatAmount: flatAmount,
-        maxDiscountCap: maxDiscountCap,
-        minSpendAmount: minSpendAmount,
-        bogoBuyQty: bogoBuyQty,
-        bogoGetQty: bogoGetQty,
-        bogoGetDiscountPercent: bogoGetDiscountPercent,
-        comboPrice: comboPrice,
-        tiered: tiered,
-        startDate: startDate,
-        endDate: endDate,
-        daysOfWeek: daysOfWeek,
-        timeStart: timeStart,
-        timeEnd: timeEnd,
-        requiresManagerApproval: requiresManagerApproval,
-        approvalThresholdAmount: approvalThresholdAmount,
-        codes: codes ?? this.codes,
-      );
+    id: id,
+    name: name,
+    type: type,
+    active: active,
+    scopeType: scopeType,
+    scopeItemIds: scopeItemIds,
+    scopeCategories: scopeCategories,
+    excludeItemIds: excludeItemIds,
+    percentValue: percentValue,
+    flatAmount: flatAmount,
+    maxDiscountCap: maxDiscountCap,
+    minSpendAmount: minSpendAmount,
+    bogoBuyQty: bogoBuyQty,
+    bogoGetQty: bogoGetQty,
+    bogoGetDiscountPercent: bogoGetDiscountPercent,
+    comboPrice: comboPrice,
+    tiered: tiered,
+    startDate: startDate,
+    endDate: endDate,
+    daysOfWeek: daysOfWeek,
+    timeStart: timeStart,
+    timeEnd: timeEnd,
+    requiresManagerApproval: requiresManagerApproval,
+    approvalThresholdAmount: approvalThresholdAmount,
+    codes: codes ?? this.codes,
+  );
 }
 
 class PromotionCode {
@@ -172,12 +181,12 @@ class PromotionCode {
   final int usedCount;
 
   factory PromotionCode.fromJson(Map<String, dynamic> json) => PromotionCode(
-        id: json['id'] as String,
-        promotionId: json['promotionId'] as String,
-        code: json['code'] as String,
-        maxUses: json['maxUses'] as int?,
-        usedCount: json['usedCount'] as int,
-      );
+    id: json['id'] as String,
+    promotionId: json['promotionId'] as String,
+    code: json['code'] as String,
+    maxUses: json['maxUses'] as int?,
+    usedCount: json['usedCount'] as int,
+  );
 }
 
 /// Settings → Promotions management: owner/manager CRUD against
@@ -188,40 +197,58 @@ class PromotionAdminService {
 
   Future<List<Promotion>> list() async {
     final res = await apiSend(
-        () => http.get(ServerClient.instance.uri('/promotions'), headers: ServerClient.instance.headers));
+      () => http.get(
+        ServerClient.instance.uri('/promotions'),
+        headers: ServerClient.instance.headers,
+      ),
+    );
     final list = jsonDecode(res.body) as List;
-    return list.map((j) => Promotion.fromJson(j as Map<String, dynamic>)).toList();
+    return list
+        .map((j) => Promotion.fromJson(j as Map<String, dynamic>))
+        .toList();
   }
 
   Future<Promotion> create(Promotion promotion) async {
-    final res = await apiSend(() => http.post(
-          ServerClient.instance.uri('/promotions'),
-          headers: ServerClient.instance.headers,
-          body: jsonEncode(promotion.toRequestJson()),
-        ));
+    final res = await apiSend(
+      () => http.post(
+        ServerClient.instance.uri('/promotions'),
+        headers: ServerClient.instance.headers,
+        body: jsonEncode(promotion.toRequestJson()),
+      ),
+    );
     return Promotion.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
   Future<Promotion> update(String id, Promotion promotion) async {
-    final res = await apiSend(() => http.patch(
-          ServerClient.instance.uri('/promotions/$id'),
-          headers: ServerClient.instance.headers,
-          body: jsonEncode(promotion.toRequestJson()),
-        ));
+    final res = await apiSend(
+      () => http.patch(
+        ServerClient.instance.uri('/promotions/$id'),
+        headers: ServerClient.instance.headers,
+        body: jsonEncode(promotion.toRequestJson()),
+      ),
+    );
     return Promotion.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
-  Future<void> delete(String id) => apiSend(() => http.delete(
-        ServerClient.instance.uri('/promotions/$id'),
-        headers: ServerClient.instance.headers,
-      ));
+  Future<void> delete(String id) => apiSend(
+    () => http.delete(
+      ServerClient.instance.uri('/promotions/$id'),
+      headers: ServerClient.instance.headers,
+    ),
+  );
 
-  Future<PromotionCode> addCode(String promotionId, String code, {int? maxUses}) async {
-    final res = await apiSend(() => http.post(
-          ServerClient.instance.uri('/promotions/$promotionId/codes'),
-          headers: ServerClient.instance.headers,
-          body: jsonEncode({'code': code, 'maxUses': maxUses}),
-        ));
+  Future<PromotionCode> addCode(
+    String promotionId,
+    String code, {
+    int? maxUses,
+  }) async {
+    final res = await apiSend(
+      () => http.post(
+        ServerClient.instance.uri('/promotions/$promotionId/codes'),
+        headers: ServerClient.instance.headers,
+        body: jsonEncode({'code': code, 'maxUses': maxUses}),
+      ),
+    );
     return PromotionCode.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
@@ -229,18 +256,25 @@ class PromotionAdminService {
   /// over-threshold discount at checkout (payment screen's approval sheet)
   /// — same shape as the Remove Shop re-auth flow, just checking role
   /// instead of matching a specific actor. Never issues a session/JWT.
-  Future<({int userId, String name})> approve({required String username, required String password}) async {
-    final res = await apiSend(() => http.post(
-          ServerClient.instance.uri('/promotions/approve'),
-          headers: const {'Content-Type': 'application/json'},
-          body: jsonEncode({'username': username, 'password': password}),
-        ));
+  Future<({int userId, String name})> approve({
+    required String username,
+    required String password,
+  }) async {
+    final res = await apiSend(
+      () => http.post(
+        ServerClient.instance.uri('/promotions/approve'),
+        headers: const {'Content-Type': 'application/json'},
+        body: jsonEncode({'username': username, 'password': password}),
+      ),
+    );
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     return (userId: body['userId'] as int, name: body['name'] as String);
   }
 
-  Future<void> deleteCode(String promotionId, String codeId) => apiSend(() => http.delete(
-        ServerClient.instance.uri('/promotions/$promotionId/codes/$codeId'),
-        headers: ServerClient.instance.headers,
-      ));
+  Future<void> deleteCode(String promotionId, String codeId) => apiSend(
+    () => http.delete(
+      ServerClient.instance.uri('/promotions/$promotionId/codes/$codeId'),
+      headers: ServerClient.instance.headers,
+    ),
+  );
 }

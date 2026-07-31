@@ -61,9 +61,11 @@ class PromotionService {
 
     void record(Promotion p, double discount, {String? codeUsed}) {
       if (discount <= 0) return;
-      final needsApproval = p.requiresManagerApproval &&
+      final needsApproval =
+          p.requiresManagerApproval &&
           !approvedPromotionIds.contains(p.id) &&
-          (p.approvalThresholdAmount == null || discount > p.approvalThresholdAmount!);
+          (p.approvalThresholdAmount == null ||
+              discount > p.approvalThresholdAmount!);
       final entry = AppliedPromotion(
         promotion: p,
         discountAmount: discount,
@@ -73,7 +75,9 @@ class PromotionService {
       (needsApproval ? pending : applied).add(entry);
     }
 
-    final candidates = promotions.where((p) => p.active && _isInSchedule(p, effectiveNow)).toList();
+    final candidates = promotions
+        .where((p) => p.active && _isInSchedule(p, effectiveNow))
+        .toList();
 
     for (final p in candidates.where((p) => p.type == 'bogo')) {
       record(p, _evaluateBogo(p, items, bogoDiscountByItemId));
@@ -96,7 +100,9 @@ class PromotionService {
     if (enteredCode != null && enteredCode.trim().isNotEmpty) {
       final normalized = enteredCode.trim().toUpperCase();
       for (final p in candidates.where((p) => p.type == 'code')) {
-        final matches = p.codes.where((c) => c.code.toUpperCase() == normalized);
+        final matches = p.codes.where(
+          (c) => c.code.toUpperCase() == normalized,
+        );
         if (matches.isEmpty) continue;
         final code = matches.first;
         // Best-effort client-side check against the last-fetched usage
@@ -117,10 +123,16 @@ class PromotionService {
   /// discount is attributed back to specific menu items (it's inherently
   /// per-unit); percent/flat/combo/tiered/code discounts are order-level
   /// only, shown as their own receipt line rather than split across items.
-  static Map<String, double> bogoDiscountByItemId(List<OrderItem> items, List<Promotion> promotions, {DateTime? now}) {
+  static Map<String, double> bogoDiscountByItemId(
+    List<OrderItem> items,
+    List<Promotion> promotions, {
+    DateTime? now,
+  }) {
     final effectiveNow = now ?? DateTime.now();
     final byId = <String, double>{};
-    for (final p in promotions.where((p) => p.type == 'bogo' && p.active && _isInSchedule(p, effectiveNow))) {
+    for (final p in promotions.where(
+      (p) => p.type == 'bogo' && p.active && _isInSchedule(p, effectiveNow),
+    )) {
       _evaluateBogo(p, items, byId);
     }
     return byId;
@@ -133,22 +145,34 @@ bool _matchesScope(Promotion p, MenuItem menuItem) {
     case 'item':
       return p.scopeItemIds.contains(menuItem.id);
     case 'category':
-      return menuItem.category == p.scopeCategory;
+      return p.scopeCategories.contains(menuItem.category);
     default:
       return true; // 'shop'
   }
 }
 
-double _scopeMatchingSubtotal(Promotion p, List<OrderItem> items) =>
-    items.where((i) => _matchesScope(p, i.menuItem)).fold(0.0, (s, i) => s + i.subtotal);
+double _scopeMatchingSubtotal(Promotion p, List<OrderItem> items) => items
+    .where((i) => _matchesScope(p, i.menuItem))
+    .fold(0.0, (s, i) => s + i.subtotal);
 
 bool _isInSchedule(Promotion p, DateTime now) {
   if (p.startDate != null) {
-    final startOfDay = DateTime(p.startDate!.year, p.startDate!.month, p.startDate!.day);
+    final startOfDay = DateTime(
+      p.startDate!.year,
+      p.startDate!.month,
+      p.startDate!.day,
+    );
     if (now.isBefore(startOfDay)) return false;
   }
   if (p.endDate != null) {
-    final endOfDay = DateTime(p.endDate!.year, p.endDate!.month, p.endDate!.day, 23, 59, 59);
+    final endOfDay = DateTime(
+      p.endDate!.year,
+      p.endDate!.month,
+      p.endDate!.day,
+      23,
+      59,
+      59,
+    );
     if (now.isAfter(endOfDay)) return false;
   }
   if (p.daysOfWeek != null && p.daysOfWeek!.isNotEmpty) {
@@ -161,7 +185,9 @@ bool _isInSchedule(Promotion p, DateTime now) {
   if (p.timeStart != null || p.timeEnd != null) {
     final nowMinutes = now.hour * 60 + now.minute;
     final startMinutes = p.timeStart != null ? _parseHHmm(p.timeStart!) : 0;
-    final endMinutes = p.timeEnd != null ? _parseHHmm(p.timeEnd!) : (24 * 60 - 1);
+    final endMinutes = p.timeEnd != null
+        ? _parseHHmm(p.timeEnd!)
+        : (24 * 60 - 1);
     if (nowMinutes < startMinutes || nowMinutes > endMinutes) return false;
   }
   return true;
@@ -182,7 +208,11 @@ int _parseHHmm(String hhmm) {
 /// its priciest items in a qualifying group is always protected. A trailing
 /// partial group (not enough units left to fill buyQty+getQty) gets no
 /// discount from this promotion.
-double _evaluateBogo(Promotion p, List<OrderItem> items, Map<String, double> bogoDiscountByItemId) {
+double _evaluateBogo(
+  Promotion p,
+  List<OrderItem> items,
+  Map<String, double> bogoDiscountByItemId,
+) {
   final buyQty = p.bogoBuyQty ?? 0;
   final getQty = p.bogoGetQty ?? 0;
   final discountPercent = p.bogoGetDiscountPercent ?? 0;
@@ -204,7 +234,8 @@ double _evaluateBogo(Promotion p, List<OrderItem> items, Map<String, double> bog
     for (final unit in group.sublist(buyQty)) {
       final discount = unit.value * (discountPercent / 100);
       total += discount;
-      bogoDiscountByItemId[unit.key] = (bogoDiscountByItemId[unit.key] ?? 0) + discount;
+      bogoDiscountByItemId[unit.key] =
+          (bogoDiscountByItemId[unit.key] ?? 0) + discount;
     }
   }
   return total;
@@ -214,7 +245,11 @@ double _evaluateBogo(Promotion p, List<OrderItem> items, Map<String, double> bog
 /// BOGO already discounted off those same items (so stacking a percent
 /// promo on top of a BOGO doesn't double-count the BOGO'd portion), capped
 /// at [Promotion.maxDiscountCap] if set.
-double _evaluatePercent(Promotion p, List<OrderItem> items, Map<String, double> bogoDiscountByItemId) {
+double _evaluatePercent(
+  Promotion p,
+  List<OrderItem> items,
+  Map<String, double> bogoDiscountByItemId,
+) {
   final percent = p.percentValue ?? 0;
   if (percent <= 0) return 0;
   var subtotal = 0.0;
@@ -225,7 +260,8 @@ double _evaluatePercent(Promotion p, List<OrderItem> items, Map<String, double> 
     subtotal += net > 0 ? net : 0;
   }
   var discount = subtotal * percent / 100;
-  if (p.maxDiscountCap != null && discount > p.maxDiscountCap!) discount = p.maxDiscountCap!;
+  if (p.maxDiscountCap != null && discount > p.maxDiscountCap!)
+    discount = p.maxDiscountCap!;
   return discount;
 }
 
@@ -239,11 +275,16 @@ double _evaluateFlat(Promotion p, List<OrderItem> items) {
   return amount > subtotal ? subtotal : amount;
 }
 
-double _evaluateMinSpend(Promotion p, List<OrderItem> items, Map<String, double> bogoDiscountByItemId) {
+double _evaluateMinSpend(
+  Promotion p,
+  List<OrderItem> items,
+  Map<String, double> bogoDiscountByItemId,
+) {
   final threshold = p.minSpendAmount ?? 0;
   final subtotal = _scopeMatchingSubtotal(p, items);
   if (subtotal < threshold) return 0;
-  if (p.percentValue != null) return _evaluatePercent(p, items, bogoDiscountByItemId);
+  if (p.percentValue != null)
+    return _evaluatePercent(p, items, bogoDiscountByItemId);
   if (p.flatAmount != null) return _evaluateFlat(p, items);
   return 0;
 }
@@ -266,7 +307,9 @@ double _evaluateCombo(Promotion p, List<OrderItem> items) {
     }
     if (match == null) return 0;
     bundlePrice += match.menuItem.price;
-    bundles = bundles == -1 ? match.quantity : (match.quantity < bundles ? match.quantity : bundles);
+    bundles = bundles == -1
+        ? match.quantity
+        : (match.quantity < bundles ? match.quantity : bundles);
   }
   if (bundles <= 0) return 0;
   final discountPerBundle = bundlePrice - p.comboPrice!;
@@ -289,7 +332,8 @@ double _evaluateTiered(Promotion p, List<OrderItem> items) {
   if (units.isEmpty) return 0;
   units.sort((a, b) => b.compareTo(a));
 
-  final tiers = [...p.tiered]..sort((a, b) => (b['qty'] as int).compareTo(a['qty'] as int));
+  final tiers = [...p.tiered]
+    ..sort((a, b) => (b['qty'] as int).compareTo(a['qty'] as int));
 
   double discount = 0;
   var index = 0;

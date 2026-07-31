@@ -15,15 +15,17 @@ import '../cashier/widgets/cancel_order_dialog.dart';
 import '../home/mobile_bottom_nav.dart';
 import '../manager/services/shop_config_service.dart';
 import '../welcome/welcome_screen.dart';
+import 'customer_kitchen_status_screen.dart';
+import 'order_focus_screen.dart';
 import 'services/kitchen_service.dart';
 
 /// Item statuses advance pending → preparing → ready; null once at 'ready'
 /// since further progress ("served") is an order-level action.
 String? _nextItemStatus(String current) => switch (current) {
-      'pending' => 'preparing',
-      'preparing' => 'ready',
-      _ => null,
-    };
+  'pending' => 'preparing',
+  'preparing' => 'ready',
+  _ => null,
+};
 
 const _kUrgentAge = Duration(minutes: 5);
 
@@ -84,7 +86,10 @@ class _KitchenDisplayScreenState extends State<KitchenDisplayScreen>
     _svc.connect();
     // Re-render periodically so "elapsed" labels and urgency highlighting
     // stay current even when no new WebSocket events arrive.
-    _ticker = Timer.periodic(const Duration(seconds: 15), (_) => setState(() {}));
+    _ticker = Timer.periodic(
+      const Duration(seconds: 15),
+      (_) => setState(() {}),
+    );
   }
 
   @override
@@ -106,8 +111,12 @@ class _KitchenDisplayScreenState extends State<KitchenDisplayScreen>
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.updateOrderErrorSnackbar('$e')),
-            backgroundColor: AppColors.terracottaDark),
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context)!.updateOrderErrorSnackbar('$e'),
+          ),
+          backgroundColor: AppColors.terracottaDark,
+        ),
       );
     }
   }
@@ -120,8 +129,12 @@ class _KitchenDisplayScreenState extends State<KitchenDisplayScreen>
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.updateItemErrorSnackbar('$e')),
-            backgroundColor: AppColors.terracottaDark),
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context)!.updateItemErrorSnackbar('$e'),
+          ),
+          backgroundColor: AppColors.terracottaDark,
+        ),
       );
     }
   }
@@ -133,13 +146,16 @@ class _KitchenDisplayScreenState extends State<KitchenDisplayScreen>
     try {
       await OrderService.instance.cancelOrder(order.id!, reason: reason);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.cancelOrderSnackbar)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.cancelOrderSnackbar)));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text(l10n.cancelOrderFailedSnackbar('$e')),
-            backgroundColor: AppColors.terracottaDark),
+          content: Text(l10n.cancelOrderFailedSnackbar('$e')),
+          backgroundColor: AppColors.terracottaDark,
+        ),
       );
     }
   }
@@ -147,8 +163,12 @@ class _KitchenDisplayScreenState extends State<KitchenDisplayScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final pending = _svc.orders.where((o) => o.kitchenStatus == 'pending').toList();
-    final preparing = _svc.orders.where((o) => o.kitchenStatus == 'preparing').toList();
+    final pending = _svc.orders
+        .where((o) => o.kitchenStatus == 'pending')
+        .toList();
+    final preparing = _svc.orders
+        .where((o) => o.kitchenStatus == 'preparing')
+        .toList();
     final ready = _svc.orders.where((o) => o.kitchenStatus == 'ready').toList();
     final isMobile = Responsive.isMobile(context);
     // A standalone kitchen-only station has no hub in its nav stack to
@@ -193,6 +213,15 @@ class _KitchenDisplayScreenState extends State<KitchenDisplayScreen>
             padding: const EdgeInsets.only(right: 16),
             child: Center(child: _ConnectionBadge(state: _svc.state)),
           ),
+          IconButton(
+            icon: const Icon(Icons.tv_outlined),
+            tooltip: l10n.customerViewTooltip,
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const CustomerKitchenStatusScreen(),
+              ),
+            ),
+          ),
           if (widget.standalone)
             IconButton(
               icon: const Icon(Icons.logout),
@@ -203,10 +232,12 @@ class _KitchenDisplayScreenState extends State<KitchenDisplayScreen>
       ),
       backgroundColor: AppColors.background,
       floatingActionButton: showMobileNav ? const MobileNewOrderFab() : null,
-      floatingActionButtonLocation:
-          showMobileNav ? FloatingActionButtonLocation.centerDocked : null,
-      bottomNavigationBar:
-          showMobileNav ? const MobileBottomNav(current: MobileTab.kitchen) : null,
+      floatingActionButtonLocation: showMobileNav
+          ? FloatingActionButtonLocation.centerDocked
+          : null,
+      bottomNavigationBar: showMobileNav
+          ? const MobileBottomNav(current: MobileTab.kitchen)
+          : null,
       body: isMobile
           ? Column(
               children: [
@@ -215,10 +246,16 @@ class _KitchenDisplayScreenState extends State<KitchenDisplayScreen>
                   labelColor: AppColors.primary,
                   unselectedLabelColor: AppColors.muted,
                   indicatorColor: AppColors.primary,
-                  labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                  labelStyle: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
                   tabs: [
                     Tab(text: '${l10n.newColumnTitle} (${pending.length})'),
-                    Tab(text: '${l10n.preparingColumnTitle} (${preparing.length})'),
+                    Tab(
+                      text:
+                          '${l10n.preparingColumnTitle} (${preparing.length})',
+                    ),
                     Tab(text: '${l10n.readyColumnTitle} (${ready.length})'),
                   ],
                 ),
@@ -246,10 +283,22 @@ class _ConnectionBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final (color, label) = switch (state) {
-      KitchenConnectionState.connected => (Colors.green.shade700, l10n.liveConnectionLabel),
-      KitchenConnectionState.connecting => (AppColors.muted, l10n.connectingLabel),
-      KitchenConnectionState.error => (AppColors.terracottaDark, l10n.reconnectingLabel),
-      KitchenConnectionState.disconnected => (AppColors.muted, l10n.offlineLabel),
+      KitchenConnectionState.connected => (
+        Colors.green.shade700,
+        l10n.liveConnectionLabel,
+      ),
+      KitchenConnectionState.connecting => (
+        AppColors.muted,
+        l10n.connectingLabel,
+      ),
+      KitchenConnectionState.error => (
+        AppColors.terracottaDark,
+        l10n.reconnectingLabel,
+      ),
+      KitchenConnectionState.disconnected => (
+        AppColors.muted,
+        l10n.offlineLabel,
+      ),
     };
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -260,7 +309,14 @@ class _ConnectionBadge extends StatelessWidget {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 6),
-        Text(label, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600)),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: color,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ],
     );
   }
@@ -308,10 +364,17 @@ class _KitchenColumn extends StatelessWidget {
               Text(
                 title,
                 style: TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 0.4, color: color),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.4,
+                  color: color,
+                ),
               ),
               const SizedBox(width: 6),
-              Text('${orders.length}', style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+              Text(
+                '${orders.length}',
+                style: const TextStyle(fontSize: 12, color: AppColors.muted),
+              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -320,8 +383,13 @@ class _KitchenColumn extends StatelessWidget {
                 ? Center(
                     child: Padding(
                       padding: const EdgeInsets.only(top: 40),
-                      child: Text(AppLocalizations.of(context)!.kitchenNoOrders,
-                          style: const TextStyle(color: AppColors.muted, fontSize: 12)),
+                      child: Text(
+                        AppLocalizations.of(context)!.kitchenNoOrders,
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
                   )
                 : ListView.separated(
@@ -331,9 +399,12 @@ class _KitchenColumn extends StatelessWidget {
                       order: orders[i],
                       onItemTap: (item) => onItemTap(orders[i], item),
                       completeLabel: completeLabel,
-                      onComplete:
-                          onComplete == null ? null : () => onComplete!(orders[i]),
-                      onCancel: onCancel == null ? null : () => onCancel!(orders[i]),
+                      onComplete: onComplete == null
+                          ? null
+                          : () => onComplete!(orders[i]),
+                      onCancel: onCancel == null
+                          ? null
+                          : () => onCancel!(orders[i]),
                     ),
                   ),
           ),
@@ -371,87 +442,180 @@ class _OrderCard extends StatelessWidget {
     return '$name (${item.sweetness!.label(AppLocalizations.of(context)!)})';
   }
 
+  // Opens Focus Mode for this order — a bigger, single-order view with menu
+  // photos where a barista can drive the whole order's prep status from one
+  // screen (see order_focus_screen.dart). The chip/cancel taps below are
+  // their own nested tap targets and still win over this card-wide one.
+  void _openFocusMode(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => OrderFocusScreen(
+          order: order,
+          onItemTap: onItemTap,
+          completeLabel: completeLabel,
+          onComplete: onComplete,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final age = DateTime.now().difference(order.createdAt);
     final urgent = order.kitchenStatus != 'ready' && age >= _kUrgentAge;
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: urgent ? AppColors.terracottaDark : AppColors.terracottaLight,
-            width: urgent ? 1.5 : 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        onTap: () => _openFocusMode(context),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: urgent
+                  ? AppColors.terracottaDark
+                  : AppColors.terracottaLight,
+              width: urgent ? 1.5 : 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(order.formattedNumber,
-                  style: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.primary)),
               Row(
-                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    _elapsed(context),
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: urgent ? FontWeight.w700 : FontWeight.w500,
-                      color: urgent ? AppColors.terracottaDark : AppColors.muted,
+                    order.formattedNumber,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primary,
                     ),
                   ),
-                  if (onCancel != null)
-                    IconButton(
-                      icon: const Icon(Icons.cancel_outlined, size: 16, color: AppColors.terracottaDark),
-                      tooltip: AppLocalizations.of(context)!.cancelOrderLabel,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                      onPressed: onCancel,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _elapsed(context),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: urgent
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          color: urgent
+                              ? AppColors.terracottaDark
+                              : AppColors.muted,
+                        ),
+                      ),
+                      if (onCancel != null)
+                        IconButton(
+                          icon: const Icon(
+                            Icons.cancel_outlined,
+                            size: 16,
+                            color: AppColors.terracottaDark,
+                          ),
+                          tooltip: AppLocalizations.of(
+                            context,
+                          )!.cancelOrderLabel,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 28,
+                            minHeight: 28,
+                          ),
+                          onPressed: onCancel,
+                        ),
+                    ],
+                  ),
                 ],
               ),
+              if (order.note != null && order.note!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.amber.shade700.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.sticky_note_2_outlined,
+                        size: 14,
+                        color: Colors.amber.shade800,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          order.note!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.amber.shade900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 8),
+              ...order.items.map(
+                (item) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 3),
+                  child: Row(
+                    children: [
+                      Text(
+                        '${item.quantity}×',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          _itemLabel(context, item),
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                      ),
+                      _ItemStatusChip(item: item, onTap: () => onItemTap(item)),
+                    ],
+                  ),
+                ),
+              ),
+              if (completeLabel != null && onComplete != null) ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: onComplete,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      textStyle: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    child: Text(completeLabel!),
+                  ),
+                ),
+              ],
             ],
           ),
-          const SizedBox(height: 8),
-          ...order.items.map(
-            (item) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3),
-              child: Row(
-                children: [
-                  Text('${item.quantity}×',
-                      style: const TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.ink)),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      _itemLabel(context, item),
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                  ),
-                  _ItemStatusChip(item: item, onTap: () => onItemTap(item)),
-                ],
-              ),
-            ),
-          ),
-          if (completeLabel != null && onComplete != null) ...[
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: onComplete,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                ),
-                child: Text(completeLabel!),
-              ),
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }
@@ -478,11 +642,17 @@ class _ItemStatusChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withValues(alpha: tappable ? 0.6 : 0.3)),
+          border: Border.all(
+            color: color.withValues(alpha: tappable ? 0.6 : 0.3),
+          ),
         ),
         child: Text(
           label,
-          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color),
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
         ),
       ),
     );

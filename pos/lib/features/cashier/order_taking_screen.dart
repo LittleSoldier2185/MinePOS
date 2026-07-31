@@ -3,11 +3,14 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import '../../core/responsive/breakpoints.dart';
+import '../../core/services/app_settings_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/formatting.dart';
 import '../../core/widgets/confirm_dialog.dart';
+import '../../core/widgets/menu_sort_button.dart';
 import '../../l10n/app_localizations.dart';
 import '../customer_display/services/customer_display_service.dart';
+import '../manager/services/promotion_admin_service.dart';
 import 'models/menu_item.dart';
 import 'models/order_item.dart';
 import 'order_history_screen.dart';
@@ -29,9 +32,26 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
 
   // A brand-new shop can genuinely have zero menu items (none added in
   // Menu Management yet) — .first would throw on that empty list.
-  String _selectedCategory =
-      MenuService.instance.categories.isEmpty ? '' : MenuService.instance.categories.first;
+  String _selectedCategory = MenuService.instance.categories.isEmpty
+      ? ''
+      : MenuService.instance.categories.first;
   final List<OrderItem> _cart = [];
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
+  final _noteController = TextEditingController();
+  MenuSortMode _sortMode = MenuSortMode.defaultOrder;
+  List<Promotion> _combos = [];
+
+  // Set once this cart has actually been handed to PaymentScreen, so dispose()
+  // doesn't re-hold a cart that was already sold (see pushAndRemoveUntil in
+  // receipt_screen.dart, which disposes this screen after a completed sale).
+  bool _sentToPayment = false;
+
+  // Survives this State being destroyed (e.g. the cashier backs out to Home
+  // mid-order) so the next OrderTakingScreen instance can resume it — see
+  // dispose() / the restore in initState().
+  static List<OrderItem>? _heldCart;
+  static String? _heldNote;
 
   int get _cartCount => _cart.fold(0, (s, i) => s + i.quantity);
   double get _cartTotal => _cart.fold(0.0, (s, i) => s + i.subtotal);
@@ -41,6 +61,27 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
     super.initState();
     CustomerDisplayService.instance.connect();
     _menuService.addListener(_onMenuChanged);
+    AppSettingsService.instance.getMenuSortMode().then((v) {
+      if (mounted) setState(() => _sortMode = v);
+    });
+    _loadCombos();
+    if (_heldCart != null && _heldCart!.isNotEmpty) {
+      _cart.addAll(_heldCart!);
+      _heldCart = null;
+      _noteController.text = _heldNote ?? '';
+      _heldNote = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _syncDisplay();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.heldOrderResumedMessage,
+            ),
+          ),
+        );
+      });
+    }
   }
 
   // Menu edits made on another device (new item, price change, item toggled
@@ -57,6 +98,21 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
         _selectedCategory = categories.first;
       }
     });
+  }
+
+  Future<void> _loadCombos() async {
+    try {
+      final promotions = await PromotionAdminService.instance.list();
+      if (!mounted) return;
+      setState(() {
+        _combos = promotions
+            .where((p) => p.type == 'combo' && p.active)
+            .toList();
+      });
+    } catch (_) {
+      // Combo shortcuts are a convenience on top of manually adding the same
+      // items — nothing breaks by just not offering them this session.
+    }
   }
 
   // ── Cart helpers ──────────────────────────────────────────────────────────
@@ -92,6 +148,53 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
     _syncDisplay();
   }
 
+  /// Adds one of every menu item that makes up [combo]'s bundle — the same
+  /// as the cashier tapping each item individually, just in one action. Any
+  /// bundled item that's since been deleted/marked unavailable is silently
+  /// skipped (the discount itself just won't apply until the cashier adds a
+  /// substitute, same as if they'd forgotten to add it manually).
+  Future<void> _addCombo(Promotion combo) async {
+    for (final item in resolveComboItems(
+      combo.scopeItemIds,
+      _menuService.allAvailable,
+    )) {
+      await _addItem(item);
+    }
+  }
+
+  Future<void> _pickCombo() async {
+    final l10n = AppLocalizations.of(context)!;
+    final combo = await showModalBottomSheet<Promotion>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+              child: Text(
+                l10n.comboBundlesTitle,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            for (final combo in _combos)
+              ListTile(
+                title: Text(combo.name),
+                subtitle: Text(
+                  l10n.comboPriceLabel(baht(combo.comboPrice ?? 0)),
+                ),
+                onTap: () => Navigator.pop(context, combo),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (combo != null) await _addCombo(combo);
+  }
+
   Future<SweetnessLevel?> _pickSweetness() {
     final l10n = AppLocalizations.of(context)!;
     return showModalBottomSheet<SweetnessLevel>(
@@ -104,7 +207,10 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
               child: Text(
                 l10n.selectSweetnessTitle,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
             ),
             for (final level in SweetnessLevel.values)
@@ -154,11 +260,28 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
     }
   }
 
-  void _proceedToPayment() {
+  Future<void> _proceedToPayment() async {
     if (_cart.isEmpty) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => PaymentScreen(items: List.from(_cart))),
+    _sentToPayment = true;
+    // A completed sale leaves this screen via ReceiptScreen's
+    // pushAndRemoveUntil, which removes this route outright — so reaching
+    // this line means payment was cancelled/backed out of instead, and this
+    // same cart is still live and should go back to being holdable.
+    final note = _noteController.text.trim();
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PaymentScreen(
+          items: List.from(_cart),
+          note: note.isEmpty ? null : note,
+        ),
+      ),
     );
+    _sentToPayment = false;
+  }
+
+  void _setSortMode(MenuSortMode mode) {
+    setState(() => _sortMode = mode);
+    AppSettingsService.instance.setMenuSortMode(mode);
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -246,6 +369,13 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
       elevation: 0,
       surfaceTintColor: Colors.transparent,
       actions: [
+        if (_combos.isNotEmpty)
+          IconButton(
+            icon: const Icon(Icons.local_offer_outlined),
+            tooltip: AppLocalizations.of(context)!.comboBundlesTitle,
+            onPressed: _pickCombo,
+          ),
+        MenuSortButton(value: _sortMode, onChanged: _setSortMode),
         if (_cart.isNotEmpty)
           IconButton(
             icon: const Icon(Icons.delete_sweep_outlined),
@@ -287,79 +417,126 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
       );
     }
 
-    final items = _menuService.itemsForCategory(_selectedCategory);
+    final query = _searchQuery.trim().toLowerCase();
+    final locale = Localizations.localeOf(context);
+    final unsorted = query.isEmpty
+        ? _menuService.itemsForCategory(_selectedCategory)
+        : _menuService.allAvailable
+              .where((i) => i.displayName(locale).toLowerCase().contains(query))
+              .toList();
+    final items = sortMenuItems(unsorted, _sortMode, locale);
 
     return Column(
       children: [
-        SizedBox(
-          height: 52,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            scrollDirection: Axis.horizontal,
-            itemCount: _menuService.categories.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 8),
-            itemBuilder: (context, i) {
-              final cat = _menuService.categories[i];
-              final selected = cat == _selectedCategory;
-              return GestureDetector(
-                onTap: () => setState(() => _selectedCategory = cat),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: selected ? AppColors.primary : Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: selected
-                          ? AppColors.primary
-                          : AppColors.terracottaLight,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+          child: TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: AppLocalizations.of(context)!.searchMenuHint,
+              prefixIcon: const Icon(Icons.search, size: 20),
+              suffixIcon: query.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.clear, size: 18),
+                      onPressed: () => setState(() {
+                        _searchController.clear();
+                        _searchQuery = '';
+                      }),
                     ),
-                  ),
-                  child: Text(
-                    cat,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: selected ? AppColors.accent : AppColors.ink,
-                    ),
-                  ),
-                ),
-              );
-            },
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: AppColors.terracottaLight),
+              ),
+            ),
+            onChanged: (v) => setState(() => _searchQuery = v),
           ),
         ),
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final cols = (constraints.maxWidth / 140).floor().clamp(2, 5);
-              return GridView.builder(
-                padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: cols,
-                  mainAxisSpacing: 8,
-                  crossAxisSpacing: 8,
-                  childAspectRatio: 1.1,
-                ),
-                itemCount: items.length,
-                itemBuilder: (context, index) {
-                  final item = items[index];
-                  final matches = _cart.where((i) => i.menuItem.id == item.id);
-                  final qty = matches.isEmpty
-                      ? null
-                      : matches.fold(0, (s, i) => s + i.quantity);
-                  return _MenuItemCard(
-                    item: item,
-                    cartQty: qty,
-                    onTap: () => _addItem(item),
-                  );
-                },
-              );
-            },
+        if (query.isEmpty)
+          SizedBox(
+            height: 52,
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              scrollDirection: Axis.horizontal,
+              itemCount: _menuService.categories.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (context, i) {
+                final cat = _menuService.categories[i];
+                final selected = cat == _selectedCategory;
+                return GestureDetector(
+                  onTap: () => setState(() => _selectedCategory = cat),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: selected ? AppColors.primary : Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: selected
+                            ? AppColors.primary
+                            : AppColors.terracottaLight,
+                      ),
+                    ),
+                    child: Text(
+                      cat,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: selected ? AppColors.accent : AppColors.ink,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
-        ),
+        if (query.isNotEmpty && items.isEmpty)
+          Expanded(
+            child: Center(
+              child: Text(
+                AppLocalizations.of(context)!.noSearchResultsMessage,
+                style: const TextStyle(color: AppColors.muted),
+              ),
+            ),
+          )
+        else
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final cols = (constraints.maxWidth / 140).floor().clamp(2, 5);
+                return GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: cols,
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 8,
+                    childAspectRatio: 1.1,
+                  ),
+                  itemCount: items.length,
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+                    final matches = _cart.where(
+                      (i) => i.menuItem.id == item.id,
+                    );
+                    final qty = matches.isEmpty
+                        ? null
+                        : matches.fold(0, (s, i) => s + i.quantity);
+                    return _MenuItemCard(
+                      item: item,
+                      cartQty: qty,
+                      onTap: () => _addItem(item),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
       ],
     );
   }
@@ -385,11 +562,14 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                AppLocalizations.of(context)!.orderNumberLabel(nextNum),
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
+              Flexible(
+                child: Text(
+                  AppLocalizations.of(context)!.orderNumberLabel(nextNum),
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
                 ),
               ),
               Text(
@@ -420,6 +600,29 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
                   ),
                 ),
         ),
+        if (_cart.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: TextField(
+              controller: _noteController,
+              maxLines: 2,
+              minLines: 1,
+              style: const TextStyle(fontSize: 13),
+              decoration: InputDecoration(
+                isDense: true,
+                hintText: AppLocalizations.of(context)!.orderNoteHint,
+                prefixIcon: const Icon(Icons.edit_note, size: 20),
+                filled: true,
+                fillColor: AppColors.background,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(
+                    color: AppColors.terracottaLight,
+                  ),
+                ),
+              ),
+            ),
+          ),
         Container(
           padding: const EdgeInsets.all(16),
           decoration: const BoxDecoration(
@@ -465,7 +668,15 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
 
   @override
   void dispose() {
+    if (!_sentToPayment && _cart.isNotEmpty) {
+      _heldCart = List<OrderItem>.of(_cart);
+      _heldNote = _noteController.text.trim().isEmpty
+          ? null
+          : _noteController.text.trim();
+    }
     _menuService.removeListener(_onMenuChanged);
+    _searchController.dispose();
+    _noteController.dispose();
     _tabController?.dispose();
     super.dispose();
   }

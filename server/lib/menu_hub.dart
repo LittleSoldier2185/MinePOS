@@ -18,4 +18,7 @@ class MenuHub extends BroadcastHub {
   void broadcastItemChanged(DbMenuItem item) => broadcast({'type': 'item_changed', 'item': item.toJson()});
 
   void broadcastItemDeleted(String id) => broadcast({'type': 'item_deleted', 'id': id});
+
+  void broadcastCategoryOrderChanged(List<String> order) =>
+      broadcast({'type': 'category_order_changed', 'order': order});
 }

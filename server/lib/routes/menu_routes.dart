@@ -12,6 +12,9 @@ void registerMenuRoutes(Router router, AppDb db, ServerConfig config) {
   router.put('/menu/<id>', (Request req, String id) => _updateItem(req, id, db, config));
   router.delete('/menu/<id>', (Request req, String id) => _deleteItem(req, id, db, config));
   router.patch('/menu/<id>/toggle', (Request req, String id) => _toggleItem(req, id, db, config));
+  router.get('/menu/categories/order', (Request req) => _getCategoryOrder(req, db, config));
+  router.put('/menu/categories/order', (Request req) => _setCategoryOrder(req, db, config));
+  router.put('/menu/categories/rename', (Request req) => _renameCategory(req, db, config));
 
   router.get('/ws/menu',
       wsAuthRoute(db, config.jwtSecret, (channel) => MenuHub.instance.add(channel, db)));
@@ -118,4 +121,53 @@ Response _toggleItem(
   if (item == null) return notFound('Menu item not found');
   MenuHub.instance.broadcastItemChanged(item);
   return jsonOk(item.toJson());
+}
+
+// GET /menu/categories/order — any authenticated role (the Order Taking
+// screen's category chips need this too, not just Menu Management).
+Response _getCategoryOrder(Request req, AppDb db, ServerConfig config) {
+  if (requireAuth(req, db, config.jwtSecret) == null) return unauthorized();
+  return jsonOk({'order': db.getCategoryOrder()});
+}
+
+// PUT /menu/categories/order  { order: [category, ...] }
+Future<Response> _setCategoryOrder(
+    Request req, AppDb db, ServerConfig config) async {
+  if (requireRoles(req, db, config.jwtSecret, _kMenuManagers) == null) {
+    return unauthorized();
+  }
+  final body = await parseJsonBody(req);
+  final order = body?['order'];
+  if (order is! List || order.any((c) => c is! String)) {
+    return jsonError('order must be an array of category names');
+  }
+  final list = order.cast<String>();
+  db.setCategoryOrder(list);
+  MenuHub.instance.broadcastCategoryOrderChanged(list);
+  return jsonOk({'order': list});
+}
+
+// PUT /menu/categories/rename  { from, to }
+// Renames every item currently in category [from] to [to] — a category is
+// just a free-text field on each item, so this is a bulk update rather than
+// a rename of some separate categories row.
+Future<Response> _renameCategory(
+    Request req, AppDb db, ServerConfig config) async {
+  if (requireRoles(req, db, config.jwtSecret, _kMenuManagers) == null) {
+    return unauthorized();
+  }
+  final body = await parseJsonBody(req);
+  final from = (body?['from'] as String?)?.trim();
+  final to = (body?['to'] as String?)?.trim();
+  if (from == null || from.isEmpty || to == null || to.isEmpty) {
+    return jsonError('from and to are required');
+  }
+  if (from == to) return jsonOk({'count': 0});
+
+  final changed = db.renameCategory(from: from, to: to);
+  for (final item in changed) {
+    MenuHub.instance.broadcastItemChanged(item);
+  }
+  MenuHub.instance.broadcastCategoryOrderChanged(db.getCategoryOrder());
+  return jsonOk({'count': changed.length});
 }

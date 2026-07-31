@@ -40,7 +40,15 @@ class OrderService extends ChangeNotifier {
     }).toList();
   }
 
-  double get todaysRevenue => todaysOrders.fold(0.0, (s, o) => s + o.total);
+  // Cancelled orders keep their spot in todaysOrders (needed for order-number
+  // sequencing above) but must not count toward sales figures.
+  static List<Order> excludeCancelled(List<Order> orders) =>
+      orders.where((o) => o.kitchenStatus != 'cancelled').toList();
+
+  List<Order> get todaysCompletedOrders => excludeCancelled(todaysOrders);
+
+  double get todaysRevenue =>
+      todaysCompletedOrders.fold(0.0, (s, o) => s + o.total);
 
   /// Completes an order locally and syncs it to the server.
   /// Returns the order — if server sync succeeds the returned order carries
@@ -57,6 +65,7 @@ class OrderService extends ChangeNotifier {
     double? amountPaid,
     List<AppliedPromotion> appliedPromotions = const [],
     Map<String, int> approvedByUserId = const {},
+    String? note,
   }) async {
     final client = ServerClient.instance;
     final promotionsPayload = appliedPromotions
@@ -81,6 +90,7 @@ class OrderService extends ChangeNotifier {
                 'amountPaid': amountPaid,
                 'items': items.map((i) => i.toJson()).toList(),
                 'promotions': promotionsPayload,
+                'note': note,
               }),
             )
             .timeout(const Duration(seconds: 10));
@@ -122,6 +132,7 @@ class OrderService extends ChangeNotifier {
           .toList(),
       createdByUserId: client.userId,
       createdByName: (client.name?.isNotEmpty ?? false) ? client.name : client.username,
+      note: note,
     );
     _orders.add(order);
     notifyListeners();

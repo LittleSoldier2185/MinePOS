@@ -17,9 +17,14 @@ import 'services/promotion_service.dart';
 import 'services/promptpay_qr.dart';
 
 class PaymentScreen extends StatefulWidget {
-  const PaymentScreen({super.key, required this.items});
+  const PaymentScreen({super.key, required this.items, this.note});
 
   final List<OrderItem> items;
+
+  /// Cashier's free-text special instructions for the kitchen — carried
+  /// through to [OrderService.complete] unchanged; never shown on this
+  /// screen or the receipt.
+  final String? note;
 
   @override
   State<PaymentScreen> createState() => _PaymentScreenState();
@@ -204,6 +209,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   Future<void> _confirm() async {
     setState(() => _processing = true);
+
+    // Show the received cash/change on the customer-facing display the
+    // moment the cashier confirms, rather than waiting on the order's round
+    // trip to the server below — the amount paid and change owed are
+    // already fully known locally at this point.
+    CustomerDisplayService.instance.publishThankYou(total: _total, change: _change);
+
     await Future.delayed(const Duration(milliseconds: 400));
 
     if (!mounted) return;
@@ -218,11 +230,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
       amountPaid: _method == PaymentMethod.cash ? _amountPaid : null,
       appliedPromotions: applied,
       approvedByUserId: _approvedByUserId,
+      note: widget.note,
     );
 
     if (!mounted) return;
-    CustomerDisplayService.instance
-        .publishThankYou(total: order.total, change: order.change);
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => ReceiptScreen(order: order)),
     );

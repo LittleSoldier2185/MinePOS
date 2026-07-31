@@ -2,13 +2,25 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 enum PrinterChoice { bluetooth, usb, skip }
 
+/// How a menu item list should be ordered for display — a per-device
+/// preference shared by Menu Management and the cashier Order screen.
+/// [defaultOrder] means "leave whatever order the caller already had"
+/// (category-grouped, creation order) — see `sortMenuItems` in
+/// `features/cashier/models/menu_item.dart`, which applies this.
+enum MenuSortMode { defaultOrder, nameAsc, nameDesc, priceAsc, priceDesc }
+
 enum AppLanguage { english, thai }
 
 /// A remembered "stay signed in" session — everything needed to silently
 /// restore it on next launch without re-prompting for a server address or
 /// credentials. `purpose` is a [DevicePurpose] name (only `staffHub` or
 /// `kitchenOnly` — a customer display never logs in, so is never remembered).
-typedef RememberedSession = ({String baseUrl, String token, String deviceName, String purpose});
+typedef RememberedSession = ({
+  String baseUrl,
+  String token,
+  String deviceName,
+  String purpose,
+});
 
 /// Thermal paper roll width. Names match the industry-standard nominal
 /// sizes (a "58mm" roll is actually ~57mm of printable paper, "80mm" ~76mm).
@@ -27,6 +39,8 @@ class AppSettingsService {
   static const _kPrinterDeviceNameKey = 'settings.printerDeviceName';
   static const _kPaperSizeKey = 'settings.paperSize';
   static const _kMenuGridViewKey = 'settings.menuGridView';
+  static const _kKitchenShowImagesKey = 'settings.kitchenShowImages';
+  static const _kMenuSortModeKey = 'settings.menuSortMode';
   static const _kStaffGridViewKey = 'settings.staffGridView';
   static const _kLastServerAddressKey = 'settings.lastServerAddress';
   static const _kDeviceNameKey = 'settings.deviceName';
@@ -84,10 +98,18 @@ class AppSettingsService {
     final token = prefs.getString(_kSessionTokenKey);
     final deviceName = prefs.getString(_kSessionDeviceNameKey);
     final purpose = prefs.getString(_kSessionPurposeKey);
-    if (baseUrl == null || token == null || deviceName == null || purpose == null) {
+    if (baseUrl == null ||
+        token == null ||
+        deviceName == null ||
+        purpose == null) {
       return null;
     }
-    return (baseUrl: baseUrl, token: token, deviceName: deviceName, purpose: purpose);
+    return (
+      baseUrl: baseUrl,
+      token: token,
+      deviceName: deviceName,
+      purpose: purpose,
+    );
   }
 
   Future<void> clearSession() async {
@@ -108,6 +130,20 @@ class AppSettingsService {
     await prefs.setBool(_kMenuGridViewKey, isGridView);
   }
 
+  Future<MenuSortMode> getMenuSortMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_kMenuSortModeKey);
+    return MenuSortMode.values.firstWhere(
+      (v) => v.name == raw,
+      orElse: () => MenuSortMode.defaultOrder,
+    );
+  }
+
+  Future<void> setMenuSortMode(MenuSortMode mode) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kMenuSortModeKey, mode.name);
+  }
+
   Future<bool> getStaffGridView() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_kStaffGridViewKey) ?? false;
@@ -116,6 +152,19 @@ class AppSettingsService {
   Future<void> setStaffGridView(bool isGridView) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kStaffGridViewKey, isGridView);
+  }
+
+  /// Whether the Kitchen Display's Focus Mode shows each item's menu photo.
+  /// Per-station like the printer choice — a barista tablet mounted low
+  /// might want images off to fit more on screen.
+  Future<bool> getKitchenShowImages() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_kKitchenShowImagesKey) ?? true;
+  }
+
+  Future<void> setKitchenShowImages(bool show) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kKitchenShowImagesKey, show);
   }
 
   Future<ReceiptPaperSize> getPaperSize() async {
@@ -174,7 +223,10 @@ class AppSettingsService {
     return prefs.getString(_kPrinterDeviceNameKey);
   }
 
-  Future<void> setSelectedPrinter({required String id, required String name}) async {
+  Future<void> setSelectedPrinter({
+    required String id,
+    required String name,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kPrinterDeviceIdKey, id);
     await prefs.setString(_kPrinterDeviceNameKey, name);

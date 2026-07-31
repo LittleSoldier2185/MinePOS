@@ -7,6 +7,20 @@ import 'package:http/http.dart' as http;
 import '../../../core/services/api_client.dart';
 import '../../../core/services/server_client.dart';
 
+/// How the customer-display slideshow animates in when it advances to a
+/// slide — wire value is [name] (`'none'`/`'fade'`/`'slideLeft'`), matching
+/// the server's `kAdTransitions`.
+enum AdTransition {
+  none,
+  fade,
+  slideLeft;
+
+  static AdTransition fromWire(String? value) => AdTransition.values.firstWhere(
+    (t) => t.name == value,
+    orElse: () => AdTransition.fade,
+  );
+}
+
 class AdSlideInfo {
   AdSlideInfo({
     required this.id,
@@ -14,6 +28,9 @@ class AdSlideInfo {
     required this.url,
     this.durationSeconds,
     this.muted = true,
+    this.name,
+    this.expiresAt,
+    this.transition = AdTransition.fade,
   });
 
   final String id;
@@ -29,13 +46,53 @@ class AdSlideInfo {
   /// Only meaningful for video — images have no audio to mute.
   final bool muted;
 
+  /// Admin-facing label only — never shown on the customer display itself.
+  final String? name;
+
+  /// Null means this slide runs forever until manually removed. The server
+  /// already excludes expired slides from what the customer display
+  /// actually receives — this is only here so Settings can show/manage them.
+  final DateTime? expiresAt;
+
+  /// How this slide animates in when the slideshow advances to it.
+  final AdTransition transition;
+
+  bool get isExpired => expiresAt != null && DateTime.now().isAfter(expiresAt!);
+
+  /// [clearName]/[clearExpiry] win over [name]/[expiresAt] if both are
+  /// somehow passed — needed since a plain `name: null` default arg can't
+  /// be told apart from "explicitly clear this".
+  AdSlideInfo copyWith({
+    bool? muted,
+    String? name,
+    bool clearName = false,
+    DateTime? expiresAt,
+    bool clearExpiry = false,
+    AdTransition? transition,
+    int? durationSeconds,
+  }) => AdSlideInfo(
+    id: id,
+    type: type,
+    url: url,
+    durationSeconds: durationSeconds ?? this.durationSeconds,
+    muted: muted ?? this.muted,
+    name: clearName ? null : (name ?? this.name),
+    expiresAt: clearExpiry ? null : (expiresAt ?? this.expiresAt),
+    transition: transition ?? this.transition,
+  );
+
   factory AdSlideInfo.fromJson(Map<String, dynamic> json) => AdSlideInfo(
-        id: json['id'] as String,
-        type: json['type'] as String,
-        url: json['url'] as String,
-        durationSeconds: json['durationSeconds'] as int?,
-        muted: json['muted'] as bool? ?? true,
-      );
+    id: json['id'] as String,
+    type: json['type'] as String,
+    url: json['url'] as String,
+    durationSeconds: json['durationSeconds'] as int?,
+    muted: json['muted'] as bool? ?? true,
+    name: json['name'] as String?,
+    expiresAt: json['expiresAt'] != null
+        ? DateTime.parse(json['expiresAt'] as String)
+        : null,
+    transition: AdTransition.fromWire(json['transition'] as String?),
+  );
 }
 
 /// Advertising slideshow management (Settings → Advertising) — same
@@ -48,9 +105,15 @@ class AdService {
 
   Future<List<AdSlideInfo>> list() async {
     final res = await apiSend(
-        () => http.get(ServerClient.instance.uri('/ads'), headers: ServerClient.instance.headers));
+      () => http.get(
+        ServerClient.instance.uri('/ads'),
+        headers: ServerClient.instance.headers,
+      ),
+    );
     final list = jsonDecode(res.body) as List;
-    return list.map((j) => AdSlideInfo.fromJson(j as Map<String, dynamic>)).toList();
+    return list
+        .map((j) => AdSlideInfo.fromJson(j as Map<String, dynamic>))
+        .toList();
   }
 
   /// [ext] is the picked file's lowercase extension without the dot (e.g.
@@ -65,6 +128,9 @@ class AdService {
     Uint8List bytes, {
     required String ext,
     int durationSeconds = 8,
+    String? name,
+    DateTime? expiresAt,
+    AdTransition transition = AdTransition.fade,
     void Function(double progress)? onProgress,
   }) async {
     final client = ServerClient.instance;
@@ -72,10 +138,17 @@ class AdService {
 
     final request = http.StreamedRequest(
       'POST',
-      client.uri('/ads').replace(queryParameters: {
-        'ext': ext,
-        'durationSeconds': '$durationSeconds',
-      }),
+      client
+          .uri('/ads')
+          .replace(
+            queryParameters: {
+              'ext': ext,
+              'durationSeconds': '$durationSeconds',
+              'transition': transition.name,
+              if (name != null && name.isNotEmpty) 'name': name,
+              if (expiresAt != null) 'expiresAt': expiresAt.toIso8601String(),
+            },
+          ),
     );
     request.headers.addAll({
       if (client.token != null) 'Authorization': 'Bearer ${client.token}',
@@ -86,7 +159,9 @@ class AdService {
     const chunkSize = 64 * 1024;
     Future<void> pump() async {
       for (var i = 0; i < bytes.length; i += chunkSize) {
-        final end = (i + chunkSize < bytes.length) ? i + chunkSize : bytes.length;
+        final end = (i + chunkSize < bytes.length)
+            ? i + chunkSize
+            : bytes.length;
         request.sink.add(bytes.sublist(i, end));
         onProgress?.call(end / bytes.length);
         // Yields a turn so the sink's listener (the HTTP client) actually
@@ -105,25 +180,52 @@ class AdService {
     return AdSlideInfo.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
-  Future<void> updateDuration(String id, int durationSeconds) => apiSend(() => http.patch(
-        ServerClient.instance.uri('/ads/$id'),
-        headers: ServerClient.instance.headers,
-        body: jsonEncode({'durationSeconds': durationSeconds}),
-      ));
+  Future<void> updateMuted(String id, bool muted) => apiSend(
+    () => http.patch(
+      ServerClient.instance.uri('/ads/$id'),
+      headers: ServerClient.instance.headers,
+      body: jsonEncode({'muted': muted}),
+    ),
+  );
 
-  Future<void> updateMuted(String id, bool muted) => apiSend(() => http.patch(
-        ServerClient.instance.uri('/ads/$id'),
-        headers: ServerClient.instance.headers,
-        body: jsonEncode({'muted': muted}),
-      ));
+  /// Single combined update for everything the "Media Details" sheet edits
+  /// at once — [name]/[expiresAt] null means "clear it" (matches the sheet's
+  /// full-replace semantics: whatever it returns is the slide's new state,
+  /// not a partial patch). [durationSeconds] is omitted from the request
+  /// entirely when null (video slides don't have one — the server rejects a
+  /// non-positive/absent value if the key is present at all).
+  Future<void> updateDetails(
+    String id, {
+    required String? name,
+    required int? durationSeconds,
+    required AdTransition transition,
+    required DateTime? expiresAt,
+  }) => apiSend(
+    () => http.patch(
+      ServerClient.instance.uri('/ads/$id'),
+      headers: ServerClient.instance.headers,
+      body: jsonEncode({
+        'name': name,
+        'durationSeconds': ?durationSeconds,
+        'transition': transition.name,
+        'expiresAt': expiresAt?.toIso8601String(),
+      }),
+    ),
+  );
 
   /// [orderedIds] is every slide's id in its new order.
-  Future<void> reorder(List<String> orderedIds) => apiSend(() => http.post(
-        ServerClient.instance.uri('/ads/reorder'),
-        headers: ServerClient.instance.headers,
-        body: jsonEncode({'order': orderedIds}),
-      ));
+  Future<void> reorder(List<String> orderedIds) => apiSend(
+    () => http.post(
+      ServerClient.instance.uri('/ads/reorder'),
+      headers: ServerClient.instance.headers,
+      body: jsonEncode({'order': orderedIds}),
+    ),
+  );
 
   Future<void> delete(String id) => apiSend(
-      () => http.delete(ServerClient.instance.uri('/ads/$id'), headers: ServerClient.instance.headers));
+    () => http.delete(
+      ServerClient.instance.uri('/ads/$id'),
+      headers: ServerClient.instance.headers,
+    ),
+  );
 }
