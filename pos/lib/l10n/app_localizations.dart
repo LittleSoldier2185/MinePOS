@@ -3098,6 +3098,30 @@ abstract class AppLocalizations {
   /// **'Pinch to zoom • Drag to reposition'**
   String get cropHintText;
 
+  /// No description provided for @cropRotateTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate'**
+  String get cropRotateTooltip;
+
+  /// No description provided for @cropFlipHorizontalTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Flip horizontal'**
+  String get cropFlipHorizontalTooltip;
+
+  /// No description provided for @cropFlipVerticalTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Flip vertical'**
+  String get cropFlipVerticalTooltip;
+
+  /// No description provided for @cropResetTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get cropResetTooltip;
+
   /// No description provided for @gridViewTooltip.
   ///
   /// In en, this message translates to:

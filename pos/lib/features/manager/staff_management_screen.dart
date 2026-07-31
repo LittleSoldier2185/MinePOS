@@ -893,7 +893,9 @@ class _StaffFormBodyState extends State<_StaffFormBody> {
     final bytes = await file.readAsBytes();
     if (!mounted) return;
     final cropped = await Navigator.of(context).push<Uint8List>(
-      MaterialPageRoute(builder: (_) => ImageCropScreen(imageBytes: bytes)),
+      MaterialPageRoute(
+        builder: (_) => ImageCropScreen(imageBytes: bytes, circleCrop: true),
+      ),
     );
     if (cropped == null) return;
     setState(() => _avatarBase64 = base64Encode(cropped));

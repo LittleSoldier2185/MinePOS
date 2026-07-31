@@ -1677,6 +1677,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cropHintText => 'Pinch to zoom • Drag to reposition';
 
   @override
+  String get cropRotateTooltip => 'Rotate';
+
+  @override
+  String get cropFlipHorizontalTooltip => 'Flip horizontal';
+
+  @override
+  String get cropFlipVerticalTooltip => 'Flip vertical';
+
+  @override
+  String get cropResetTooltip => 'Reset';
+
+  @override
   String get gridViewTooltip => 'Grid View';
 
   @override

@@ -78,17 +78,7 @@ class KitchenService extends ChangeNotifier {
           _orders = _orders.where((o) => o.id != orderId).toList();
         } else {
           _orders = _orders
-              .map((o) => o.id == orderId
-                  ? Order(
-                      id: o.id,
-                      orderNumber: o.orderNumber,
-                      items: o.items,
-                      createdAt: o.createdAt,
-                      paymentMethod: o.paymentMethod,
-                      amountPaid: o.amountPaid,
-                      kitchenStatus: newStatus,
-                    )
-                  : o)
+              .map((o) => o.id == orderId ? o.copyWith(kitchenStatus: newStatus) : o)
               .toList();
         }
       case 'item_status':
@@ -108,15 +98,7 @@ class KitchenService extends ChangeNotifier {
                     )
                   : i)
               .toList();
-          return Order(
-            id: o.id,
-            orderNumber: o.orderNumber,
-            items: newItems,
-            createdAt: o.createdAt,
-            paymentMethod: o.paymentMethod,
-            amountPaid: o.amountPaid,
-            kitchenStatus: o.kitchenStatus,
-          );
+          return o.copyWith(items: newItems);
         }).toList();
     }
     notifyListeners();

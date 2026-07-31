@@ -571,6 +571,10 @@
   "cropImageTitle": "Crop Image",
   "cropConfirmButton": "Done",
   "cropHintText": "Pinch to zoom • Drag to reposition",
+  "cropRotateTooltip": "Rotate",
+  "cropFlipHorizontalTooltip": "Flip horizontal",
+  "cropFlipVerticalTooltip": "Flip vertical",
+  "cropResetTooltip": "Reset",
 
   "gridViewTooltip": "Grid View",
   "listViewTooltip": "List View",

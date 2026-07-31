@@ -545,6 +545,10 @@
   "cropImageTitle": "ครอบตัดรูปภาพ",
   "cropConfirmButton": "เสร็จสิ้น",
   "cropHintText": "บีบนิ้วเพื่อซูม • ลากเพื่อจัดตำแหน่งภาพ",
+  "cropRotateTooltip": "หมุนภาพ",
+  "cropFlipHorizontalTooltip": "พลิกแนวนอน",
+  "cropFlipVerticalTooltip": "พลิกแนวตั้ง",
+  "cropResetTooltip": "รีเซ็ต",
 
   "gridViewTooltip": "มุมมองตาราง",
   "listViewTooltip": "มุมมองรายการ",

@@ -380,7 +380,10 @@ const String adminWebPageHtml = r'''
         <div class="card" style="max-width:960px;">
           <div class="row">
             <div id="menuCategoryChips"></div>
-            <button onclick="openMenuForm(null)">Add Item</button>
+            <div>
+              <button class="secondary" onclick="openCategoryManager()">Manage Categories</button>
+              <button onclick="openMenuForm(null)">Add Item</button>
+            </div>
           </div>
           <div class="table-wrap">
             <table>
@@ -388,6 +391,13 @@ const String adminWebPageHtml = r'''
               <tbody id="menuTableBody"></tbody>
             </table>
           </div>
+        </div>
+
+        <div id="categoryManagerCard" class="card hidden" style="max-width:960px;">
+          <h3>Categories</h3>
+          <p class="sub">Reorder how categories appear across the app, or rename one (relabels every item in it).</p>
+          <div id="categoryManagerList"></div>
+          <div class="row" style="margin-top:14px;"><button class="secondary" onclick="closeCategoryManager()">Close</button></div>
         </div>
 
         <div id="menuFormCard" class="card hidden">
@@ -408,7 +418,11 @@ const String adminWebPageHtml = r'''
           <label style="margin-top:14px;"><input type="checkbox" id="menuAvailable" checked> Available</label>
           <label><input type="checkbox" id="menuHasSweetness"> Has sweetness levels (Less/Normal/Sweet)</label>
           <label>Photo (optional)</label>
-          <input id="menuImageFile" type="file" accept="image/*">
+          <input id="menuImageFile" type="file" accept="image/*" onchange="onMenuImageSelected(this)">
+          <div id="menuImagePreviewWrap" class="row hidden" style="gap:10px;margin-top:8px;">
+            <img id="menuImagePreview" class="thumb" style="width:64px;height:64px;">
+            <button type="button" class="small secondary" onclick="clearMenuImage()">Remove photo</button>
+          </div>
           <div class="row" style="margin-top:14px;">
             <button onclick="saveMenuItem()">Save</button>
             <button class="secondary" onclick="closeMenuForm()">Cancel</button>
@@ -423,7 +437,7 @@ const String adminWebPageHtml = r'''
           <div class="row"><div></div><button onclick="openStaffForm(null)">Add Staff</button></div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Active</th><th>Joined</th><th></th></tr></thead>
+              <thead><tr><th></th><th>Name</th><th>Username</th><th>Role</th><th>Active</th><th>Joined</th><th></th></tr></thead>
               <tbody id="staffTableBody"></tbody>
             </table>
           </div>
@@ -447,6 +461,12 @@ const String adminWebPageHtml = r'''
           <input id="staffEmail">
           <label>Phone (optional)</label>
           <input id="staffPhone">
+          <label>Photo (optional)</label>
+          <input id="staffAvatarFile" type="file" accept="image/*" onchange="onStaffAvatarSelected(this)">
+          <div id="staffAvatarPreviewWrap" class="row hidden" style="gap:10px;margin-top:8px;">
+            <img id="staffAvatarPreview" class="thumb" style="width:64px;height:64px;border-radius:50%;">
+            <button type="button" class="small secondary" onclick="clearStaffAvatar()">Remove photo</button>
+          </div>
           <div id="staffActiveWrap" class="hidden">
             <label><input type="checkbox" id="staffActive"> Active</label>
           </div>
@@ -661,6 +681,26 @@ const String adminWebPageHtml = r'''
           <button onclick="saveShop()">Save</button>
           <div id="shopFormMsg" class="msg"></div>
         </div>
+
+        <div class="card">
+          <h2>Backup</h2>
+          <p class="sub">Download a full snapshot (accounts, menu, orders, shop settings) to restore later on this or another server.</p>
+          <button class="secondary" onclick="exportBackup()">Export Backup</button>
+          <div id="backupMsg" class="msg"></div>
+        </div>
+
+        <div class="card" style="border-color:var(--danger-soft);">
+          <h2 style="color:var(--danger);">Danger Zone</h2>
+          <p class="sub">Permanently deletes every account, menu item, and order on this server, and signs out every connected device. This cannot be undone.</p>
+          <label>This shop's registered email</label>
+          <input id="removeShopEmail">
+          <label>Your username</label>
+          <input id="removeShopUsername">
+          <label>Your password</label>
+          <input id="removeShopPassword" type="password">
+          <button class="danger" onclick="removeShop()">DELETE SHOP</button>
+          <div id="removeShopMsg" class="msg"></div>
+        </div>
       </section>
 
       <section id="sec-ads">
@@ -679,6 +719,36 @@ const String adminWebPageHtml = r'''
           </div>
           <div id="adsMsg" class="msg"></div>
         </div>
+
+        <div id="adEditCard" class="card hidden" style="max-width:760px;">
+          <h3>Edit slide</h3>
+          <label>Name (optional)</label>
+          <input id="adEditName">
+          <div id="adEditDurationWrap">
+            <label>Seconds to show</label>
+            <input id="adEditDuration" type="number" min="1" value="8">
+          </div>
+          <label>Transition</label>
+          <select id="adEditTransition">
+            <option value="none">None</option>
+            <option value="fade">Fade</option>
+            <option value="slideLeft">Slide left</option>
+          </select>
+          <label>Expiry</label>
+          <select id="adEditExpiry" onchange="onAdEditExpiryChange()">
+            <option value="never">Never</option>
+            <option value="7">In 7 days</option>
+            <option value="14">In 14 days</option>
+            <option value="30">In 30 days</option>
+            <option value="custom">Pick a date…</option>
+          </select>
+          <input id="adEditExpiryDate" type="date" class="hidden">
+          <div class="row" style="margin-top:14px;">
+            <button onclick="saveAdEdit()">Save</button>
+            <button class="secondary" onclick="closeAdEdit()">Cancel</button>
+          </div>
+          <div id="adEditMsg" class="msg"></div>
+        </div>
       </section>
 
     </main>
@@ -688,6 +758,29 @@ const String adminWebPageHtml = r'''
 <div id="mediaPreviewOverlay" class="media-preview-overlay hidden" onclick="if (event.target === this) closeMediaPreview()">
   <button class="media-preview-close" onclick="closeMediaPreview()">✕</button>
   <div id="mediaPreviewContent"></div>
+</div>
+
+<div id="cropOverlay" class="media-preview-overlay hidden">
+  <div class="card" style="max-width:340px;text-align:center;">
+    <h3 style="margin-top:0;">Crop Image</h3>
+    <div style="position:relative;width:280px;height:280px;margin:0 auto;background:#000;">
+      <canvas id="cropCanvas" width="280" height="280" style="display:block;cursor:grab;touch-action:none;"></canvas>
+      <canvas id="cropGuideCanvas" width="280" height="280" style="position:absolute;top:0;left:0;pointer-events:none;"></canvas>
+    </div>
+    <div class="row" style="justify-content:center;gap:6px;margin-top:12px;">
+      <button type="button" class="small secondary" onclick="cropZoom(0.83)">−</button>
+      <button type="button" class="small secondary" onclick="cropZoom(1.2)">+</button>
+      <button type="button" class="small secondary" onclick="cropRotate()">⟳ Rotate</button>
+      <button type="button" class="small secondary" onclick="cropFlip('h')">⇋ Flip H</button>
+      <button type="button" class="small secondary" onclick="cropFlip('v')">⇕ Flip V</button>
+      <button type="button" class="small secondary" onclick="cropReset()">↺ Reset</button>
+    </div>
+    <p class="sub" style="margin-top:10px;">Drag to reposition • Scroll to zoom</p>
+    <div class="row" style="justify-content:center;gap:8px;margin-top:6px;">
+      <button type="button" onclick="cropConfirm()">Use Photo</button>
+      <button type="button" class="secondary" onclick="cropCancel()">Cancel</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -756,22 +849,30 @@ function showSection(name) {
   // desktop, where these classes are never toggled on in the first place.
   document.querySelector('.sidebar').classList.remove('open');
   document.querySelector('.sidebar-backdrop').classList.remove('open');
-  if (name === 'menu') loadMenu();
+  if (name === 'menu') loadMenu().then(loadCategories);
   if (name === 'staff') loadStaff();
   // Promotions' scope pickers (item checklist, category dropdown) need
   // `menuItems` loaded regardless of whether the Menu section was visited
   // first this session.
   if (name === 'promotions') loadMenu().then(loadPromotions);
   if (name === 'reports') loadReports();
-  if (name === 'shop') loadShop();
+  if (name === 'shop') { loadShop(); document.getElementById('removeShopUsername').value = currentUsername; }
   if (name === 'ads') loadAds();
 }
 
+let currentUsername = '';
 function enterApp() {
   document.getElementById('login').style.display = 'none';
   document.getElementById('app').style.display = 'block';
-  loadConfig(); loadLogs(); poll();
+  loadConfig(); loadLogs(); poll(); loadMe();
   pollTimer = setInterval(poll, 5000);
+}
+async function loadMe() {
+  try {
+    const me = await api('GET', '/auth/me');
+    currentUsername = me.username;
+    document.getElementById('whoami').textContent = me.username + ' (owner)';
+  } catch (e) {}
 }
 
 function setStatusDot(cls) {
@@ -866,14 +967,6 @@ function esc(s) {
   const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML;
 }
 function baht(v) { return '฿' + Number(v || 0).toFixed(0); }
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result.split(',')[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 function chip(container, value, label, selected, onClick) {
   const el = document.createElement('div');
   el.className = 'chip' + (selected ? ' sel' : '');
@@ -882,10 +975,166 @@ function chip(container, value, label, selected, onClick) {
   container.appendChild(el);
 }
 
+// ── Image crop (shared by Menu item photos and Staff avatars) ─────────────
+// Canvas-based pan/zoom/rotate/flip crop into a fixed-square PNG, mirroring
+// the Flutter app's pinch/pan-to-crop screen so both surfaces behave the
+// same way. `cropOpen(file, circle)` resolves to a base64 PNG string (no
+// data: prefix) once the user confirms, or null if they cancel.
+const CROP_STAGE = 280;
+const CROP_OUTPUT = 320;
+let cropImg = null;
+let cropResolve = null;
+let cropTransform = { x: 0, y: 0, scale: 1, rotation: 0, flipH: false, flipV: false };
+
+function cropOpen(file, circle) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        cropImg = img;
+        cropResolve = resolve;
+        cropTransform = { x: 0, y: 0, scale: 1, rotation: 0, flipH: false, flipV: false };
+        cropResetTransformToCover();
+        drawCropGuide(circle);
+        drawCrop();
+        document.getElementById('cropOverlay').classList.remove('hidden');
+      };
+      img.onerror = () => resolve(null);
+      img.src = reader.result;
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+}
+function cropBoxDims() {
+  const swap = cropTransform.rotation % 180 !== 0;
+  const w = cropImg.width * cropTransform.scale, h = cropImg.height * cropTransform.scale;
+  return swap ? { w: h, h: w } : { w, h };
+}
+// Fits the image's shorter side to the stage (cover-style) and centers it —
+// called on open and after every rotate, so rotating always gives a
+// predictable, fully-visible starting point instead of preserving whatever
+// pan/zoom the previous orientation had.
+function cropResetTransformToCover() {
+  const swap = cropTransform.rotation % 180 !== 0;
+  const w = swap ? cropImg.height : cropImg.width;
+  const h = swap ? cropImg.width : cropImg.height;
+  const scale = CROP_STAGE / Math.min(w, h);
+  cropTransform.scale = scale;
+  cropTransform.x = (CROP_STAGE - w * scale) / 2;
+  cropTransform.y = (CROP_STAGE - h * scale) / 2;
+}
+function cropReset() { cropResetTransformToCover(); drawCrop(); }
+function cropRotate() {
+  cropTransform.rotation = (cropTransform.rotation + 90) % 360;
+  cropResetTransformToCover();
+  drawCrop();
+}
+function cropFlip(axis) {
+  if (axis === 'h') cropTransform.flipH = !cropTransform.flipH;
+  else cropTransform.flipV = !cropTransform.flipV;
+  drawCrop();
+}
+function cropZoom(factor) {
+  const before = cropBoxDims();
+  const cx = cropTransform.x + before.w / 2, cy = cropTransform.y + before.h / 2;
+  cropTransform.scale = Math.max(0.05, Math.min(8, cropTransform.scale * factor));
+  const after = cropBoxDims();
+  cropTransform.x = cx - after.w / 2;
+  cropTransform.y = cy - after.h / 2;
+  drawCrop();
+}
+// Draws the current transform into a `size`×`size` canvas — used for both
+// the live preview (size = CROP_STAGE) and the final export (size =
+// CROP_OUTPUT), so the exported crop always matches what was previewed.
+function cropDrawInto(ctx, size) {
+  const k = size / CROP_STAGE;
+  const t = cropTransform;
+  ctx.clearRect(0, 0, size, size);
+  ctx.save();
+  ctx.translate(t.x * k, t.y * k);
+  const swap = t.rotation % 180 !== 0;
+  const w = cropImg.width * t.scale * k, h = cropImg.height * t.scale * k;
+  ctx.translate((swap ? h : w) / 2, (swap ? w : h) / 2);
+  ctx.rotate(t.rotation * Math.PI / 180);
+  ctx.scale((t.flipH ? -1 : 1) * t.scale * k, (t.flipV ? -1 : 1) * t.scale * k);
+  ctx.drawImage(cropImg, -cropImg.width / 2, -cropImg.height / 2, cropImg.width, cropImg.height);
+  ctx.restore();
+}
+function drawCrop() { cropDrawInto(document.getElementById('cropCanvas').getContext('2d'), CROP_STAGE); }
+// Dims the four corners outside the inscribed circle for avatar crops
+// (mirrors the app's circular guide), or a rule-of-thirds grid for menu
+// items — drawn on a separate canvas so it never ends up baked into the
+// exported PNG.
+function drawCropGuide(circle) {
+  const ctx = document.getElementById('cropGuideCanvas').getContext('2d');
+  ctx.clearRect(0, 0, CROP_STAGE, CROP_STAGE);
+  if (circle) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, CROP_STAGE, CROP_STAGE);
+    ctx.arc(CROP_STAGE / 2, CROP_STAGE / 2, CROP_STAGE / 2, 0, Math.PI * 2, true);
+    ctx.fillStyle = 'rgba(0,0,0,.5)';
+    ctx.fill('evenodd');
+    ctx.beginPath();
+    ctx.arc(CROP_STAGE / 2, CROP_STAGE / 2, CROP_STAGE / 2, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,255,255,.6)';
+    ctx.stroke();
+    ctx.restore();
+  } else {
+    ctx.strokeStyle = 'rgba(255,255,255,.4)';
+    ctx.beginPath();
+    for (const f of [1 / 3, 2 / 3]) {
+      ctx.moveTo(CROP_STAGE * f, 0); ctx.lineTo(CROP_STAGE * f, CROP_STAGE);
+      ctx.moveTo(0, CROP_STAGE * f); ctx.lineTo(CROP_STAGE, CROP_STAGE * f);
+    }
+    ctx.stroke();
+  }
+}
+function cropCloseOverlay() {
+  document.getElementById('cropOverlay').classList.add('hidden');
+  cropImg = null; cropResolve = null;
+}
+function cropConfirm() {
+  const out = document.createElement('canvas');
+  out.width = CROP_OUTPUT; out.height = CROP_OUTPUT;
+  cropDrawInto(out.getContext('2d'), CROP_OUTPUT);
+  const dataUrl = out.toDataURL('image/png');
+  const resolve = cropResolve;
+  cropCloseOverlay();
+  if (resolve) resolve(dataUrl.split(',')[1]);
+}
+function cropCancel() {
+  const resolve = cropResolve;
+  cropCloseOverlay();
+  if (resolve) resolve(null);
+}
+function initCropHandlers() {
+  const canvas = document.getElementById('cropCanvas');
+  let dragging = false, start = null;
+  const beginDrag = (x, y) => { dragging = true; start = { x, y, tx: cropTransform.x, ty: cropTransform.y }; };
+  const moveDrag = (x, y) => {
+    if (!dragging) return;
+    cropTransform.x = start.tx + (x - start.x);
+    cropTransform.y = start.ty + (y - start.y);
+    drawCrop();
+  };
+  const endDrag = () => { dragging = false; };
+  canvas.addEventListener('mousedown', (e) => beginDrag(e.clientX, e.clientY));
+  window.addEventListener('mousemove', (e) => moveDrag(e.clientX, e.clientY));
+  window.addEventListener('mouseup', endDrag);
+  canvas.addEventListener('touchstart', (e) => { const t = e.touches[0]; beginDrag(t.clientX, t.clientY); }, { passive: true });
+  canvas.addEventListener('touchmove', (e) => { const t = e.touches[0]; moveDrag(t.clientX, t.clientY); e.preventDefault(); }, { passive: false });
+  canvas.addEventListener('touchend', endDrag);
+  canvas.addEventListener('wheel', (e) => { e.preventDefault(); cropZoom(e.deltaY > 0 ? 0.83 : 1.2); }, { passive: false });
+}
+
 // ── Menu ─────────────────────────────────────────────────────────────────
 let menuItems = [];
 let menuCategoryFilter = 'All';
 let menuEditingId = null;
+let menuPendingImageBase64; // undefined = unchanged, null = removed, string = new crop
 
 async function loadMenu() {
   try { menuItems = await api('GET', '/menu'); } catch (e) { menuItems = []; }
@@ -894,13 +1143,92 @@ async function loadMenu() {
 }
 
 function renderMenuCategoryChips() {
-  const cats = ['All', ...new Set(menuItems.map(i => i.category))];
+  const used = [...new Set(menuItems.map(i => i.category))];
+  const ordered = categoryOrder.length
+    ? [...categoryOrder.filter(c => used.includes(c)), ...used.filter(c => !categoryOrder.includes(c))]
+    : used;
+  const cats = ['All', ...ordered];
   const container = document.getElementById('menuCategoryChips');
   container.innerHTML = '';
   for (const c of cats) chip(container, c, c, c === menuCategoryFilter, (v) => { menuCategoryFilter = v; renderMenuTable(); });
   const datalist = document.getElementById('menuCategoryList');
   datalist.innerHTML = cats.filter(c => c !== 'All').map(c => `<option value="${esc(c)}">`).join('');
 }
+
+// ── Menu categories (rename + reorder) ──────────────────────────────────
+// The saved order (PUT /menu/categories/order) may list categories no item
+// uses anymore, or be missing ones a user just free-typed onto an item — so
+// it's merged against what's actually in use every time it's loaded.
+let categoryOrder = [];
+async function loadCategories() {
+  let saved = [];
+  try { saved = (await api('GET', '/menu/categories/order')).order || []; } catch (e) {}
+  const used = [...new Set(menuItems.map(i => i.category))];
+  categoryOrder = [...saved.filter(c => used.includes(c)), ...used.filter(c => !saved.includes(c))];
+  renderMenuCategoryChips();
+  renderCategoriesList();
+}
+function openCategoryManager() {
+  renderCategoriesList();
+  document.getElementById('categoryManagerCard').classList.remove('hidden');
+}
+function closeCategoryManager() { document.getElementById('categoryManagerCard').classList.add('hidden'); }
+function renderCategoriesList() {
+  const el = document.getElementById('categoryManagerList');
+  el.innerHTML = categoryOrder.map((c, i) => `
+    <div class="row" style="padding:8px 0; border-bottom:1px solid var(--border-soft);">
+      <div class="row" style="gap:10px;">
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <button class="small" ${i === 0 ? 'disabled' : ''} onclick="moveCategory(${i}, -1)">▲</button>
+          <button class="small" ${i === categoryOrder.length - 1 ? 'disabled' : ''} onclick="moveCategory(${i}, 1)">▼</button>
+        </div>
+        <span>${esc(c)}</span>
+      </div>
+      <button class="small secondary" onclick="renameCategoryAt(${i})">Rename</button>
+    </div>
+  `).join('') || '<p class="sub">No categories yet.</p>';
+}
+async function moveCategory(index, delta) {
+  const target = index + delta;
+  if (target < 0 || target >= categoryOrder.length) return;
+  const reordered = categoryOrder.slice();
+  const [moved] = reordered.splice(index, 1);
+  reordered.splice(target, 0, moved);
+  categoryOrder = reordered;
+  renderCategoriesList();
+  renderMenuCategoryChips();
+  try { await api('PUT', '/menu/categories/order', { order: categoryOrder }); } catch (e) { alert(e.message); loadCategories(); }
+}
+function renameCategoryAt(i) {
+  const from = categoryOrder[i];
+  const to = prompt('Rename "' + from + '" to:', from);
+  if (!to || !to.trim() || to.trim() === from) return;
+  renameCategory(from, to.trim());
+}
+async function renameCategory(from, to) {
+  try {
+    await api('PUT', '/menu/categories/rename', { from, to });
+    await loadMenu();
+    await loadCategories();
+  } catch (e) { alert(e.message); }
+}
+
+async function onMenuImageSelected(input) {
+  const file = input.files[0];
+  input.value = '';
+  if (!file) return;
+  const cropped = await cropOpen(file, false);
+  if (!cropped) return;
+  menuPendingImageBase64 = cropped;
+  showMenuImagePreview(cropped);
+}
+function showMenuImagePreview(base64) {
+  const wrap = document.getElementById('menuImagePreviewWrap');
+  if (!base64) { wrap.classList.add('hidden'); return; }
+  document.getElementById('menuImagePreview').src = 'data:image/png;base64,' + base64;
+  wrap.classList.remove('hidden');
+}
+function clearMenuImage() { menuPendingImageBase64 = null; showMenuImagePreview(null); }
 
 function renderMenuTable() {
   const body = document.getElementById('menuTableBody');
@@ -931,6 +1259,8 @@ function openMenuForm(id) {
   document.getElementById('menuAvailable').checked = item ? item.available : true;
   document.getElementById('menuHasSweetness').checked = item ? item.hasSweetness : false;
   document.getElementById('menuImageFile').value = '';
+  menuPendingImageBase64 = undefined;
+  showMenuImagePreview(item ? item.imageBase64 : null);
   document.getElementById('menuFormMsg').textContent = '';
   document.getElementById('menuFormCard').classList.remove('hidden');
 }
@@ -942,14 +1272,13 @@ async function saveMenuItem() {
   const category = document.getElementById('menuCategory').value.trim();
   const price = parseFloat(document.getElementById('menuPrice').value);
   if (!name || !category || !(price > 0)) { msg.textContent = 'Name, category, and a price above 0 are required.'; msg.className = 'msg err'; return; }
-  const file = document.getElementById('menuImageFile').files[0];
   const existing = menuEditingId ? menuItems.find(i => i.id === menuEditingId) : null;
   const body = {
     name, category, price,
     available: document.getElementById('menuAvailable').checked,
     hasSweetness: document.getElementById('menuHasSweetness').checked,
     nameTh: document.getElementById('menuNameTh').value.trim() || null,
-    imageBase64: file ? await fileToBase64(file) : (existing ? existing.imageBase64 : null),
+    imageBase64: menuPendingImageBase64 !== undefined ? menuPendingImageBase64 : (existing ? existing.imageBase64 : null),
   };
   try {
     if (menuEditingId) await api('PUT', '/menu/' + menuEditingId, body);
@@ -967,6 +1296,7 @@ async function deleteMenuItem(id) {
 // ── Staff ────────────────────────────────────────────────────────────────
 let staffList = [];
 let staffEditingId = null;
+let staffPendingAvatarBase64; // undefined = unchanged, null = removed, string = new crop
 
 async function loadStaff() {
   try { staffList = await api('GET', '/users'); } catch (e) { staffList = []; }
@@ -977,6 +1307,7 @@ function renderStaffTable() {
   const body = document.getElementById('staffTableBody');
   body.innerHTML = staffList.map(u => `
     <tr>
+      <td>${u.avatarBase64 ? `<img class="thumb" style="border-radius:50%;" src="data:image/png;base64,${u.avatarBase64}">` : ''}</td>
       <td>${esc(u.name || u.username)}</td>
       <td>@${esc(u.username)}</td>
       <td><span class="badge">${esc(u.role)}</span></td>
@@ -1003,6 +1334,9 @@ function openStaffForm(id) {
   document.getElementById('staffName').value = u ? (u.name || '') : '';
   document.getElementById('staffEmail').value = u ? (u.email || '') : '';
   document.getElementById('staffPhone').value = u ? (u.phone || '') : '';
+  document.getElementById('staffAvatarFile').value = '';
+  staffPendingAvatarBase64 = undefined;
+  showStaffAvatarPreview(u ? u.avatarBase64 : null);
   document.getElementById('staffActiveWrap').classList.toggle('hidden', !u);
   document.getElementById('staffActive').checked = u ? u.active : true;
   document.getElementById('staffRenameWrap').classList.toggle('hidden', !u);
@@ -1012,6 +1346,23 @@ function openStaffForm(id) {
   document.getElementById('staffFormCard').classList.remove('hidden');
 }
 function closeStaffForm() { document.getElementById('staffFormCard').classList.add('hidden'); }
+
+async function onStaffAvatarSelected(input) {
+  const file = input.files[0];
+  input.value = '';
+  if (!file) return;
+  const cropped = await cropOpen(file, true);
+  if (!cropped) return;
+  staffPendingAvatarBase64 = cropped;
+  showStaffAvatarPreview(cropped);
+}
+function showStaffAvatarPreview(base64) {
+  const wrap = document.getElementById('staffAvatarPreviewWrap');
+  if (!base64) { wrap.classList.add('hidden'); return; }
+  document.getElementById('staffAvatarPreview').src = 'data:image/png;base64,' + base64;
+  wrap.classList.remove('hidden');
+}
+function clearStaffAvatar() { staffPendingAvatarBase64 = null; showStaffAvatarPreview(null); }
 
 async function saveStaff() {
   const msg = document.getElementById('staffFormMsg');
@@ -1026,14 +1377,17 @@ async function saveStaff() {
         name: document.getElementById('staffName').value.trim() || null,
         email: document.getElementById('staffEmail').value.trim() || null,
         phone: document.getElementById('staffPhone').value.trim() || null,
+        avatarBase64: staffPendingAvatarBase64 || null,
       });
     } else {
+      const existing = staffList.find(s => s.id === staffEditingId);
       const body = {
         role: document.getElementById('staffRole').value,
         active: document.getElementById('staffActive').checked,
         name: document.getElementById('staffName').value.trim() || null,
         email: document.getElementById('staffEmail').value.trim() || null,
         phone: document.getElementById('staffPhone').value.trim() || null,
+        avatarBase64: staffPendingAvatarBase64 !== undefined ? staffPendingAvatarBase64 : (existing ? existing.avatarBase64 : null),
       };
       const newPassword = document.getElementById('staffPassword').value;
       if (newPassword) {
@@ -1436,9 +1790,9 @@ function renderRankedList(elId, entries, fmt) {
   el.innerHTML = entries.map(([name, v]) => `<li>${fmt(name, v)}</li>`).join('') || '<li class="sub">Nothing in this range.</li>';
 }
 
-// Day-bucketed revenue bar chart — mirrors the mobile app's Sales Trend
-// graph in spirit (a per-bucket view of revenue over the selected range)
-// using nothing but the canvas 2D API, no charting library.
+// Day-bucketed revenue line chart — mirrors the mobile app's Sales Trend
+// graph (filled area under a rounded stroke, with a dot per day) using
+// nothing but the canvas 2D API, no charting library.
 function renderReportsTrend(orders, start, end) {
   const canvas = document.getElementById('reportsTrendCanvas');
   const dpr = window.devicePixelRatio || 1;
@@ -1463,8 +1817,6 @@ function renderReportsTrend(orders, start, end) {
   const padLeft = 44, padBottom = 18, padTop = 6;
   const plotWidth = cssWidth - padLeft - 8;
   const plotHeight = cssHeight - padBottom - padTop;
-  const barGap = 4;
-  const barWidth = Math.max(2, plotWidth / dayCount - barGap);
 
   ctx.strokeStyle = '#e5d9cf'; ctx.lineWidth = 1;
   ctx.beginPath();
@@ -1475,11 +1827,41 @@ function renderReportsTrend(orders, start, end) {
   ctx.fillText(baht(maxValue), padLeft - 6, padTop + 8);
   ctx.fillText('฿0', padLeft - 6, padTop + plotHeight);
 
-  ctx.fillStyle = '#c7622d';
-  for (let i = 0; i < dayCount; i++) {
-    const h = (buckets[i] / maxValue) * plotHeight;
-    const x = padLeft + i * (plotWidth / dayCount);
-    ctx.fillRect(x, padTop + plotHeight - h, barWidth, h);
+  const accent = (getComputedStyle(document.documentElement).getPropertyValue('--accent') || '#8d8f46').trim();
+  const slot = plotWidth / dayCount;
+  const points = buckets.map((v, i) => ({
+    x: padLeft + slot * (i + 0.5),
+    y: padTop + plotHeight - (v / maxValue) * plotHeight,
+  }));
+
+  // Filled area under the line, same 12%-alpha treatment as the app.
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (const p of points.slice(1)) ctx.lineTo(p.x, p.y);
+  ctx.lineTo(points[points.length - 1].x, padTop + plotHeight);
+  ctx.lineTo(points[0].x, padTop + plotHeight);
+  ctx.closePath();
+  ctx.save();
+  ctx.globalAlpha = 0.12;
+  ctx.fillStyle = accent;
+  ctx.fill();
+  ctx.restore();
+
+  // The line itself, plus a small dot at each day.
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (const p of points.slice(1)) ctx.lineTo(p.x, p.y);
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  ctx.fillStyle = accent;
+  for (const p of points) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   // At most ~6 date labels so they don't collide on a wide range.
@@ -1487,8 +1869,7 @@ function renderReportsTrend(orders, start, end) {
   ctx.fillStyle = '#8a7c6f'; ctx.textAlign = 'center';
   for (let i = 0; i < dayCount; i += labelEvery) {
     const d = new Date(startDay.getTime() + i * dayMs);
-    const x = padLeft + i * (plotWidth / dayCount) + barWidth / 2;
-    ctx.fillText(`${d.getMonth() + 1}/${d.getDate()}`, x, cssHeight - 4);
+    ctx.fillText(`${d.getMonth() + 1}/${d.getDate()}`, points[i].x, cssHeight - 4);
   }
 }
 
@@ -1542,6 +1923,43 @@ async function saveShop() {
   } catch (e) { msg.textContent = e.message; msg.className = 'msg err'; }
 }
 
+async function exportBackup() {
+  const msg = document.getElementById('backupMsg');
+  msg.textContent = ''; msg.className = 'msg';
+  try {
+    const res = await fetch('/admin/backup', { headers: authHeaders() });
+    if (res.status === 401) { logout(); throw new Error('Signed out'); }
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      throw new Error((data && data.error) || 'Backup failed.');
+    }
+    const disposition = res.headers.get('content-disposition') || '';
+    const match = disposition.match(/filename="?([^"]+)"?/);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = match ? match[1] : 'minepos-backup.db'; a.click();
+    URL.revokeObjectURL(url);
+    msg.textContent = 'Downloaded.'; msg.className = 'msg ok';
+  } catch (e) { msg.textContent = e.message; msg.className = 'msg err'; }
+}
+
+async function removeShop() {
+  const msg = document.getElementById('removeShopMsg');
+  const email = document.getElementById('removeShopEmail').value.trim();
+  const username = document.getElementById('removeShopUsername').value.trim();
+  const password = document.getElementById('removeShopPassword').value;
+  if (!email || !username || !password) {
+    msg.textContent = 'Email, username, and password are all required.'; msg.className = 'msg err'; return;
+  }
+  if (!confirm('This permanently deletes every account, menu item, and order on this server, and signs out every connected device. This cannot be undone. Continue?')) return;
+  try {
+    await api('DELETE', '/shop', { email, username, password });
+    logout();
+    location.reload();
+  } catch (e) { msg.textContent = e.message; msg.className = 'msg err'; }
+}
+
 // ── Advertising ──────────────────────────────────────────────────────────
 let adSlides = [];
 async function loadAds() {
@@ -1560,13 +1978,17 @@ function renderAdsList() {
         ${s.type === 'video'
           ? `<div class="thumb thumb-clickable" style="display:flex;align-items:center;justify-content:center;" onclick="openMediaPreview('${s.url}', 'video', ${!!s.muted})">▶</div>`
           : `<img class="thumb thumb-clickable" src="${s.url}" onclick="openMediaPreview('${s.url}', 'image', false)">`}
-        <span>${s.type === 'video' ? 'Video — plays until it ends' : (s.durationSeconds || 8) + 's'}</span>
+        <div style="display:flex;flex-direction:column;">
+          <span>${esc(s.name) || '<span style="color:var(--muted);">(unnamed)</span>'}</span>
+          <span class="sub">${s.type === 'video' ? 'Video — plays until it ends' : (s.durationSeconds || 8) + 's'}${s.expiresAt ? ' • expires ' + new Date(s.expiresAt).toLocaleDateString() : ''}</span>
+        </div>
         ${s.type === 'video'
           ? `<button class="small secondary" onclick="toggleAdMuted('${s.id}', ${!!s.muted})">${s.muted ? '\u{1F507} Muted' : '\u{1F50A} Sound on'}</button>`
           : ''}
       </div>
       <div>
         <button class="small secondary" onclick="openMediaPreview('${s.url}', '${s.type}', ${!!s.muted})">Preview</button>
+        <button class="small secondary" onclick="openAdEdit('${s.id}')">Edit</button>
         <button class="small danger" onclick="deleteAdSlide('${s.id}')">Delete</button>
       </div>
     </div>
@@ -1640,11 +2062,70 @@ async function deleteAdSlide(id) {
   try { await api('DELETE', '/ads/' + id); loadAds(); } catch (e) { alert(e.message); }
 }
 
+let editingAdId = null;
+function onAdEditExpiryChange() {
+  const custom = document.getElementById('adEditExpiry').value === 'custom';
+  document.getElementById('adEditExpiryDate').classList.toggle('hidden', !custom);
+}
+function openAdEdit(id) {
+  const s = adSlides.find(x => x.id === id);
+  if (!s) return;
+  editingAdId = id;
+  document.getElementById('adEditName').value = s.name || '';
+  document.getElementById('adEditTransition').value = s.transition || 'fade';
+  document.getElementById('adEditDurationWrap').classList.toggle('hidden', s.type === 'video');
+  document.getElementById('adEditDuration').value = s.durationSeconds || 8;
+  const expirySel = document.getElementById('adEditExpiry');
+  const dateInput = document.getElementById('adEditExpiryDate');
+  if (s.expiresAt) {
+    expirySel.value = 'custom';
+    dateInput.value = s.expiresAt.slice(0, 10);
+  } else {
+    expirySel.value = 'never';
+    dateInput.value = '';
+  }
+  onAdEditExpiryChange();
+  document.getElementById('adEditMsg').textContent = '';
+  document.getElementById('adEditMsg').className = 'msg';
+  document.getElementById('adEditCard').classList.remove('hidden');
+  document.getElementById('adEditCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function closeAdEdit() {
+  editingAdId = null;
+  document.getElementById('adEditCard').classList.add('hidden');
+}
+async function saveAdEdit() {
+  if (!editingAdId) return;
+  const msg = document.getElementById('adEditMsg');
+  const body = {
+    name: document.getElementById('adEditName').value.trim(),
+    transition: document.getElementById('adEditTransition').value,
+  };
+  if (!document.getElementById('adEditDurationWrap').classList.contains('hidden')) {
+    body.durationSeconds = parseInt(document.getElementById('adEditDuration').value, 10) || 8;
+  }
+  const expiry = document.getElementById('adEditExpiry').value;
+  if (expiry === 'never') {
+    body.expiresAt = null;
+  } else if (expiry === 'custom') {
+    const dateVal = document.getElementById('adEditExpiryDate').value;
+    body.expiresAt = dateVal ? new Date(dateVal).toISOString() : null;
+  } else {
+    body.expiresInDays = parseInt(expiry, 10);
+  }
+  try {
+    await api('PATCH', '/ads/' + editingAdId, body);
+    closeAdEdit();
+    loadAds();
+  } catch (e) { msg.textContent = e.message; msg.className = 'msg err'; }
+}
+
 // ── Boot ─────────────────────────────────────────────────────────────────
 // A brand-new server has no shop (and so no owner account) to sign into at
 // all — /health's `hasShop` is checked before deciding whether to show the
 // normal sign-in form or the one-time Create Shop form instead.
 async function boot() {
+  initCropHandlers();
   let hasShop = true;
   try {
     const health = await (await fetch('/health')).json();

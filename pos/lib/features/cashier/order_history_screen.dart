@@ -311,6 +311,61 @@ class _OrderTileState extends State<_OrderTile> {
                     ),
                   ),
                 ),
+                if (o.createdByName != null) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        AppLocalizations.of(context)!.staffLabel,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                      Text(
+                        o.createdByName!,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ],
+                if (o.appliedPromotions.isNotEmpty) ...[
+                  const Divider(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        AppLocalizations.of(context)!.subtotalLabel,
+                        style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                      ),
+                      Text(widget.baht(o.subtotal), style: const TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                  for (final promo in o.appliedPromotions)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              promo.name,
+                              style: const TextStyle(fontSize: 12, color: AppColors.primary),
+                            ),
+                          ),
+                          Text(
+                            '-${widget.baht(promo.discountAmount)}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
                 if (o.kitchenStatus == 'cancelled' && o.cancelReason != null) ...[
                   const Divider(height: 16),
                   Text(

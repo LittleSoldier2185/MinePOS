@@ -102,6 +102,22 @@ class Order {
 
   String get formattedTime => DateFormat('HH:mm').format(createdAt);
 
+  Order copyWith({String? kitchenStatus, List<OrderItem>? items}) => Order(
+    id: id,
+    orderNumber: orderNumber,
+    items: items ?? this.items,
+    createdAt: createdAt,
+    paymentMethod: paymentMethod,
+    amountPaid: amountPaid,
+    kitchenStatus: kitchenStatus ?? this.kitchenStatus,
+    cancelReason: cancelReason,
+    note: note,
+    discountTotal: discountTotal,
+    appliedPromotions: appliedPromotions,
+    createdByUserId: createdByUserId,
+    createdByName: createdByName,
+  );
+
   factory Order.fromJson(Map<String, dynamic> json) => Order(
     id: json['id'] as int?,
     orderNumber: json['orderNumber'] as int,

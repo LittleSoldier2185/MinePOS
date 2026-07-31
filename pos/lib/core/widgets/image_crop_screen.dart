@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
@@ -11,8 +12,17 @@ import '../../l10n/app_localizations.dart';
 /// from the till (Windows) as much as from a phone. Renders exactly what's
 /// visible in the fixed square viewport via a [RepaintBoundary] snapshot.
 class ImageCropScreen extends StatefulWidget {
-  const ImageCropScreen({super.key, required this.imageBytes});
+  const ImageCropScreen({
+    super.key,
+    required this.imageBytes,
+    this.circleCrop = false,
+  });
   final Uint8List imageBytes;
+
+  /// Shows a circular guide (avatars) instead of a rule-of-thirds grid
+  /// (menu items). Purely a visual aid — the exported PNG is always a
+  /// square; callers that want a round avatar clip it on display.
+  final bool circleCrop;
 
   @override
   State<ImageCropScreen> createState() => _ImageCropScreenState();
@@ -27,6 +37,12 @@ class _ImageCropScreenState extends State<ImageCropScreen> {
   bool _centered = false;
   double? _imgW;
   double? _imgH;
+  int _quarterTurns = 0;
+  bool _flipH = false;
+  bool _flipV = false;
+
+  double get _effW => _quarterTurns.isOdd ? _imgH! : _imgW!;
+  double get _effH => _quarterTurns.isOdd ? _imgW! : _imgH!;
 
   @override
   void initState() {
@@ -47,15 +63,29 @@ class _ImageCropScreenState extends State<ImageCropScreen> {
   // Scale so the image's shorter side fills the frame (cover-style starting
   // crop), then center it.
   void _centerImage(double side) {
-    final w = _imgW!;
-    final h = _imgH!;
-    final scale = side / (w < h ? w : h);
-    final dx = (side - w * scale) / 2;
-    final dy = (side - h * scale) / 2;
+    final scale = side / (_effW < _effH ? _effW : _effH);
+    final dx = (side - _effW * scale) / 2;
+    final dy = (side - _effH * scale) / 2;
     _controller.value = Matrix4.identity()
       ..translateByDouble(dx, dy, 0, 1)
       ..scaleByDouble(scale, scale, scale, 1);
     _centered = true;
+  }
+
+  void _rotate() {
+    setState(() {
+      _quarterTurns = (_quarterTurns + 1) % 4;
+      _centered = false;
+    });
+  }
+
+  void _zoomBy(double factor, double side) {
+    final c = side / 2;
+    final zoom = Matrix4.identity()
+      ..translateByDouble(c, c, 0, 1)
+      ..scaleByDouble(factor, factor, factor, 1)
+      ..translateByDouble(-c, -c, 0, 1);
+    _controller.value = zoom * _controller.value;
   }
 
   Future<void> _confirm(double side) async {
@@ -126,31 +156,87 @@ class _ImageCropScreenState extends State<ImageCropScreen> {
                     ),
                     child: Stack(
                       children: [
-                        RepaintBoundary(
-                          key: _boundaryKey,
-                          child: ClipRect(
-                            child: InteractiveViewer(
-                              transformationController: _controller,
-                              constrained: false,
-                              minScale: 0.1,
-                              maxScale: 5,
-                              boundaryMargin: const EdgeInsets.all(
-                                double.infinity,
+                        Listener(
+                          onPointerSignal: (event) {
+                            if (event is PointerScrollEvent) {
+                              _zoomBy(
+                                event.scrollDelta.dy > 0 ? 0.9 : 1.1,
+                                side,
+                              );
+                            }
+                          },
+                          child: RepaintBoundary(
+                            key: _boundaryKey,
+                            child: ClipRect(
+                              child: InteractiveViewer(
+                                transformationController: _controller,
+                                constrained: false,
+                                minScale: 0.1,
+                                maxScale: 5,
+                                boundaryMargin: const EdgeInsets.all(
+                                  double.infinity,
+                                ),
+                                child: Transform(
+                                  alignment: Alignment.center,
+                                  transform: Matrix4.diagonal3Values(
+                                    _flipH ? -1.0 : 1.0,
+                                    _flipV ? -1.0 : 1.0,
+                                    1.0,
+                                  ),
+                                  child: RotatedBox(
+                                    quarterTurns: _quarterTurns,
+                                    child: Image.memory(widget.imageBytes),
+                                  ),
+                                ),
                               ),
-                              child: Image.memory(widget.imageBytes),
                             ),
                           ),
                         ),
                         IgnorePointer(
                           child: CustomPaint(
                             size: Size(side, side),
-                            painter: _CropGridPainter(),
+                            painter: widget.circleCrop
+                                ? _CircleGuidePainter()
+                                : _CropGridPainter(),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: l10n.cropResetTooltip,
+                        color: Colors.white,
+                        icon: const Icon(Icons.refresh),
+                        onPressed: () => setState(() => _centerImage(side)),
+                      ),
+                      IconButton(
+                        tooltip: l10n.cropRotateTooltip,
+                        color: Colors.white,
+                        icon: const Icon(Icons.rotate_90_degrees_cw_outlined),
+                        onPressed: _rotate,
+                      ),
+                      IconButton(
+                        tooltip: l10n.cropFlipHorizontalTooltip,
+                        color: Colors.white,
+                        icon: const Icon(Icons.flip),
+                        onPressed: () => setState(() => _flipH = !_flipH),
+                      ),
+                      IconButton(
+                        tooltip: l10n.cropFlipVerticalTooltip,
+                        color: Colors.white,
+                        icon: const RotatedBox(
+                          quarterTurns: 1,
+                          child: Icon(Icons.flip),
+                        ),
+                        onPressed: () => setState(() => _flipV = !_flipV),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
                   Text(
                     l10n.cropHintText,
                     style: const TextStyle(color: Colors.white70, fontSize: 12),
@@ -183,6 +269,34 @@ class _CropGridPainter extends CustomPainter {
         paint,
       );
     }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Dims the four corners outside the inscribed circle and draws its
+/// outline, so avatar crops preview how they'll actually render once
+/// clipped to a circle on display. The exported PNG stays a full square —
+/// this is a guide only, drawn outside the [RepaintBoundary].
+class _CircleGuidePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final circle = Path()..addOval(rect);
+    final corners = Path.combine(
+      PathOperation.difference,
+      Path()..addRect(rect),
+      circle,
+    );
+    canvas.drawPath(corners, Paint()..color = Colors.black.withValues(alpha: 0.5));
+    canvas.drawPath(
+      circle,
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.6)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1,
+    );
   }
 
   @override

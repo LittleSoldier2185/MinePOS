@@ -1662,6 +1662,18 @@ class AppLocalizationsTh extends AppLocalizations {
   String get cropHintText => 'บีบนิ้วเพื่อซูม • ลากเพื่อจัดตำแหน่งภาพ';
 
   @override
+  String get cropRotateTooltip => 'หมุนภาพ';
+
+  @override
+  String get cropFlipHorizontalTooltip => 'พลิกแนวนอน';
+
+  @override
+  String get cropFlipVerticalTooltip => 'พลิกแนวตั้ง';
+
+  @override
+  String get cropResetTooltip => 'รีเซ็ต';
+
+  @override
   String get gridViewTooltip => 'มุมมองตาราง';
 
   @override

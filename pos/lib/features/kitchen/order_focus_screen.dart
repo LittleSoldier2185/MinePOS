@@ -8,6 +8,7 @@ import '../../l10n/app_localizations.dart';
 import '../cashier/models/order.dart';
 import '../cashier/models/order_item.dart';
 import '../cashier/services/menu_service.dart';
+import 'services/kitchen_service.dart';
 
 /// Single-order detail view opened by tapping a Kitchen Display card — shows
 /// each item larger (with its menu photo, if enabled in Settings) and lets a
@@ -41,6 +42,32 @@ class _OrderFocusScreenState extends State<OrderFocusScreen> {
   void initState() {
     super.initState();
     _loadImagePref();
+    // The order passed in is a snapshot from whenever this screen was
+    // opened — without this, item-status taps update the server and the
+    // board behind this screen, but this screen itself stays frozen until
+    // closed and reopened. KitchenService is the same live source the
+    // board already listens to.
+    KitchenService.instance.addListener(_onChange);
+  }
+
+  @override
+  void dispose() {
+    KitchenService.instance.removeListener(_onChange);
+    super.dispose();
+  }
+
+  void _onChange() {
+    if (!mounted) return;
+    // The order left the live list entirely (completed/cancelled from
+    // elsewhere, e.g. another kitchen display) — nothing left to show.
+    final stillActive = KitchenService.instance.orders.any(
+      (o) => o.id == widget.order.id,
+    );
+    if (!stillActive) {
+      Navigator.of(context).pop();
+      return;
+    }
+    setState(() {});
   }
 
   Future<void> _loadImagePref() async {
@@ -67,7 +94,12 @@ class _OrderFocusScreenState extends State<OrderFocusScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final locale = Localizations.localeOf(context);
-    final order = widget.order;
+    // Live order by id, falling back to the initial snapshot for the one
+    // frame before KitchenService's first notification arrives.
+    final order = KitchenService.instance.orders
+        .where((o) => o.id == widget.order.id)
+        .firstOrNull ?? widget.order;
+    final hasNote = order.note != null && order.note!.isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(
@@ -80,10 +112,44 @@ class _OrderFocusScreenState extends State<OrderFocusScreen> {
       backgroundColor: AppColors.background,
       body: ListView.separated(
         padding: const EdgeInsets.all(16),
-        itemCount: order.items.length,
+        itemCount: order.items.length + (hasNote ? 1 : 0),
         separatorBuilder: (_, _) => const SizedBox(height: 12),
         itemBuilder: (context, i) {
-          final item = order.items[i];
+          if (hasNote && i == 0) {
+            return Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: Colors.amber.shade700.withValues(alpha: 0.5),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.sticky_note_2_outlined,
+                    size: 16,
+                    color: Colors.amber.shade800,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      order.note!,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.amber.shade900,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+          final item = order.items[i - (hasNote ? 1 : 0)];
           final image = _imageFor(item);
           return Container(
             padding: const EdgeInsets.all(14),
