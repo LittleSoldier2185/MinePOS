@@ -27,6 +27,11 @@ class OrderTakingScreen extends StatefulWidget {
 
 class _OrderTakingScreenState extends State<OrderTakingScreen>
     with SingleTickerProviderStateMixin {
+  // Sentinel category id for the synthetic "Promotions" tile — combo
+  // promotions displayed as tappable tiles instead of a menu item, always
+  // sorted first in the category chip row when any combos are active.
+  static const _promotionsCategory = '__promotions__';
+
   final _menuService = MenuService.instance;
   TabController? _tabController;
 
@@ -94,7 +99,9 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
       // once-empty menu gaining its first item and the selected category
       // itself being deleted out from under this screen.
       final categories = _menuService.categories;
-      if (!categories.contains(_selectedCategory) && categories.isNotEmpty) {
+      if (_selectedCategory != _promotionsCategory &&
+          !categories.contains(_selectedCategory) &&
+          categories.isNotEmpty) {
         _selectedCategory = categories.first;
       }
     });
@@ -108,6 +115,12 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
         _combos = promotions
             .where((p) => p.type == 'combo' && p.active)
             .toList();
+        // Covers the edge case of a shop with combos but no menu items yet
+        // (`_selectedCategory` starts as '' in that case) — without this,
+        // the Promotions chip would render but nothing would be selected.
+        if (_combos.isNotEmpty && _selectedCategory.isEmpty) {
+          _selectedCategory = _promotionsCategory;
+        }
       });
     } catch (_) {
       // Combo shortcuts are a convenience on top of manually adding the same
@@ -160,39 +173,6 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
     )) {
       await _addItem(item);
     }
-  }
-
-  Future<void> _pickCombo() async {
-    final l10n = AppLocalizations.of(context)!;
-    final combo = await showModalBottomSheet<Promotion>(
-      context: context,
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-              child: Text(
-                l10n.comboBundlesTitle,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-            for (final combo in _combos)
-              ListTile(
-                title: Text(combo.name),
-                subtitle: Text(
-                  l10n.comboPriceLabel(baht(combo.comboPrice ?? 0)),
-                ),
-                onTap: () => Navigator.pop(context, combo),
-              ),
-          ],
-        ),
-      ),
-    );
-    if (combo != null) await _addCombo(combo);
   }
 
   Future<SweetnessLevel?> _pickSweetness() {
@@ -369,12 +349,6 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
       elevation: 0,
       surfaceTintColor: Colors.transparent,
       actions: [
-        if (_combos.isNotEmpty)
-          IconButton(
-            icon: const Icon(Icons.local_offer_outlined),
-            tooltip: AppLocalizations.of(context)!.comboBundlesTitle,
-            onPressed: _pickCombo,
-          ),
         MenuSortButton(value: _sortMode, onChanged: _setSortMode),
         if (_cart.isNotEmpty)
           IconButton(
@@ -397,7 +371,7 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
   // ── Menu panel ────────────────────────────────────────────────────────────
 
   Widget _buildMenuPanel() {
-    if (_menuService.categories.isEmpty) {
+    if (_menuService.categories.isEmpty && _combos.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -419,12 +393,20 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
 
     final query = _searchQuery.trim().toLowerCase();
     final locale = Localizations.localeOf(context);
+    final showingPromotions =
+        query.isEmpty && _selectedCategory == _promotionsCategory;
     final unsorted = query.isEmpty
-        ? _menuService.itemsForCategory(_selectedCategory)
+        ? (showingPromotions
+              ? const <MenuItem>[]
+              : _menuService.itemsForCategory(_selectedCategory))
         : _menuService.allAvailable
               .where((i) => i.displayName(locale).toLowerCase().contains(query))
               .toList();
     final items = sortMenuItems(unsorted, _sortMode, locale);
+    final displayCategories = [
+      if (_combos.isNotEmpty) _promotionsCategory,
+      ..._menuService.categories,
+    ];
 
     return Column(
       children: [
@@ -461,10 +443,11 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               scrollDirection: Axis.horizontal,
-              itemCount: _menuService.categories.length,
+              itemCount: displayCategories.length,
               separatorBuilder: (_, _) => const SizedBox(width: 8),
               itemBuilder: (context, i) {
-                final cat = _menuService.categories[i];
+                final cat = displayCategories[i];
+                final isPromotions = cat == _promotionsCategory;
                 final selected = cat == _selectedCategory;
                 return GestureDetector(
                   onTap: () => setState(() => _selectedCategory = cat),
@@ -483,13 +466,30 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
                             : AppColors.terracottaLight,
                       ),
                     ),
-                    child: Text(
-                      cat,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: selected ? AppColors.accent : AppColors.ink,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isPromotions) ...[
+                          Icon(
+                            Icons.local_offer_outlined,
+                            size: 14,
+                            color: selected
+                                ? AppColors.accent
+                                : AppColors.primary,
+                          ),
+                          const SizedBox(width: 6),
+                        ],
+                        Text(
+                          isPromotions
+                              ? AppLocalizations.of(context)!.comboBundlesTitle
+                              : cat,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: selected ? AppColors.accent : AppColors.ink,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 );
@@ -503,6 +503,28 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
                 AppLocalizations.of(context)!.noSearchResultsMessage,
                 style: const TextStyle(color: AppColors.muted),
               ),
+            ),
+          )
+        else if (showingPromotions)
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final cols = (constraints.maxWidth / 140).floor().clamp(2, 5);
+                return GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: cols,
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 8,
+                    childAspectRatio: 1.1,
+                  ),
+                  itemCount: _combos.length,
+                  itemBuilder: (context, index) => _PromoTile(
+                    promotion: _combos[index],
+                    onTap: () => _addCombo(_combos[index]),
+                  ),
+                );
+              },
             ),
           )
         else
@@ -782,6 +804,78 @@ class _MenuItemCard extends StatelessWidget {
                   ),
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Promotion tile ─────────────────────────────────────────────────────────────
+
+/// Same visual shape as [_MenuItemCard], for a combo promotion instead of a
+/// menu item — tapping adds every item in the bundle (see [_addCombo]).
+/// Only combo promotions ever reach here: every other promotion type
+/// auto-applies against the cart and has nothing to tap.
+class _PromoTile extends StatelessWidget {
+  const _PromoTile({required this.promotion, required this.onTap});
+  final Promotion promotion;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.primary, width: 1.2),
+        ),
+        padding: const EdgeInsets.all(10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: promotion.imageBase64 != null
+                    ? Image.memory(
+                        base64Decode(promotion.imageBase64!),
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      )
+                    : Container(
+                        width: double.infinity,
+                        color: AppColors.background,
+                        child: const Icon(
+                          Icons.local_offer_outlined,
+                          size: 18,
+                          color: AppColors.primary,
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              promotion.name,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primary,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              baht(promotion.comboPrice ?? 0),
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.muted,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ],
         ),
       ),

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:unified_esc_pos_printer/unified_esc_pos_printer.dart';
@@ -63,6 +64,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _savingShop = false;
   String? _shopError;
   bool _exportingBackup = false;
+  bool _regeneratingRecoveryCode = false;
   bool _localServerRunning = false;
 
   List<AdSlideInfo> _adSlides = [];
@@ -496,6 +498,88 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _regenerateRecoveryCode() async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await confirmDialog(
+      context,
+      title: l10n.regenerateRecoveryCodeConfirmTitle,
+      content: l10n.regenerateRecoveryCodeConfirmContent,
+      confirmLabel: l10n.regenerateRecoveryCodeConfirmButton,
+      cancelLabel: l10n.cancel,
+    );
+    if (!confirmed || !mounted) return;
+
+    setState(() => _regeneratingRecoveryCode = true);
+    try {
+      final code = await ShopService.instance.regenerateRecoveryCode();
+      if (!mounted) return;
+      await _showRecoveryCodeDialog(code);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    } finally {
+      if (mounted) setState(() => _regeneratingRecoveryCode = false);
+    }
+  }
+
+  /// Shown exactly once, right after (re)generating a code — the server
+  /// never returns it again (only its bcrypt hash is persisted).
+  Future<void> _showRecoveryCodeDialog(String code) {
+    final l10n = AppLocalizations.of(context)!;
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.recoveryCodeDialogTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.recoveryCodeDialogBody),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.terracottaLight),
+              ),
+              child: SelectableText(
+                code,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: code));
+                if (!dialogContext.mounted) return;
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  SnackBar(content: Text(l10n.recoveryCodeCopiedMessage)),
+                );
+              },
+              icon: const Icon(Icons.copy, size: 16),
+              label: Text(l10n.recoveryCodeCopyButton),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(l10n.recoveryCodeContinueButton),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _removeShop() async {
     final deleted = await showModalBottomSheet<bool>(
       context: context,
@@ -833,6 +917,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const SizedBox(height: 8),
         Text(
           l10n.exportBackupHint,
+          style: const TextStyle(color: AppColors.muted, fontSize: 11),
+        ),
+        const Divider(height: 28),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _regeneratingRecoveryCode ? null : _regenerateRecoveryCode,
+            icon: _regeneratingRecoveryCode
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.key_outlined, size: 16),
+            label: Text(l10n.regenerateRecoveryCodeButton),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          l10n.regenerateRecoveryCodeHint,
           style: const TextStyle(color: AppColors.muted, fontSize: 11),
         ),
       ],

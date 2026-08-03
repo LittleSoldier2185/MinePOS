@@ -36,6 +36,7 @@ class Promotion {
     this.timeEnd,
     this.requiresManagerApproval = false,
     this.approvalThresholdAmount,
+    this.imageBase64,
     this.codes = const [],
   });
 
@@ -67,6 +68,10 @@ class Promotion {
 
   final bool requiresManagerApproval;
   final double? approvalThresholdAmount;
+
+  /// Only meaningful for `type == 'combo'` — shown as the tile image in the
+  /// cashier's Promotion category grid (`order_taking_screen.dart`).
+  final String? imageBase64;
 
   final List<PromotionCode> codes;
 
@@ -102,6 +107,7 @@ class Promotion {
     requiresManagerApproval: json['requiresManagerApproval'] as bool? ?? false,
     approvalThresholdAmount: (json['approvalThresholdAmount'] as num?)
         ?.toDouble(),
+    imageBase64: json['imageBase64'] as String?,
     codes: (json['codes'] as List)
         .map((c) => PromotionCode.fromJson(c as Map<String, dynamic>))
         .toList(),
@@ -131,6 +137,7 @@ class Promotion {
     'timeEnd': timeEnd,
     'requiresManagerApproval': requiresManagerApproval,
     'approvalThresholdAmount': approvalThresholdAmount,
+    'imageBase64': imageBase64,
   };
 
   /// Only [codes] is ever actually swapped in practice (after add/delete

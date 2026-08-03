@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/services/app_settings_service.dart';
 import '../../core/services/local_server_launcher.dart';
@@ -128,6 +129,7 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
         : _data.cloudServerAddress.trim();
 
     setState(() => _submitting = true);
+    String recoveryCode = '';
     try {
       if (_data.connectionMode == ConnectionMode.local) {
         final launched = isWindowsDesktop
@@ -137,7 +139,7 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
           throw Exception(l10n.localServerLaunchFailedError);
         }
       }
-      await ShopSetupService().createShop(_data, targetAddress);
+      recoveryCode = await ShopSetupService().createShop(_data, targetAddress);
 
       ServerClient.instance.baseUrl = targetAddress;
       // This device is signing in for the first time as the shop's own
@@ -176,6 +178,10 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
     }
 
     if (!mounted) return;
+    if (recoveryCode.isNotEmpty) {
+      await _showRecoveryCodeDialog(recoveryCode);
+    }
+    if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
         builder: (_) => HomePlaceholderScreen(
@@ -185,6 +191,66 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
         ),
       ),
       (route) => false,
+    );
+  }
+
+  /// Shown exactly once, right after bootstrap — the server never returns
+  /// this code again (only its bcrypt hash is persisted), so this dialog is
+  /// the owner's only chance to save it. Not dismissible except via the
+  /// explicit "I've saved it" button, to make skipping past it deliberate.
+  Future<void> _showRecoveryCodeDialog(String code) {
+    final l10n = AppLocalizations.of(context)!;
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.recoveryCodeDialogTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.recoveryCodeDialogBody),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.terracottaLight),
+              ),
+              child: SelectableText(
+                code,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: code));
+                if (!dialogContext.mounted) return;
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  SnackBar(content: Text(l10n.recoveryCodeCopiedMessage)),
+                );
+              },
+              icon: const Icon(Icons.copy, size: 16),
+              label: Text(l10n.recoveryCodeCopyButton),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(l10n.recoveryCodeContinueButton),
+          ),
+        ],
+      ),
     );
   }
 

@@ -234,7 +234,67 @@ class AppLocalizationsEn extends AppLocalizations {
   String get forgotPasswordSendCodeButton => 'SEND CODE';
 
   @override
+  String get forgotPasswordUseRecoveryCodeLink =>
+      'Lost access to your email? Use your recovery code instead';
+
+  @override
   String get forgotPasswordBackLink => 'Back to Sign In';
+
+  @override
+  String get recoveryCodeDialogTitle => 'Save your recovery code';
+
+  @override
+  String get recoveryCodeDialogBody =>
+      'If you ever forget your password and can\'t get an emailed code, this is the only other way back in. Write it down or save it somewhere safe — it will not be shown again.';
+
+  @override
+  String get recoveryCodeCopyButton => 'Copy';
+
+  @override
+  String get recoveryCodeCopiedMessage => 'Copied to clipboard';
+
+  @override
+  String get recoveryCodeContinueButton => 'I\'ve saved it';
+
+  @override
+  String get recoveryCodeResetTitle => 'Reset with Recovery Code';
+
+  @override
+  String get recoveryCodeResetInstructions =>
+      'Enter your username, the recovery code you saved, and a new password.';
+
+  @override
+  String get recoveryCodeLabel => 'Recovery code';
+
+  @override
+  String get recoveryCodeHint => 'XXXX-XXXX-XXXX-XXXX';
+
+  @override
+  String get recoveryCodeRequiredError => 'Recovery code is required';
+
+  @override
+  String get recoveryCodeResetButton => 'Reset Password';
+
+  @override
+  String get recoveryCodeResetErrorMessage =>
+      'Invalid recovery code or username.';
+
+  @override
+  String get regenerateRecoveryCodeButton => 'Regenerate Recovery Code';
+
+  @override
+  String get regenerateRecoveryCodeHint =>
+      'Invalidates the old code and shows a new one. Use this if you lost the one you saved.';
+
+  @override
+  String get regenerateRecoveryCodeConfirmTitle => 'Regenerate recovery code?';
+
+  @override
+  String get regenerateRecoveryCodeConfirmContent =>
+      'Your current recovery code will stop working immediately. Make sure you save the new one.';
+
+  @override
+  String get regenerateRecoveryCodeConfirmButton => 'Regenerate';
 
   @override
   String get otpVerificationTitle => 'ENTER CODE';
@@ -1462,6 +1522,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get promotionComboPriceLabel => 'Bundle price (฿)';
+
+  @override
+  String get promotionComboImageLabel =>
+      'Bundle photo (optional) — shown in the cashier\'s Promotion category';
 
   @override
   String get promotionComboItemsLabel => 'Items included in the bundle';

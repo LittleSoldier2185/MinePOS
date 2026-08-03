@@ -512,11 +512,119 @@ abstract class AppLocalizations {
   /// **'SEND CODE'**
   String get forgotPasswordSendCodeButton;
 
+  /// No description provided for @forgotPasswordUseRecoveryCodeLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Lost access to your email? Use your recovery code instead'**
+  String get forgotPasswordUseRecoveryCodeLink;
+
   /// No description provided for @forgotPasswordBackLink.
   ///
   /// In en, this message translates to:
   /// **'Back to Sign In'**
   String get forgotPasswordBackLink;
+
+  /// No description provided for @recoveryCodeDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Save your recovery code'**
+  String get recoveryCodeDialogTitle;
+
+  /// No description provided for @recoveryCodeDialogBody.
+  ///
+  /// In en, this message translates to:
+  /// **'If you ever forget your password and can\'t get an emailed code, this is the only other way back in. Write it down or save it somewhere safe — it will not be shown again.'**
+  String get recoveryCodeDialogBody;
+
+  /// No description provided for @recoveryCodeCopyButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get recoveryCodeCopyButton;
+
+  /// No description provided for @recoveryCodeCopiedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied to clipboard'**
+  String get recoveryCodeCopiedMessage;
+
+  /// No description provided for @recoveryCodeContinueButton.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'ve saved it'**
+  String get recoveryCodeContinueButton;
+
+  /// No description provided for @recoveryCodeResetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset with Recovery Code'**
+  String get recoveryCodeResetTitle;
+
+  /// No description provided for @recoveryCodeResetInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your username, the recovery code you saved, and a new password.'**
+  String get recoveryCodeResetInstructions;
+
+  /// No description provided for @recoveryCodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Recovery code'**
+  String get recoveryCodeLabel;
+
+  /// No description provided for @recoveryCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'XXXX-XXXX-XXXX-XXXX'**
+  String get recoveryCodeHint;
+
+  /// No description provided for @recoveryCodeRequiredError.
+  ///
+  /// In en, this message translates to:
+  /// **'Recovery code is required'**
+  String get recoveryCodeRequiredError;
+
+  /// No description provided for @recoveryCodeResetButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Password'**
+  String get recoveryCodeResetButton;
+
+  /// No description provided for @recoveryCodeResetErrorMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid recovery code or username.'**
+  String get recoveryCodeResetErrorMessage;
+
+  /// No description provided for @regenerateRecoveryCodeButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Regenerate Recovery Code'**
+  String get regenerateRecoveryCodeButton;
+
+  /// No description provided for @regenerateRecoveryCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalidates the old code and shows a new one. Use this if you lost the one you saved.'**
+  String get regenerateRecoveryCodeHint;
+
+  /// No description provided for @regenerateRecoveryCodeConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Regenerate recovery code?'**
+  String get regenerateRecoveryCodeConfirmTitle;
+
+  /// No description provided for @regenerateRecoveryCodeConfirmContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Your current recovery code will stop working immediately. Make sure you save the new one.'**
+  String get regenerateRecoveryCodeConfirmContent;
+
+  /// No description provided for @regenerateRecoveryCodeConfirmButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Regenerate'**
+  String get regenerateRecoveryCodeConfirmButton;
 
   /// No description provided for @otpVerificationTitle.
   ///
@@ -2707,6 +2815,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Bundle price (฿)'**
   String get promotionComboPriceLabel;
+
+  /// No description provided for @promotionComboImageLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Bundle photo (optional) — shown in the cashier\'s Promotion category'**
+  String get promotionComboImageLabel;
 
   /// No description provided for @promotionComboItemsLabel.
   ///

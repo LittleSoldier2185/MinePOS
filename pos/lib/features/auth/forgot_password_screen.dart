@@ -4,6 +4,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../l10n/app_localizations.dart';
 import 'otp_verification_screen.dart';
+import 'recovery_code_screen.dart';
 import 'services/password_reset_service.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -131,6 +132,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                         ),
                                       )
                                     : Text(AppLocalizations.of(context)!.forgotPasswordSendCodeButton),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            TextButton(
+                              onPressed: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const RecoveryCodeScreen(),
+                                ),
+                              ),
+                              child: Text(
+                                AppLocalizations.of(context)!.forgotPasswordUseRecoveryCodeLink,
                               ),
                             ),
                             const SizedBox(height: 4),

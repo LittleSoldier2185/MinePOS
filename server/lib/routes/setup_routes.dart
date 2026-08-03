@@ -45,5 +45,10 @@ Future<Response> _setup(Request req, AppDb db, ServerConfig config) async {
   );
   db.createUser(username: adminUsername, password: adminPassword, role: 'owner');
 
-  return jsonOk({'ok': true}, status: 201);
+  // Shown to the client exactly once, right here — only the bcrypt hash is
+  // ever persisted, so this is the only response that will ever carry the
+  // raw code. The client must show it to the owner and tell them to save it.
+  final recoveryCode = db.generateRecoveryCode();
+
+  return jsonOk({'ok': true, 'recoveryCode': recoveryCode}, status: 201);
 }

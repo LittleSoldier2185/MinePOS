@@ -58,6 +58,7 @@ const _kScopeTypes = {'item', 'category', 'shop'};
   String? timeEnd,
   bool requiresManagerApproval,
   double? approvalThresholdAmount,
+  String? imageBase64,
 }) _extractFields(Map<String, dynamic> body) {
   return (
     name: (body['name'] as String?)?.trim(),
@@ -83,6 +84,7 @@ const _kScopeTypes = {'item', 'category', 'shop'};
     timeEnd: body['timeEnd'] as String?,
     requiresManagerApproval: body['requiresManagerApproval'] as bool? ?? false,
     approvalThresholdAmount: (body['approvalThresholdAmount'] as num?)?.toDouble(),
+    imageBase64: body['imageBase64'] as String?,
   );
 }
 
@@ -139,6 +141,7 @@ Future<Response> _create(Request req, AppDb db, ServerConfig config) async {
     timeEnd: f.timeEnd,
     requiresManagerApproval: f.requiresManagerApproval,
     approvalThresholdAmount: f.approvalThresholdAmount,
+    imageBase64: f.imageBase64,
   );
   return jsonOk(promotion.toJson(), status: 201);
 }
@@ -181,6 +184,7 @@ Future<Response> _update(Request req, String id, AppDb db, ServerConfig config) 
     timeEnd: f.timeEnd,
     requiresManagerApproval: f.requiresManagerApproval,
     approvalThresholdAmount: f.approvalThresholdAmount,
+    imageBase64: f.imageBase64,
   );
   if (updated == null) return notFound('Promotion not found');
   return jsonOk(updated.toJson());

@@ -233,7 +233,68 @@ class AppLocalizationsTh extends AppLocalizations {
   String get forgotPasswordSendCodeButton => 'ส่งรหัส';
 
   @override
+  String get forgotPasswordUseRecoveryCodeLink =>
+      'เข้าถึงอีเมลไม่ได้ใช่ไหม? ใช้รหัสกู้คืนแทน';
+
+  @override
   String get forgotPasswordBackLink => 'กลับไปหน้าเข้าสู่ระบบ';
+
+  @override
+  String get recoveryCodeDialogTitle => 'บันทึกรหัสกู้คืนของคุณ';
+
+  @override
+  String get recoveryCodeDialogBody =>
+      'หากคุณลืมรหัสผ่านและไม่สามารถรับรหัสทางอีเมลได้ นี่คือวิธีเดียวที่จะกลับเข้าระบบได้ กรุณาจดหรือบันทึกไว้ในที่ปลอดภัย — จะไม่แสดงอีกครั้ง';
+
+  @override
+  String get recoveryCodeCopyButton => 'คัดลอก';
+
+  @override
+  String get recoveryCodeCopiedMessage => 'คัดลอกไปยังคลิปบอร์ดแล้ว';
+
+  @override
+  String get recoveryCodeContinueButton => 'บันทึกแล้ว';
+
+  @override
+  String get recoveryCodeResetTitle => 'รีเซ็ตด้วยรหัสกู้คืน';
+
+  @override
+  String get recoveryCodeResetInstructions =>
+      'กรอกชื่อผู้ใช้ รหัสกู้คืนที่คุณบันทึกไว้ และรหัสผ่านใหม่';
+
+  @override
+  String get recoveryCodeLabel => 'รหัสกู้คืน';
+
+  @override
+  String get recoveryCodeHint => 'XXXX-XXXX-XXXX-XXXX';
+
+  @override
+  String get recoveryCodeRequiredError => 'กรุณากรอกรหัสกู้คืน';
+
+  @override
+  String get recoveryCodeResetButton => 'รีเซ็ตรหัสผ่าน';
+
+  @override
+  String get recoveryCodeResetErrorMessage =>
+      'รหัสกู้คืนหรือชื่อผู้ใช้ไม่ถูกต้อง';
+
+  @override
+  String get regenerateRecoveryCodeButton => 'สร้างรหัสกู้คืนใหม่';
+
+  @override
+  String get regenerateRecoveryCodeHint =>
+      'รหัสเดิมจะใช้ไม่ได้ทันทีและจะแสดงรหัสใหม่ ใช้ตัวเลือกนี้หากคุณทำรหัสเดิมหาย';
+
+  @override
+  String get regenerateRecoveryCodeConfirmTitle =>
+      'สร้างรหัสกู้คืนใหม่หรือไม่?';
+
+  @override
+  String get regenerateRecoveryCodeConfirmContent =>
+      'รหัสกู้คืนปัจจุบันจะใช้ไม่ได้ทันที กรุณาบันทึกรหัสใหม่ให้เรียบร้อย';
+
+  @override
+  String get regenerateRecoveryCodeConfirmButton => 'สร้างใหม่';
 
   @override
   String get otpVerificationTitle => 'กรอกรหัส';
@@ -1449,6 +1510,10 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get promotionComboPriceLabel => 'ราคาชุด (฿)';
+
+  @override
+  String get promotionComboImageLabel =>
+      'รูปชุดโปรโมชั่น (ไม่บังคับ) — แสดงในหมวดโปรโมชั่นของแคชเชียร์';
 
   @override
   String get promotionComboItemsLabel => 'สินค้าที่รวมอยู่ในชุด';

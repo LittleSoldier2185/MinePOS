@@ -14,6 +14,11 @@ class ServerConfig {
     required this.adminPass,
     required this.shopName,
     required this.autoSeedAdmin,
+    required this.smtpHost,
+    required this.smtpPort,
+    required this.smtpUsername,
+    required this.smtpPassword,
+    required this.smtpFromEmail,
   });
 
   final int port;
@@ -35,6 +40,22 @@ class ServerConfig {
   /// the server starts with no users at all and waits for a client to
   /// bootstrap it via POST /setup (the Create Shop wizard).
   final bool autoSeedAdmin;
+
+  /// Password-reset OTPs are emailed for real when all four of these are
+  /// set (MINEPOS_SMTP_HOST/PORT/USER/PASS); otherwise `EmailService` can't
+  /// send and `_requestOtp` falls back to its original console-only
+  /// behavior, same as before this existed.
+  final String? smtpHost;
+  final int? smtpPort;
+  final String? smtpUsername;
+  final String? smtpPassword;
+
+  /// Defaults to [smtpUsername] (the common case: send-as address ==
+  /// login address) when MINEPOS_SMTP_FROM isn't set separately.
+  final String? smtpFromEmail;
+
+  bool get smtpConfigured =>
+      smtpHost != null && smtpUsername != null && smtpPassword != null;
 
   /// [port]/[dataDir]/[shopName] override the matching env var when set —
   /// used by in-process callers (e.g. mobile self-host) that can't set
@@ -84,6 +105,18 @@ class ServerConfig {
       );
     }
 
+    final smtpHost = Platform.environment['MINEPOS_SMTP_HOST'];
+    final smtpUsername = Platform.environment['MINEPOS_SMTP_USER'];
+    final smtpPassword = Platform.environment['MINEPOS_SMTP_PASS'];
+    final smtpPort = int.tryParse(Platform.environment['MINEPOS_SMTP_PORT'] ?? '') ?? 587;
+    final smtpFromEmail = Platform.environment['MINEPOS_SMTP_FROM'] ?? smtpUsername;
+    if (smtpHost == null || smtpUsername == null || smtpPassword == null) {
+      print(
+        'ℹ  MINEPOS_SMTP_HOST/USER/PASS not set. Password-reset OTPs will '
+        'print to this console instead of being emailed.',
+      );
+    }
+
     return ServerConfig._(
       port: resolvedPort,
       bindAddress: resolvedBindAddress,
@@ -93,6 +126,11 @@ class ServerConfig {
       adminPass: adminPass.isEmpty ? _randomString(12) : adminPass,
       shopName: resolvedShopName,
       autoSeedAdmin: autoSeedAdmin,
+      smtpHost: smtpHost,
+      smtpPort: smtpPort,
+      smtpUsername: smtpUsername,
+      smtpPassword: smtpPassword,
+      smtpFromEmail: smtpFromEmail,
     );
   }
 

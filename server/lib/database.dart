@@ -428,6 +428,7 @@ class DbPromotion {
     this.timeEnd,
     this.requiresManagerApproval = false,
     this.approvalThresholdAmount,
+    this.imageBase64,
     required this.createdAt,
     this.codes = const [],
   });
@@ -465,6 +466,11 @@ class DbPromotion {
   final bool requiresManagerApproval;
   final double? approvalThresholdAmount;
 
+  /// Only meaningful for `type == 'combo'` — the cashier's Promotion
+  /// category tile grid shows this; other promotion types auto-apply and
+  /// have nothing to display it on.
+  final String? imageBase64;
+
   final DateTime createdAt;
 
   /// Only populated for `type == 'code'` promotions.
@@ -498,6 +504,7 @@ class DbPromotion {
         timeEnd: row['time_end'] as String?,
         requiresManagerApproval: (row['requires_manager_approval'] as int) == 1,
         approvalThresholdAmount: (row['approval_threshold_amount'] as num?)?.toDouble(),
+        imageBase64: row['image_base64'] as String?,
         createdAt: DateTime.parse(row['created_at'] as String),
         codes: codes,
       );
@@ -550,6 +557,7 @@ class DbPromotion {
         'timeEnd': timeEnd,
         'requiresManagerApproval': requiresManagerApproval,
         'approvalThresholdAmount': approvalThresholdAmount,
+        'imageBase64': imageBase64,
         'createdAt': createdAt.toIso8601String(),
         'codes': codes.map((c) => c.toJson()).toList(),
       };
@@ -627,6 +635,11 @@ class AppDb {
       // it never lands somewhere the in-app log viewer (or the disk) shows it.
       ServerLog.instance.log(
           'Created admin user "${config.adminUser}" (password shown in console output only, not persisted)');
+
+      final recoveryCode = instance.generateRecoveryCode();
+      print('Password recovery code (save this somewhere safe — shown only once): $recoveryCode');
+      ServerLog.instance.log(
+          'Recovery code generated for headless bootstrap (code shown in console output only, not persisted)');
     }
 
     // Seed default menu if empty.
@@ -858,9 +871,12 @@ class AppDb {
         requires_manager_approval INTEGER NOT NULL DEFAULT 0,
         approval_threshold_amount REAL,
 
+        image_base64 TEXT,
+
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       )
     ''');
+    _addColumnIfMissing('promotions', 'image_base64', 'TEXT');
 
     // Codes for a `type = 'code'` promotion — split into its own table
     // (rather than a single column on `promotions`) since one promotion can
@@ -908,6 +924,20 @@ class AppDb {
       CREATE TABLE IF NOT EXISTS category_order (
         id INTEGER PRIMARY KEY CHECK (id = 1),
         order_json TEXT NOT NULL DEFAULT '[]'
+      )
+    ''');
+
+    // Password-recovery backstop that needs no email/SMS/external API at
+    // all: a long random code shown once (at shop bootstrap, or whenever
+    // regenerated) that `/auth/recover-with-code` accepts in place of an
+    // emailed OTP. Only the bcrypt hash is ever persisted — same singleton-
+    // row pattern as `category_order`, for the same reason (a column on
+    // `shop_config` would get silently nulled by `setShopConfig`'s
+    // full-row `INSERT OR REPLACE`).
+    _db.execute('''
+      CREATE TABLE IF NOT EXISTS recovery_code (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        code_hash TEXT NOT NULL
       )
     ''');
   }
@@ -986,6 +1016,17 @@ class AppDb {
     final rows = _db.select(
       'SELECT * FROM users WHERE username = ?',
       [username.toLowerCase()],
+    );
+    if (rows.isEmpty) return null;
+    return DbUser._fromRow(rows.first);
+  }
+
+  /// Case-insensitive lookup by email — backs the forgot-password screen's
+  /// "Username or Email" field, which otherwise only ever matched username.
+  DbUser? getUserByEmail(String email) {
+    final rows = _db.select(
+      'SELECT * FROM users WHERE lower(email) = ?',
+      [email.toLowerCase()],
     );
     if (rows.isEmpty) return null;
     return DbUser._fromRow(rows.first);
@@ -1113,6 +1154,35 @@ class AppDb {
       'DELETE FROM otp_tokens WHERE username = ?',
       [username.toLowerCase()],
     );
+  }
+
+  // ── Recovery code ────────────────────────────────────────────────────────────
+
+  static const _recoveryCodeChars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I/L
+
+  /// Generates a fresh recovery code, persists only its bcrypt hash
+  /// (replacing any previous one), and returns the raw code — the one and
+  /// only time it's ever available, same treatment as the admin bootstrap
+  /// password. Called once at shop bootstrap and again whenever the owner
+  /// regenerates it from Settings.
+  String generateRecoveryCode() {
+    final rng = Random.secure();
+    final raw = List.generate(
+      16,
+      (_) => _recoveryCodeChars[rng.nextInt(_recoveryCodeChars.length)],
+    ).join();
+    final formatted = [
+      for (var i = 0; i < 16; i += 4) raw.substring(i, i + 4),
+    ].join('-');
+    final hash = BCrypt.hashpw(formatted, BCrypt.gensalt());
+    _db.execute('INSERT OR REPLACE INTO recovery_code (id, code_hash) VALUES (1, ?)', [hash]);
+    return formatted;
+  }
+
+  bool verifyRecoveryCode(String code) {
+    final rows = _db.select('SELECT code_hash FROM recovery_code WHERE id = 1');
+    if (rows.isEmpty) return false;
+    return BCrypt.checkpw(code, rows.first['code_hash'] as String);
   }
 
   // ── Menu ───────────────────────────────────────────────────────────────────
@@ -1313,7 +1383,7 @@ class AppDb {
       'id, name, type, active, scope_type, scope_item_ids, scope_category, exclude_item_ids, '
       'percent_value, flat_amount, max_discount_cap, min_spend_amount, bogo_buy_qty, bogo_get_qty, '
       'bogo_get_discount_percent, combo_price, tiered_json, start_date, end_date, days_of_week, '
-      'time_start, time_end, requires_manager_approval, approval_threshold_amount, created_at';
+      'time_start, time_end, requires_manager_approval, approval_threshold_amount, image_base64, created_at';
 
   List<DbPromotionCode> _codesFor(String promotionId) => _db
       .select('SELECT * FROM promotion_codes WHERE promotion_id = ?', [promotionId])
@@ -1355,11 +1425,12 @@ class AppDb {
     String? timeEnd,
     bool requiresManagerApproval = false,
     double? approvalThresholdAmount,
+    String? imageBase64,
   }) {
     final id = _uuid.v4().substring(0, 8);
     _db.execute(
       'INSERT INTO promotions ($_promotionColumns) VALUES '
-      "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))",
+      "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))",
       [
         id,
         name.trim(),
@@ -1385,6 +1456,7 @@ class AppDb {
         timeEnd,
         requiresManagerApproval ? 1 : 0,
         approvalThresholdAmount,
+        imageBase64,
       ],
     );
     return getPromotion(id)!;
@@ -1415,13 +1487,14 @@ class AppDb {
     String? timeEnd,
     bool requiresManagerApproval = false,
     double? approvalThresholdAmount,
+    String? imageBase64,
   }) {
     _db.execute(
       'UPDATE promotions SET name=?, type=?, active=?, scope_type=?, scope_item_ids=?, scope_category=?, '
       'exclude_item_ids=?, percent_value=?, flat_amount=?, max_discount_cap=?, min_spend_amount=?, '
       'bogo_buy_qty=?, bogo_get_qty=?, bogo_get_discount_percent=?, combo_price=?, tiered_json=?, '
       'start_date=?, end_date=?, days_of_week=?, time_start=?, time_end=?, requires_manager_approval=?, '
-      'approval_threshold_amount=? WHERE id=?',
+      'approval_threshold_amount=?, image_base64=? WHERE id=?',
       [
         name.trim(),
         type,
@@ -1446,6 +1519,7 @@ class AppDb {
         timeEnd,
         requiresManagerApproval ? 1 : 0,
         approvalThresholdAmount,
+        imageBase64,
         id,
       ],
     );

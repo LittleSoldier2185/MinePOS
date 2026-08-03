@@ -17,7 +17,10 @@ class ShopSetupException implements Exception {
 /// there's no session yet; [address] is whatever server the wizard is
 /// pointed at (currently always this device for local hosting).
 class ShopSetupService {
-  Future<void> createShop(ShopSetupData data, String address) async {
+  /// Returns the one-time password-recovery code the server generates
+  /// during bootstrap (see `setup_routes.dart`) — the caller must show it
+  /// to the owner immediately, since the server only ever returns it here.
+  Future<String> createShop(ShopSetupData data, String address) async {
     late final http.Response res;
     try {
       res = await http
@@ -40,7 +43,10 @@ class ShopSetupService {
           "Couldn't reach a server at $address. Make sure the MinePOS server is running first.");
     }
 
-    if (res.statusCode >= 200 && res.statusCode < 300) return;
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      return body['recoveryCode'] as String? ?? '';
+    }
     throw ShopSetupException(_errorMessage(res));
   }
 

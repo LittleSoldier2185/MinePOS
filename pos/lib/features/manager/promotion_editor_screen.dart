@@ -1,8 +1,13 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_text_field.dart';
+import '../../core/widgets/image_crop_screen.dart';
 import '../../l10n/app_localizations.dart';
 import '../cashier/services/menu_service.dart';
 import 'services/promotion_admin_service.dart';
@@ -93,6 +98,7 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
   late String? _timeEnd = widget.existing?.timeEnd;
   late bool _requiresApproval =
       widget.existing?.requiresManagerApproval ?? false;
+  late String? _imageBase64 = widget.existing?.imageBase64;
 
   bool _saving = false;
   String? _error;
@@ -137,6 +143,23 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
       c.text.trim().isEmpty ? null : double.tryParse(c.text.trim());
   int? _parseInt(TextEditingController c) =>
       c.text.trim().isEmpty ? null : int.tryParse(c.text.trim());
+
+  Future<void> _pickImage() async {
+    final file = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1600,
+      maxHeight: 1600,
+      imageQuality: 90,
+    );
+    if (file == null || !mounted) return;
+    final bytes = await file.readAsBytes();
+    if (!mounted) return;
+    final cropped = await Navigator.of(context).push<Uint8List>(
+      MaterialPageRoute(builder: (_) => ImageCropScreen(imageBytes: bytes)),
+    );
+    if (cropped == null) return;
+    setState(() => _imageBase64 = base64Encode(cropped));
+  }
 
   Promotion _buildPromotion() {
     final isCombo = _type == 'combo';
@@ -199,6 +222,7 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
       approvalThresholdAmount: _requiresApproval
           ? _parse(_approvalThresholdController)
           : null,
+      imageBase64: isCombo ? _imageBase64 : null,
       codes: _saved?.codes ?? const [],
     );
   }
@@ -739,6 +763,38 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
         ];
       case 'combo':
         return [
+          Center(
+            child: GestureDetector(
+              onTap: _pickImage,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: _imageBase64 != null
+                    ? Image.memory(
+                        base64Decode(_imageBase64!),
+                        width: 80,
+                        height: 80,
+                        fit: BoxFit.cover,
+                      )
+                    : Container(
+                        width: 80,
+                        height: 80,
+                        color: AppColors.background,
+                        child: const Icon(
+                          Icons.add_a_photo_outlined,
+                          color: AppColors.muted,
+                        ),
+                      ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Center(
+            child: Text(
+              l10n.promotionComboImageLabel,
+              style: const TextStyle(fontSize: 11, color: AppColors.muted),
+            ),
+          ),
+          const SizedBox(height: 14),
           AppTextField(
             label: l10n.promotionComboPriceLabel,
             controller: _comboPriceController,

@@ -15,6 +15,7 @@ dependencies:
   path: ^1.9.0
   shelf_web_socket: ^3.0.0
   web_socket_channel: ^3.0.3
+  mailer: ^7.2.0
 
 dev_dependencies:
   lints: ^5.0.0

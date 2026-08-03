@@ -36,6 +36,7 @@ void registerAdminRoutes(
   router.get('/admin/config', (Request req) => _getConfig(req, db, config));
   router.patch('/admin/config', (Request req) => _patchConfig(req, db, config, onRestart ?? _exitProcess));
   router.get('/admin/logs', (Request req) => _logs(req, db, config));
+  router.post('/admin/recovery-code/regenerate', (Request req) => _regenerateRecoveryCode(req, db, config));
   router.get('/admin', (Request req) => Response.ok(adminWebPageHtml, headers: {'content-type': 'text/html'}));
 }
 
@@ -110,6 +111,18 @@ Future<Response> _patchConfig(
       'Listen settings changed to ${bindAddress ?? "all interfaces"}:$port via admin dashboard — restarting.');
   restart();
   return jsonOk({'ok': true, 'restarting': true});
+}
+
+// POST /admin/recovery-code/regenerate — owner-only. Invalidates whatever
+// recovery code currently exists and returns a fresh one, shown exactly
+// once (same as at bootstrap) — for when the owner loses the original.
+Response _regenerateRecoveryCode(Request req, AppDb db, ServerConfig config) {
+  if (requireAuth(req, db, config.jwtSecret, role: 'owner') == null) {
+    return unauthorized();
+  }
+  final code = db.generateRecoveryCode();
+  ServerLog.instance.log('Recovery code regenerated via Settings (code shown in response only, not persisted).');
+  return jsonOk({'recoveryCode': code});
 }
 
 // GET /admin/logs?lines=300 — owner-only. Tail of the persisted server log,

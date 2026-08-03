@@ -25,4 +25,15 @@ class ShopService {
               'password': password,
             }),
           ));
+
+  /// Invalidates the current password-recovery code and returns a fresh
+  /// one — shown to the owner exactly once, same treatment as the code
+  /// shown at shop bootstrap (`CreateShopScreen`).
+  Future<String> regenerateRecoveryCode() async {
+    final res = await apiSend(() => http.post(
+          ServerClient.instance.uri('/admin/recovery-code/regenerate'),
+          headers: ServerClient.instance.headers,
+        ));
+    return (jsonDecode(res.body) as Map<String, dynamic>)['recoveryCode'] as String;
+  }
 }
