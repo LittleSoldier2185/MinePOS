@@ -117,7 +117,11 @@ class _ConnectionModeStepState extends State<ConnectionModeStep> {
                 validator: (value) =>
                     (value == null || value.trim().isEmpty) ? l10n.connectEmptyAddressError : null,
               ),
-              if (supportsMdns) ...[
+              // Windows/Linux: bonsoir's browser is buggy (off-thread channel
+              // callbacks); this wizard step just omits the scan there rather
+              // than pulling in the full LAN sweep — the address is typed in
+              // anyway when creating a shop on a known remote server.
+              if (supportsMdnsBrowse) ...[
                 const SizedBox(height: 16),
                 if (!_scanning)
                   OutlinedButton.icon(

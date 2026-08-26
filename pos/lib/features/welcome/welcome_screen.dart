@@ -4,6 +4,7 @@ import '../../core/services/local_server_launcher.dart';
 import '../../core/services/mobile_server_launcher.dart';
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_message.dart';
 import '../../core/window/platform_window.dart';
 import '../../l10n/app_localizations.dart';
 import '../auth/login_screen.dart';
@@ -19,22 +20,6 @@ class WelcomeScreen extends StatefulWidget {
 
 class _WelcomeScreenState extends State<WelcomeScreen> {
   bool _openingRegister = false;
-  bool _hasLocalShop = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkLocalShop();
-  }
-
-  Future<void> _checkLocalShop() async {
-    final hasShop = isWindowsDesktop
-        ? LocalServerLauncher.instance.hasLocalShop()
-        : isMobile
-            ? await MobileServerLauncher.instance.hasLocalShop()
-            : false;
-    if (mounted) setState(() => _hasLocalShop = hasShop);
-  }
 
   // Self-hosting means launching a local server: a detached exe on Windows
   // (can also serve other devices on the LAN), or an in-process loopback-only
@@ -51,8 +36,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     if (!mounted) return;
     setState(() => _openingRegister = false);
     if (!ready) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.welcomeOpenRegisterFailedMessage)),
+      showAppMessage(
+        context,
+        AppLocalizations.of(context)!.welcomeOpenRegisterFailedMessage,
+        isError: true,
       );
       return;
     }
@@ -79,18 +66,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: const BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.local_cafe,
-                      color: AppColors.accent,
-                      size: 34,
-                    ),
+                  Image.asset(
+                    'assets/images/logo.png',
+                    width: 88,
+                    height: 88,
                   ),
                   const SizedBox(height: 20),
                   Text(AppLocalizations.of(context)!.welcomeAppTitle, style: Theme.of(context).textTheme.headlineMedium),
@@ -157,32 +136,25 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          // First-time setup only — disabled once this
-                          // device already has a shop, since POST /setup is
-                          // permanently closed off after the first one
-                          // anyway (see server/lib/routes/setup_routes.dart).
+                          // Always enabled — a shop can be created/restored
+                          // onto a remote server regardless of this device's
+                          // own state. The offline (local) path is where "a
+                          // shop already exists here" actually matters, and
+                          // it's blocked there instead: CreateShopScreen's
+                          // _checkTargetAvailable for local mode, and
+                          // RestoreShopScreen's _canUseLocal.
                           SizedBox(
                             width: double.infinity,
                             child: TextButton.icon(
                               icon: const Icon(Icons.add_business_outlined,
                                   size: 16),
                               label: Text(AppLocalizations.of(context)!.welcomeCreateShopButton),
-                              onPressed: _hasLocalShop
-                                  ? null
-                                  : () => Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                            builder: (_) => const ShopSetupChoiceScreen()),
-                                      ),
+                              onPressed: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                    builder: (_) => const ShopSetupChoiceScreen()),
+                              ),
                             ),
                           ),
-                          if (_hasLocalShop) ...[
-                            const SizedBox(height: 6),
-                            Text(
-                              AppLocalizations.of(context)!.welcomeCreateShopUnavailableNote,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(color: AppColors.muted, fontSize: 11),
-                            ),
-                          ],
                         ],
                       ),
                     ),

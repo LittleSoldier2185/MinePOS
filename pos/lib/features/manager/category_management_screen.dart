@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_message.dart';
 import '../../l10n/app_localizations.dart';
 import '../cashier/services/menu_service.dart';
 
@@ -85,9 +86,7 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
       if (i != -1) _order[i] = result;
     });
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(l10n.renameCategorySnackbar)));
+    showAppMessage(context, l10n.renameCategorySnackbar);
   }
 
   @override

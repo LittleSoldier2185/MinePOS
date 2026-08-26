@@ -9,6 +9,7 @@ import '../../core/responsive/breakpoints.dart';
 import '../../core/services/app_settings_service.dart';
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_message.dart';
 import '../../core/widgets/confirm_dialog.dart';
 import '../../core/widgets/image_crop_screen.dart';
 import '../../l10n/app_localizations.dart';
@@ -115,9 +116,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
 
   void _showError(Object e) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$e'), backgroundColor: AppColors.terracottaDark),
-    );
+    showAppMessage(context, '$e', isError: true);
   }
 
   Future<void> _showAddStaffForm() async {
@@ -150,12 +149,9 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
     try {
       await _svc.forceLogout(m.id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              AppLocalizations.of(context)!.signedOutSnackbar(m.username),
-            ),
-          ),
+        showAppMessage(
+          context,
+          AppLocalizations.of(context)!.signedOutSnackbar(m.username),
         );
       }
     } catch (e) {

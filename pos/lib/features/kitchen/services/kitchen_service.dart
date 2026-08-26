@@ -21,6 +21,13 @@ class KitchenService extends ChangeNotifier {
   List<Order> _orders = [];
   List<Order> get orders => List.unmodifiable(_orders);
 
+  /// Seeds the live order list without a WebSocket — tests only.
+  @visibleForTesting
+  void debugSetOrders(List<Order> orders) {
+    _orders = List.of(orders);
+    notifyListeners();
+  }
+
   KitchenConnectionState state = KitchenConnectionState.disconnected;
 
   WebSocketChannel? _channel;

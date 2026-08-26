@@ -72,7 +72,9 @@ class ServerClient extends ChangeNotifier {
 
   /// Every call site of this is some form of "sign out" (logout, disconnect,
   /// remove shop) — so it also drops any remembered "stay signed in" session
-  /// here, once, rather than relying on each call site to remember to do it.
+  /// and disables auto-login here, once, rather than relying on each call site
+  /// to remember to do it. (An idle-timeout token rejection is *not* a sign-out
+  /// and goes through `AppSettingsService.clearSession()` alone instead.)
   void clear() {
     baseUrl = null;
     token = null;
@@ -83,5 +85,6 @@ class ServerClient extends ChangeNotifier {
     avatarBase64 = null;
     deviceName = null;
     AppSettingsService.instance.clearSession();
+    AppSettingsService.instance.setAutoLogin(false);
   }
 }

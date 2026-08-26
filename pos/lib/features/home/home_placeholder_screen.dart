@@ -190,20 +190,10 @@ class _Sidebar extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Container(
+                    Image.asset(
+                      'assets/images/logo.png',
                       width: 26,
                       height: 26,
-                      decoration: const BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.local_cafe,
-                          color: AppColors.accent,
-                          size: 14,
-                        ),
-                      ),
                     ),
                     const SizedBox(width: 9),
                     Text(
@@ -523,9 +513,14 @@ class _Mobile extends StatelessWidget {
       appBar: AppBar(
         title: Row(
           children: [
-            const Icon(Icons.local_cafe, color: AppColors.primary, size: 20),
+            Image.asset('assets/images/logo.png', width: 24, height: 24),
             const SizedBox(width: 8),
-            Text(AppLocalizations.of(context)!.appName),
+            Flexible(
+              child: Text(
+                ShopConfigService.instance.shopName,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         backgroundColor: Colors.white,
@@ -680,21 +675,21 @@ class _TopBar extends StatelessWidget {
       ),
       child: Row(
         children: [
+          Image.asset('assets/images/logo.png', width: 34, height: 34),
+          const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                AppLocalizations.of(
-                  context,
-                )!.greetingWithName(_greeting(context)),
+                ShopConfigService.instance.shopName,
                 style: const TextStyle(
                   fontSize: 15,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w800,
                   color: AppColors.ink,
                 ),
               ),
               Text(
-                _dateStr(context),
+                '${AppLocalizations.of(context)!.greetingWithName(_greeting(context))}  ·  ${_dateStr(context)}',
                 style: const TextStyle(fontSize: 11, color: AppColors.muted),
               ),
             ],

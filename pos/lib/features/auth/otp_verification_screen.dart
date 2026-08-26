@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_message.dart';
 import '../../l10n/app_localizations.dart';
 import 'reset_password_screen.dart';
 import 'services/password_reset_service.dart';
@@ -87,9 +88,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       c.clear();
     }
     _focusNodes[0].requestFocus();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(AppLocalizations.of(context)!.otpVerificationSuccessMessage)),
-    );
+    showAppMessage(context, AppLocalizations.of(context)!.otpVerificationSuccessMessage);
   }
 
   @override

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../core/responsive/breakpoints.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/formatting.dart';
+import '../../core/widgets/app_message.dart';
 import '../../l10n/app_localizations.dart';
 import '../home/mobile_bottom_nav.dart';
 import 'models/order.dart';
@@ -161,7 +162,7 @@ class _OrderTileState extends State<_OrderTile> {
       PrintOutcome.noPrinterFound => l10n.printNoPrinterMessage,
       PrintOutcome.failed => l10n.printFailedMessage(result.errorDetail ?? ''),
     };
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    showAppMessage(context, message);
   }
 
   Future<void> _confirmCancel(Order o) async {
@@ -171,14 +172,10 @@ class _OrderTileState extends State<_OrderTile> {
     try {
       await OrderService.instance.cancelOrder(o.id!, reason: reason);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.cancelOrderSnackbar)));
+      showAppMessage(context, l10n.cancelOrderSnackbar);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(l10n.cancelOrderFailedSnackbar('$e')),
-            backgroundColor: AppColors.terracottaDark),
-      );
+      showAppMessage(context, l10n.cancelOrderFailedSnackbar('$e'), isError: true);
     }
   }
 

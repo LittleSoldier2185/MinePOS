@@ -8,6 +8,7 @@ import '../../core/services/app_settings_service.dart';
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/access_restricted.dart';
+import '../../core/widgets/app_message.dart';
 import '../../core/widgets/confirm_dialog.dart';
 import '../../core/widgets/image_crop_screen.dart';
 import '../../core/widgets/menu_sort_button.dart';
@@ -103,9 +104,7 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
     );
     if (ok && mounted) {
       setState(() => _svc.deleteItem(item.id));
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.deleteItemSnackbar(item.name))),
-      );
+      showAppMessage(context, l10n.deleteItemSnackbar(item.name));
     }
   }
 

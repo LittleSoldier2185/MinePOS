@@ -43,8 +43,14 @@ Future<Response> _backup(Request req, AppDb db, ServerConfig config) async {
   // minepos.db itself.
   final tmpPath = p.join(config.dataDir, '.backup-$timestamp.db');
   final tmpFile = File(tmpPath);
+  // ?includeAdMedia=true also bundles the ad slides' image/video files (which
+  // live on disk, outside the db) into the snapshot.
+  final includeAdMedia = req.url.queryParameters['includeAdMedia'] == 'true';
   try {
-    db.exportSnapshotTo(tmpPath);
+    db.exportSnapshotTo(
+      tmpPath,
+      adsDirPath: includeAdMedia ? p.join(config.dataDir, 'ads') : null,
+    );
     final bytes = await tmpFile.readAsBytes();
     return Response.ok(
       bytes,

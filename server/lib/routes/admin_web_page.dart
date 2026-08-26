@@ -685,6 +685,9 @@ const String adminWebPageHtml = r'''
         <div class="card">
           <h2>Backup</h2>
           <p class="sub">Download a full snapshot (accounts, menu, orders, shop settings) to restore later on this or another server.</p>
+          <label style="display:block;margin-bottom:8px;font-weight:400;">
+            <input type="checkbox" id="backupAdMedia"> Include ad images &amp; videos
+          </label>
           <button class="secondary" onclick="exportBackup()">Export Backup</button>
           <div id="backupMsg" class="msg"></div>
         </div>
@@ -1927,7 +1930,8 @@ async function exportBackup() {
   const msg = document.getElementById('backupMsg');
   msg.textContent = ''; msg.className = 'msg';
   try {
-    const res = await fetch('/admin/backup', { headers: authHeaders() });
+    const withMedia = document.getElementById('backupAdMedia').checked;
+    const res = await fetch('/admin/backup' + (withMedia ? '?includeAdMedia=true' : ''), { headers: authHeaders() });
     if (res.status === 401) { logout(); throw new Error('Signed out'); }
     if (!res.ok) {
       const data = await res.json().catch(() => null);

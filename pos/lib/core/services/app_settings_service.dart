@@ -48,6 +48,21 @@ class AppSettingsService {
   static const _kSessionTokenKey = 'session.token';
   static const _kSessionDeviceNameKey = 'session.deviceName';
   static const _kSessionPurposeKey = 'session.purpose';
+  static const _kLastUsernameKey = 'session.lastUsername';
+  static const _kAutoLoginKey = 'session.autoLogin';
+  static const _kShowMessageCardsKey = 'settings.showMessageCards';
+
+  /// Whether desktop shows the dismissible action-message card (with its
+  /// countdown bar) rather than a plain SnackBar. Default on.
+  Future<bool> getShowMessageCards() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_kShowMessageCardsKey) ?? true;
+  }
+
+  Future<void> setShowMessageCards(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kShowMessageCardsKey, value);
+  }
 
   Future<String?> getLastServerAddress() async {
     final prefs = await SharedPreferences.getInstance();
@@ -112,12 +127,47 @@ class AppSettingsService {
     );
   }
 
+  /// Drops the saved auto-login session token only. Deliberately leaves
+  /// [getLastUsername] and [getAutoLogin] untouched: a server-side idle
+  /// timeout (workers, 30 min — see server `verifyToken`) kills the token but
+  /// isn't a sign-out, so the login screen should still re-arm and prefill.
   Future<void> clearSession() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_kSessionBaseUrlKey);
     await prefs.remove(_kSessionTokenKey);
     await prefs.remove(_kSessionDeviceNameKey);
     await prefs.remove(_kSessionPurposeKey);
+  }
+
+  /// The username/email from the last successful login, for prefilling the
+  /// login field ("Remember me"). Survives an explicit sign-out — only
+  /// cleared by logging in with "Remember me" unchecked.
+  Future<String?> getLastUsername() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_kLastUsernameKey);
+  }
+
+  Future<void> setLastUsername(String? username) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (username == null || username.isEmpty) {
+      await prefs.remove(_kLastUsernameKey);
+    } else {
+      await prefs.setString(_kLastUsernameKey, username);
+    }
+  }
+
+  /// Whether the user ticked "Sign in automatically". Kept separate from the
+  /// saved session token so an idle timeout that invalidates the token
+  /// doesn't also wipe the preference — only an explicit sign-out
+  /// ([ServerClient.clear]) sets it false.
+  Future<bool> getAutoLogin() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_kAutoLoginKey) ?? false;
+  }
+
+  Future<void> setAutoLogin(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kAutoLoginKey, value);
   }
 
   Future<bool> getMenuGridView() async {

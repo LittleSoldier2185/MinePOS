@@ -205,6 +205,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rememberMeLabel => 'Remember me';
 
   @override
+  String get autoLoginLabel => 'Sign in automatically';
+
+  @override
   String get loginForgotPasswordLink => 'Forgot Password';
 
   @override
@@ -815,6 +818,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'No printer selected — set one up in Settings.';
 
   @override
+  String get skipReceiptPrintLabel => 'Don\'t print receipt';
+
+  @override
   String get orderHistoryAppBarTitle => 'Order History';
 
   @override
@@ -1345,6 +1351,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kitchenShowImagesLabel => 'Show menu photos in Focus Mode';
 
   @override
+  String get messageCardsSectionLabel => 'NOTIFICATIONS';
+
+  @override
+  String get messageCardsLabel => 'Show message cards';
+
+  @override
+  String get messageCardsHint =>
+      'Confirmations appear as a dismissible card with a countdown, instead of a brief bar at the bottom.';
+
+  @override
   String get englishOption => 'English';
 
   @override
@@ -1355,6 +1371,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get exportBackupButton => 'Export Backup';
+
+  @override
+  String get backupIncludeAdMediaLabel => 'Include ad images & videos';
 
   @override
   String get exportBackupHint =>

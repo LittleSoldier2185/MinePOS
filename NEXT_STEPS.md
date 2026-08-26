@@ -664,6 +664,59 @@ User-reported bug: tapping an item's status button in Focus Mode (`order_focus_s
 - `dart analyze`/`flutter analyze` clean, full 46-test suite passes (required a `flutter pub get` in `pos/` after adding `mailer` to `server/`'s pubspec, since `pos/` depends on `server/` via a local path dependency and its lockfile needed to pick up the new transitive dependency). Not click-tested live on the Flutter side (no display in this environment) — the recovery-code dialog (Create Shop finish, and Settings → Backup's regenerate button) is worth a quick look next time.
 - **Housekeeping note**: the Gmail app password used for live verification passed through chat text at the user's own initiative — flagged to the user to revoke and regenerate it at `myaccount.google.com/apppasswords` as a precaution; not otherwise persisted anywhere in this repo.
 
+## Done so far — Split "Remember me" from "Sign in automatically" (2026-08-26)
+- The single **Remember me** checkbox already did full auto-login (persist token → silent `/auth/me` on next launch). User asked to split it: "Remember me" should only remember the last username/email, and a separate **Sign in automatically** checkbox should do the auto-login — and it must not fight the worker idle-timeout feature.
+- **Login screen** (`login_screen.dart`) now has two checkboxes via a small local `_CheckRow` helper. "Remember me" persists `session.lastUsername` only (prefilled + box re-checked on next open). "Sign in automatically" persists the full session token *and* a `session.autoLogin` bool. They're linked: ticking auto-login force-ticks Remember me (auto-login needs a username to fall back to); clearing Remember me clears auto-login.
+- **`AppSettingsService`**: new `getLastUsername`/`setLastUsername` (set-null removes the key) and `getAutoLogin`/`setAutoLogin`. `clearSession()` still wipes the token keys only — deliberately leaves `lastUsername` and `autoLogin` alone.
+- **Idle-timeout conflict** (the actual point): server `verifyToken` rejects a non-owner token after 30 min inactivity (a definite 401, not "unreachable"). Previously `_tryAutoLogin`'s rejection branch called `ServerClient.clear()`, which wiped the whole remembered session — so one overnight idle silently killed the preference. Now the `autoLogin` flag is stored *separately* from the token: on any definite rejection `_tryAutoLogin` calls `clearSession()` only (drops the dead token) and keeps the flag + username, so the login screen re-arms itself pre-checked and prefilled — idle timeout costs a password re-entry, nothing more. `_tryAutoLogin` also now gates on `getAutoLogin()`, not just presence of a session.
+- **Only an explicit sign-out disables auto-login**: `ServerClient.clear()` (logout / Settings Disconnect / Remove Shop — all already funnel through it) gained `setAutoLogin(false)` next to its existing `clearSession()`. That's the "if the user didn't log out" semantic.
+- New l10n key `autoLoginLabel` (en: "Sign in automatically", th: "เข้าสู่ระบบอัตโนมัติ"); `flutter gen-l10n` re-run. `flutter analyze` clean on all 4 touched Dart files. **Not runtime-tested** (no live server/device this session) — worth checking next time: (1) tick both → close → reopen lands on Home; (2) let a worker session idle >30 min → reopen shows login with box still checked + username filled; (3) explicit logout → reopen shows Welcome, box unchecked.
+
+## Done so far — Session sweep: focus mode, LAN discovery, receipt/print rework, message cards, backup media, branding (2026-08-27)
+A large multi-feature session. All client-only unless noted.
+
+- **Kitchen Focus Mode — reworked into a whole-queue carousel** (`order_focus_screen.dart`, `kitchen_display_screen.dart`):
+  - Bug: the Complete button only appeared if focus was opened from the READY column — needed a back-out + reopen after finishing items. Now derived from live state: shows whenever every item on the current order is `ready`.
+  - Bug: tapping Complete double-popped past the board to the dashboard (the button's `pop()` plus the `KitchenService` listener's `pop()` on the echoed removal). Now a single guarded `_exit()`; on Complete it advances to the next order and only returns to the **board** when the queue is empty.
+  - Navigation: app-bar ◂ ▸ buttons (PC) + horizontal swipe/fling (touch); title shows `#012 · 3/7`.
+  - Layout: item **grid** — 1 column < 600px (phone), 2–4 columns above; each item box has a live **stage badge** (PENDING / PREPARING / READY) above the name, full-width action button below.
+  - Focus mode now launched via `_openFocus(order)` on the state (holds the unbound `_advanceItem` / `_advance`), threaded through `_KitchenColumn` → `_OrderCard` as `onOpenFocus`. `KitchenService` gained a `@visibleForTesting debugSetOrders`. `order_focus_screen_test.dart` rewritten (2 tests, green).
+
+- **LAN server discovery** — the "Wi-Fi" tab used mDNS multicast only, which Windows Firewall (UDP 5353) and many routers drop, and `bonsoir_windows` 5.1.5 also throws an off-platform-thread channel assertion. Fix:
+  - New `lan_scan.dart` / `lan_scan_io.dart` / `lan_scan_stub.dart` (conditional import; stub returns `[]` on web) — a direct **subnet sweep**: enumerates this device's own IPv4 /24(s) and probes `http://x.x.x.x:8080/health` in batches of 48. Runs alongside mDNS in `connect_screen.dart`, results merged/deduped by address, progress shown as `Scanning… 137/254`.
+  - New `supportsMdnsBrowse` in `platform_window.dart` — bonsoir browsing now only runs on Android/iOS/macOS; Windows/Linux rely on the sweep. `connection_mode_step.dart`'s scan button also gated off there.
+
+- **Receipt printing reworked to auto-print** (`order_taking_screen.dart`, `payment_screen.dart`, `receipt_screen.dart`):
+  - Manual PRINT button removed from the receipt screen. The receipt now auto-prints once on sale completion (`_BottomActions.initState` → `addPostFrameCallback`), outcome shown as a message.
+  - Order screen cart panel gained a **"Don't print receipt"** checkbox (`_skipPrint`, resets each order since it's fresh screen state) → `PaymentScreen(skipPrint:)` → `ReceiptScreen(autoPrint: !skipPrint)`. l10n `skipReceiptPrintLabel` (en/th).
+  - Order History keeps its own reprint button.
+
+- **Printed receipt: cancelled banner + cut feed** (`printer_service.dart`):
+  - `*** CANCELLED ***` (bold/large/centered) + the cancel reason print under the thank-you line when `order.kitchenStatus == 'cancelled'` — only ever hit on an Order-History reprint. Reuses `cancelledOrderBadge`.
+  - `ticket.cut()` → `ticket.cut(linesBefore: 4)` so the closing message/footer clears the tear bar. `linesBefore` is the per-printer tuning knob. **Needs a real print test.**
+
+- **Desktop message cards** — new `core/widgets/app_message.dart` `showAppMessage(context, text, {isError})`:
+  - Windows: a dismissible card pinned **top-right** with the X in its own top-right corner and a countdown bar that shrinks over 4s then auto-closes; one at a time (new replaces old). Mobile: unchanged plain `SnackBar`.
+  - Settings → **Notifications → "Show message cards"** toggle (Windows only, default on; `AppSettingsService.getShowMessageCards`). Off = plain SnackBar there too. l10n `messageCardsSectionLabel` / `messageCardsLabel` / `messageCardsHint` (en/th).
+  - **All ~32 `showSnackBar` call sites migrated** across 16 files (auth, cashier, kitchen, manager, shop-setup, welcome) to `showAppMessage`; error variants → `isError: true`.
+
+- **Backup: optional ad media** (**server + client**) — a media-included backup stays a single `.db` file:
+  - `database.dart` `exportSnapshotTo(path, {adsDirPath})` tucks each ad slide's on-disk image/video into an `_ad_media` table inside the snapshot; new `extractBundledAdMedia(adsDirPath)` runs on server boot (`app_server.dart`), writes them back to `ads/` and drops the table (no-op on every normal boot). `/admin/backup?includeAdMedia=true`.
+  - App Settings → Backup and the web admin page both gained an **"Include ad images & videos"** checkbox. `BackupService.fetchBackupBytes({includeAdMedia})`; fetch timeout 30s → 60s. l10n `backupIncludeAdMediaLabel` (en/th).
+
+- **Branding** — added `assets/images/logo.png` (app logo) and `promptpay_logo.png`; `pubspec.yaml` now bundles the whole `assets/images/` dir.
+  - Cup icon (`Icons.local_cafe`) replaced with the logo on: Welcome, Login (mobile 88px bare / desktop 160px on a cream chip), dashboard sidebar + mobile app bar + desktop top bar.
+  - Dashboard now shows the **shop name** (`ShopConfigService.instance.shopName`) — mobile app-bar title, desktop top-bar heading.
+  - PromptPay **wordmark** now sits above the QR (not embedded) on the payment panel, the enlarge dialog, and the customer display.
+
+- **Login**: Enter in Username/Email → focus Password; Enter in Password → sign in (`app_text_field.dart` gained `focusNode` / `textInputAction` / `onSubmitted`).
+
+- **Create Shop button** (`welcome_screen.dart`) — was disabled whenever this device had a local shop DB, which also blocked setting up / restoring onto a *remote* server. Now always enabled; the offline path stays guarded downstream (`CreateShopScreen._checkTargetAvailable`, `RestoreShopScreen._canUseLocal`).
+
+- **Order-taking held-cart bug** (`order_taking_screen.dart`, `payment_screen.dart`) — after a completed sale the screen re-held the sold cart (because `_sentToPayment` reset to false when PaymentScreen did its `pushReplacement`, while this screen was still in the stack). Fixed: `PaymentScreen` returns `true` on a completed sale; `_proceedToPayment` latches `_sentToPayment` and clears `_cart` on `true`, only un-latches on a cancelled payment.
+
+- `flutter analyze` clean throughout (only 4 pre-existing repo `info` lints remain, in `promotion_service.dart` / `staff_service.dart`). `dart analyze` clean on the touched server files. Full Windows + Android release built and dropped in `H:\Test field\MinePOS test 27_8_2026` (Windows zip 39.3MB, APK 112.3MB). **Not runtime-tested** this session (no live app/hardware exercised) beyond the user's own hot-reload checks of the focus-mode buttons, message card position, and login logo size.
+
 ## Not started yet
 - **Backend** (`server/` — Dart Shelf): health, mDNS broadcast, bcrypt+JWT auth, menu CRUD, order storage + kitchen status (order- and item-level), staff CRUD, kitchen WebSocket, customer display relay, shop bootstrap — all done. Run with `dart run bin/server.dart` from `server/`. Requires `sqlite3.dll` on Windows PATH (download from https://sqlite.org/download.html). Configure via env vars: `MINEPOS_PORT` (default 8080), `MINEPOS_ADMIN_USER` + `MINEPOS_ADMIN_PASS` (set **both** to auto-seed an admin instead of using the Create Shop wizard), `MINEPOS_SHOP_NAME`, `MINEPOS_JWT_SECRET`, `MINEPOS_DATA_DIR`.
 - Thermal printing hardware caveat **narrowed**: Bluetooth Classic/BLE discovery+connect on Android is now confirmed working end-to-end against real hardware (AN581-BT) — the remaining unverified piece is actual print-quality/ESC-PS-command correctness on physical paper, and USB/Windows-side hardware.

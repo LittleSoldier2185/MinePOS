@@ -12,5 +12,14 @@ bool get isWindowsDesktop => !kIsWeb && Platform.isWindows;
 bool get isMobile => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 
 /// mDNS/UDP multicast discovery isn't reachable from a browser sandbox, so
-/// it's only available on native builds (Windows, Android, etc).
+/// it's only available on native builds (Windows, Android, etc). Gates
+/// whether the "Wi-Fi" discovery UI is offered at all.
 bool get supportsMdns => !kIsWeb;
+
+/// Whether to run the bonsoir mDNS *browser*. Its Windows/Linux
+/// implementations deliver native callbacks off the platform thread (loud
+/// engine warnings, occasional crashes) and are unreliable regardless — on
+/// those desktops the LAN subnet sweep (`lan_scan.dart`) does the job
+/// instead. Kept on where the native DNS-SD stack is solid.
+bool get supportsMdnsBrowse =>
+    !kIsWeb && (Platform.isAndroid || Platform.isIOS || Platform.isMacOS);

@@ -6,6 +6,7 @@ import '../../core/services/local_server_launcher.dart';
 import '../../core/services/mobile_server_launcher.dart';
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_message.dart';
 import '../../core/window/platform_window.dart';
 import '../../l10n/app_localizations.dart';
 import '../auth/services/auth_service.dart';
@@ -72,7 +73,7 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
       if (!mounted) return;
       setState(() => _submitting = false);
       if (blocked != null) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(blocked)));
+        showAppMessage(context, blocked, isError: true);
         return;
       }
     }
@@ -171,9 +172,7 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.shopSetupFailedMessage('$e'))),
-      );
+      showAppMessage(context, l10n.shopSetupFailedMessage('$e'), isError: true);
       return;
     }
 
@@ -235,9 +234,7 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
               onPressed: () async {
                 await Clipboard.setData(ClipboardData(text: code));
                 if (!dialogContext.mounted) return;
-                ScaffoldMessenger.of(dialogContext).showSnackBar(
-                  SnackBar(content: Text(l10n.recoveryCodeCopiedMessage)),
-                );
+                showAppMessage(dialogContext, l10n.recoveryCodeCopiedMessage);
               },
               icon: const Icon(Icons.copy, size: 16),
               label: Text(l10n.recoveryCodeCopyButton),

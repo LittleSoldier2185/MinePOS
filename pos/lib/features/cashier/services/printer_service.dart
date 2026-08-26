@@ -169,6 +169,22 @@ class PrinterService {
       linesAfter: 1,
     );
 
+    // Reprints of a voided bill (Order History) must be unmistakable as not a
+    // valid sale — a fresh sale is never cancelled, so this only ever shows
+    // on a reprint.
+    if (order.kitchenStatus == 'cancelled') {
+      ticket.separator();
+      await ticket.textRaster(
+        '*** ${l10n.cancelledOrderBadge.toUpperCase()} ***',
+        align: PrintAlign.center,
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 36),
+      );
+      if (order.cancelReason != null && order.cancelReason!.isNotEmpty) {
+        await ticket.textRaster(order.cancelReason!, align: PrintAlign.center);
+      }
+      ticket.separator();
+    }
+
     await ticket.rowRaster([
       PrintRasterColumn(text: l10n.receiptOrderLabel, flex: 1),
       PrintRasterColumn(
@@ -270,6 +286,9 @@ class PrinterService {
       align: PrintAlign.center,
       linesAfter: 1,
     );
-    ticket.cut();
+    // Feed past the tear bar before cutting — the last printed lines sit under
+    // the blade otherwise and get lost on the tear-off. Bump if a specific
+    // printer's blade is further from the head.
+    ticket.cut(linesBefore: 4);
   }
 }

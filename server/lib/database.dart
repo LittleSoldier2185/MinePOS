@@ -661,8 +661,57 @@ class AppDb {
   /// (unlike copying the raw .db file's bytes, which could catch a write
   /// mid-transaction). Used by `GET /admin/backup` to produce a snapshot for
   /// moving the shop to a new device. [path] must not already exist.
-  void exportSnapshotTo(String path) {
+  ///
+  /// When [adsDirPath] is given, each ad slide's on-disk media file (which
+  /// lives outside the db, unlike menu/promo images) is tucked into the
+  /// snapshot in its own `_ad_media` table — [extractBundledAdMedia] on the
+  /// next boot writes them back out and drops it, so the live db never
+  /// carries these blobs.
+  void exportSnapshotTo(String path, {String? adsDirPath}) {
     _db.execute('VACUUM INTO ?', [path]);
+    if (adsDirPath == null) return;
+
+    final snap = sqlite3.open(path);
+    try {
+      snap.execute(
+          'CREATE TABLE _ad_media (filename TEXT PRIMARY KEY, bytes BLOB NOT NULL)');
+      final stmt =
+          snap.prepare('INSERT INTO _ad_media (filename, bytes) VALUES (?, ?)');
+      try {
+        for (final row in _db.select('SELECT filename FROM ad_slides')) {
+          final filename = row['filename'] as String;
+          final file = File(p.join(adsDirPath, filename));
+          if (file.existsSync()) stmt.execute([filename, file.readAsBytesSync()]);
+        }
+      } finally {
+        stmt.dispose();
+      }
+    } finally {
+      snap.dispose();
+    }
+  }
+
+  /// If a restored snapshot carried ad media inline (see [exportSnapshotTo]),
+  /// write those files into [adsDirPath] and drop the `_ad_media` table so it
+  /// never lingers in the live db. A no-op on every normal boot (the table
+  /// isn't there). Existing files are left as-is.
+  void extractBundledAdMedia(String adsDirPath) {
+    final present = _db
+        .select(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='_ad_media'")
+        .isNotEmpty;
+    if (!present) return;
+
+    final dir = Directory(adsDirPath)..createSync(recursive: true);
+    for (final row in _db.select('SELECT filename, bytes FROM _ad_media')) {
+      final file = File(p.join(dir.path, row['filename'] as String));
+      if (!file.existsSync()) {
+        file.writeAsBytesSync(row['bytes'] as List<int>);
+      }
+    }
+    // Space the blobs took is reclaimed by the next `VACUUM INTO` backup — no
+    // need to pay for a full VACUUM on this one-time restore boot.
+    _db.execute('DROP TABLE _ad_media');
   }
 
   bool _hasColumn(String table, String column) =>

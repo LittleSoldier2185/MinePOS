@@ -204,6 +204,9 @@ class AppLocalizationsTh extends AppLocalizations {
   String get rememberMeLabel => 'จดจำฉันไว้';
 
   @override
+  String get autoLoginLabel => 'เข้าสู่ระบบอัตโนมัติ';
+
+  @override
   String get loginForgotPasswordLink => 'ลืมรหัสผ่าน';
 
   @override
@@ -809,6 +812,9 @@ class AppLocalizationsTh extends AppLocalizations {
       'ยังไม่ได้เลือกเครื่องพิมพ์ — ตั้งค่าได้ที่หน้าตั้งค่า';
 
   @override
+  String get skipReceiptPrintLabel => 'ไม่พิมพ์ใบเสร็จ';
+
+  @override
   String get orderHistoryAppBarTitle => 'ประวัติออร์เดอร์';
 
   @override
@@ -1336,6 +1342,16 @@ class AppLocalizationsTh extends AppLocalizations {
   String get kitchenShowImagesLabel => 'แสดงรูปเมนูใน Focus Mode';
 
   @override
+  String get messageCardsSectionLabel => 'การแจ้งเตือน';
+
+  @override
+  String get messageCardsLabel => 'แสดงการ์ดข้อความ';
+
+  @override
+  String get messageCardsHint =>
+      'ข้อความยืนยันจะแสดงเป็นการ์ดที่ปิดได้พร้อมแถบนับถอยหลัง แทนแถบสั้น ๆ ด้านล่าง';
+
+  @override
   String get englishOption => 'English';
 
   @override
@@ -1346,6 +1362,9 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get exportBackupButton => 'ส่งออกไฟล์สำรอง';
+
+  @override
+  String get backupIncludeAdMediaLabel => 'รวมรูปภาพและวิดีโอโฆษณา';
 
   @override
   String get exportBackupHint =>

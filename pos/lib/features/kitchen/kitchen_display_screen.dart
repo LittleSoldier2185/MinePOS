@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../core/responsive/breakpoints.dart';
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_message.dart';
 import '../../core/widgets/confirm_dialog.dart';
 import '../../l10n/app_localizations.dart';
 import '../cashier/models/order.dart';
@@ -110,13 +111,10 @@ class _KitchenDisplayScreenState extends State<KitchenDisplayScreen>
       await _svc.updateStatus(order.id!, nextStatus);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            AppLocalizations.of(context)!.updateOrderErrorSnackbar('$e'),
-          ),
-          backgroundColor: AppColors.terracottaDark,
-        ),
+      showAppMessage(
+        context,
+        AppLocalizations.of(context)!.updateOrderErrorSnackbar('$e'),
+        isError: true,
       );
     }
   }
@@ -128,15 +126,28 @@ class _KitchenDisplayScreenState extends State<KitchenDisplayScreen>
       await _svc.updateItemStatus(order.id!, item.id!, next);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            AppLocalizations.of(context)!.updateItemErrorSnackbar('$e'),
-          ),
-          backgroundColor: AppColors.terracottaDark,
-        ),
+      showAppMessage(
+        context,
+        AppLocalizations.of(context)!.updateItemErrorSnackbar('$e'),
+        isError: true,
       );
     }
+  }
+
+  // Opens Focus Mode starting on [order] — a full-screen, one-order-at-a-time
+  // view of the whole live queue (see order_focus_screen.dart). The unbound
+  // _advanceItem / _advance are handed over so Focus Mode can drive whichever
+  // order the barista pages to, not just this one.
+  void _openFocus(Order order) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => OrderFocusScreen(
+          initialOrderId: order.id!,
+          onItemTap: _advanceItem,
+          onComplete: (o) => _advance(o, 'completed'),
+        ),
+      ),
+    );
   }
 
   Future<void> _cancel(Order order) async {
@@ -146,17 +157,10 @@ class _KitchenDisplayScreenState extends State<KitchenDisplayScreen>
     try {
       await OrderService.instance.cancelOrder(order.id!, reason: reason);
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l10n.cancelOrderSnackbar)));
+      showAppMessage(context, l10n.cancelOrderSnackbar);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l10n.cancelOrderFailedSnackbar('$e')),
-          backgroundColor: AppColors.terracottaDark,
-        ),
-      );
+      showAppMessage(context, l10n.cancelOrderFailedSnackbar('$e'), isError: true);
     }
   }
 
@@ -182,6 +186,7 @@ class _KitchenDisplayScreenState extends State<KitchenDisplayScreen>
         color: AppColors.terracottaDark,
         orders: pending,
         onItemTap: _advanceItem,
+        onOpenFocus: _openFocus,
         onCancel: _cancel,
       ),
       _KitchenColumn(
@@ -189,12 +194,14 @@ class _KitchenDisplayScreenState extends State<KitchenDisplayScreen>
         color: AppColors.primary,
         orders: preparing,
         onItemTap: _advanceItem,
+        onOpenFocus: _openFocus,
       ),
       _KitchenColumn(
         title: l10n.readyColumnTitle,
         color: Colors.green.shade700,
         orders: ready,
         onItemTap: _advanceItem,
+        onOpenFocus: _openFocus,
         completeLabel: l10n.completeButton,
         onComplete: (o) => _advance(o, 'completed'),
       ),
@@ -328,6 +335,7 @@ class _KitchenColumn extends StatelessWidget {
     required this.color,
     required this.orders,
     required this.onItemTap,
+    required this.onOpenFocus,
     this.completeLabel,
     this.onComplete,
     this.onCancel,
@@ -336,6 +344,9 @@ class _KitchenColumn extends StatelessWidget {
   final Color color;
   final List<Order> orders;
   final void Function(Order order, OrderItem item) onItemTap;
+
+  /// Opens Focus Mode on the tapped order (it can then page the whole queue).
+  final void Function(Order order) onOpenFocus;
 
   /// Only set for the READY column — the whole-order "served" action, shown
   /// once every item on a card reads 'ready'.
@@ -398,6 +409,7 @@ class _KitchenColumn extends StatelessWidget {
                     itemBuilder: (_, i) => _OrderCard(
                       order: orders[i],
                       onItemTap: (item) => onItemTap(orders[i], item),
+                      onOpenFocus: () => onOpenFocus(orders[i]),
                       completeLabel: completeLabel,
                       onComplete: onComplete == null
                           ? null
@@ -418,12 +430,14 @@ class _OrderCard extends StatelessWidget {
   const _OrderCard({
     required this.order,
     required this.onItemTap,
+    required this.onOpenFocus,
     this.completeLabel,
     this.onComplete,
     this.onCancel,
   });
   final Order order;
   final ValueChanged<OrderItem> onItemTap;
+  final VoidCallback onOpenFocus;
   final String? completeLabel;
   final VoidCallback? onComplete;
   final VoidCallback? onCancel;
@@ -442,23 +456,6 @@ class _OrderCard extends StatelessWidget {
     return '$name (${item.sweetness!.label(AppLocalizations.of(context)!)})';
   }
 
-  // Opens Focus Mode for this order — a bigger, single-order view with menu
-  // photos where a barista can drive the whole order's prep status from one
-  // screen (see order_focus_screen.dart). The chip/cancel taps below are
-  // their own nested tap targets and still win over this card-wide one.
-  void _openFocusMode(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => OrderFocusScreen(
-          order: order,
-          onItemTap: onItemTap,
-          completeLabel: completeLabel,
-          onComplete: onComplete,
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final age = DateTime.now().difference(order.createdAt);
@@ -469,7 +466,7 @@ class _OrderCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () => _openFocusMode(context),
+        onTap: onOpenFocus,
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(

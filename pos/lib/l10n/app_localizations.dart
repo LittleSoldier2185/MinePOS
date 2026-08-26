@@ -458,6 +458,12 @@ abstract class AppLocalizations {
   /// **'Remember me'**
   String get rememberMeLabel;
 
+  /// No description provided for @autoLoginLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in automatically'**
+  String get autoLoginLabel;
+
   /// No description provided for @loginForgotPasswordLink.
   ///
   /// In en, this message translates to:
@@ -1538,6 +1544,12 @@ abstract class AppLocalizations {
   /// **'No printer selected — set one up in Settings.'**
   String get printSkippedMessage;
 
+  /// No description provided for @skipReceiptPrintLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t print receipt'**
+  String get skipReceiptPrintLabel;
+
   /// No description provided for @orderHistoryAppBarTitle.
   ///
   /// In en, this message translates to:
@@ -2516,6 +2528,24 @@ abstract class AppLocalizations {
   /// **'Show menu photos in Focus Mode'**
   String get kitchenShowImagesLabel;
 
+  /// No description provided for @messageCardsSectionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'NOTIFICATIONS'**
+  String get messageCardsSectionLabel;
+
+  /// No description provided for @messageCardsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Show message cards'**
+  String get messageCardsLabel;
+
+  /// No description provided for @messageCardsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirmations appear as a dismissible card with a countdown, instead of a brief bar at the bottom.'**
+  String get messageCardsHint;
+
   /// No description provided for @englishOption.
   ///
   /// In en, this message translates to:
@@ -2539,6 +2569,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Export Backup'**
   String get exportBackupButton;
+
+  /// No description provided for @backupIncludeAdMediaLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Include ad images & videos'**
+  String get backupIncludeAdMediaLabel;
 
   /// No description provided for @exportBackupHint.
   ///

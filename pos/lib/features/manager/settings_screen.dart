@@ -13,6 +13,7 @@ import '../../core/services/local_server_launcher.dart';
 import '../../core/services/locale_controller.dart';
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_message.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../core/widgets/confirm_dialog.dart';
 import '../../core/window/platform_window.dart';
@@ -51,6 +52,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String? _printerDeviceName;
   ReceiptPaperSize? _paperSize;
   bool? _kitchenShowImages;
+  bool? _showMessageCards;
 
   final _shopFormKey = GlobalKey<FormState>();
   late final _shopNameController = TextEditingController();
@@ -64,6 +66,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _savingShop = false;
   String? _shopError;
   bool _exportingBackup = false;
+  bool _backupWithAdMedia = false;
   bool _regeneratingRecoveryCode = false;
   bool _localServerRunning = false;
 
@@ -110,6 +113,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final deviceName = await _svc.getSelectedPrinterName();
     final paperSize = await _svc.getPaperSize();
     final kitchenShowImages = await _svc.getKitchenShowImages();
+    final showMessageCards = await _svc.getShowMessageCards();
     if (!mounted) return;
     setState(() {
       _printer = printer;
@@ -117,12 +121,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _printerDeviceName = deviceName;
       _paperSize = paperSize;
       _kitchenShowImages = kitchenShowImages;
+      _showMessageCards = showMessageCards;
     });
   }
 
   Future<void> _setKitchenShowImages(bool show) async {
     setState(() => _kitchenShowImages = show);
     await _svc.setKitchenShowImages(show);
+  }
+
+  Future<void> _setShowMessageCards(bool show) async {
+    setState(() => _showMessageCards = show);
+    await _svc.setShowMessageCards(show);
   }
 
   Future<void> _loadShopDetails() async {
@@ -171,10 +181,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         promptPayLabel: _shopPromptPayLabelController.text,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context)!.shopDetailsSavedMessage),
-        ),
+      showAppMessage(
+        context,
+        AppLocalizations.of(context)!.shopDetailsSavedMessage,
       );
     } catch (e) {
       if (!mounted) return;
@@ -441,12 +450,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mode == null || !mounted) return;
     final ok = await ExtraDisplayLauncher.open(mode);
     if (!mounted || ok) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          AppLocalizations.of(context)!.openExtraDisplayFailedMessage,
-        ),
-      ),
+    showAppMessage(
+      context,
+      AppLocalizations.of(context)!.openExtraDisplayFailedMessage,
+      isError: true,
     );
   }
 
@@ -477,22 +484,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final path = await BackupService().exportBackupToFile(
         ShopConfigService.instance.shopName,
+        includeAdMedia: _backupWithAdMedia,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            path == null
-                ? l10n.exportBackupCancelledMessage
-                : l10n.exportBackupSavedMessage,
-          ),
-        ),
+      showAppMessage(
+        context,
+        path == null
+            ? l10n.exportBackupCancelledMessage
+            : l10n.exportBackupSavedMessage,
       );
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l10n.exportBackupFailedMessage)));
+      showAppMessage(context, l10n.exportBackupFailedMessage, isError: true);
     } finally {
       if (mounted) setState(() => _exportingBackup = false);
     }
@@ -516,7 +519,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await _showRecoveryCodeDialog(code);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      showAppMessage(context, '$e', isError: true);
     } finally {
       if (mounted) setState(() => _regeneratingRecoveryCode = false);
     }
@@ -561,9 +564,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onPressed: () async {
                 await Clipboard.setData(ClipboardData(text: code));
                 if (!dialogContext.mounted) return;
-                ScaffoldMessenger.of(dialogContext).showSnackBar(
-                  SnackBar(content: Text(l10n.recoveryCodeCopiedMessage)),
-                );
+                showAppMessage(dialogContext, l10n.recoveryCodeCopiedMessage);
               },
               icon: const Icon(Icons.copy, size: 16),
               label: Text(l10n.recoveryCodeCopyButton),
@@ -862,6 +863,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ),
   );
 
+  Widget _messageCardsCard(AppLocalizations l10n) => _Card(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                l10n.messageCardsLabel,
+                style:
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+            ),
+            Switch(
+              value: _showMessageCards!,
+              onChanged: _setShowMessageCards,
+              activeThumbColor: AppColors.primary,
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          l10n.messageCardsHint,
+          style: const TextStyle(color: AppColors.muted, fontSize: 11),
+        ),
+      ],
+    ),
+  );
+
   Widget _extraDisplayCard(AppLocalizations l10n) => _Card(
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -914,7 +944,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
             label: Text(l10n.exportBackupButton),
           ),
         ),
-        const SizedBox(height: 8),
+        Row(
+          children: [
+            Checkbox(
+              value: _backupWithAdMedia,
+              onChanged: _exportingBackup
+                  ? null
+                  : (v) => setState(() => _backupWithAdMedia = v ?? false),
+              visualDensity: VisualDensity.compact,
+            ),
+            Expanded(
+              child: GestureDetector(
+                onTap: _exportingBackup
+                    ? null
+                    : () => setState(
+                        () => _backupWithAdMedia = !_backupWithAdMedia),
+                child: Text(
+                  l10n.backupIncludeAdMediaLabel,
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ),
+            ),
+          ],
+        ),
         Text(
           l10n.exportBackupHint,
           style: const TextStyle(color: AppColors.muted, fontSize: 11),
@@ -1178,7 +1230,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (_printer == null ||
         _language == null ||
         _paperSize == null ||
-        _kitchenShowImages == null) {
+        _kitchenShowImages == null ||
+        _showMessageCards == null) {
       const loading = Center(child: CircularProgressIndicator());
       return widget.embedded
           ? _embeddedShell(context, l10n, loading)
@@ -1231,6 +1284,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         icon: Icons.soup_kitchen_outlined,
         builder: () => _kitchenDisplayCard(l10n),
       ),
+      if (isWindowsDesktop)
+        _SettingsSection(
+          label: l10n.messageCardsSectionLabel,
+          icon: Icons.notifications_none,
+          builder: () => _messageCardsCard(l10n),
+        ),
       if (isWindowsDesktop)
         _SettingsSection(
           label: l10n.extraDisplaySectionLabel,

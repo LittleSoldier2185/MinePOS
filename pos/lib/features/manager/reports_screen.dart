@@ -6,6 +6,7 @@ import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/formatting.dart';
 import '../../core/widgets/access_restricted.dart';
+import '../../core/widgets/app_message.dart';
 import '../../l10n/app_localizations.dart';
 import '../cashier/models/order.dart';
 import 'services/csv_export.dart';
@@ -174,24 +175,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
       final path = await saveCsv(fileName, buffer.toString());
       if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            path == null
-                ? l10n.exportCancelledSnackbar
-                : l10n.exportSuccessSnackbar(path),
-          ),
-        ),
+      showAppMessage(
+        context,
+        path == null
+            ? l10n.exportCancelledSnackbar
+            : l10n.exportSuccessSnackbar(path),
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              AppLocalizations.of(context)!.exportFailedSnackbar('$e'),
-            ),
-            backgroundColor: AppColors.terracottaDark,
-          ),
+        showAppMessage(
+          context,
+          AppLocalizations.of(context)!.exportFailedSnackbar('$e'),
+          isError: true,
         );
       }
     } finally {

@@ -33,11 +33,14 @@ class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _deviceNameController = TextEditingController();
+  final _usernameFocus = FocusNode();
+  final _passwordFocus = FocusNode();
   final _authService = AuthService();
 
   bool _obscurePassword = true;
   bool _signingIn = false;
   bool _rememberMe = false;
+  bool _autoLogin = false;
   String? _error;
 
   @override
@@ -46,6 +49,17 @@ class _LoginScreenState extends State<LoginScreen> {
     AppSettingsService.instance.getDeviceName().then((name) {
       if (mounted && name != null) _deviceNameController.text = name;
     });
+    AppSettingsService.instance.getLastUsername().then((u) {
+      if (mounted && u != null && u.isNotEmpty) {
+        setState(() {
+          _usernameController.text = u;
+          _rememberMe = true;
+        });
+      }
+    });
+    AppSettingsService.instance.getAutoLogin().then((v) {
+      if (mounted && v) setState(() => _autoLogin = _rememberMe = true);
+    });
   }
 
   @override
@@ -53,6 +67,8 @@ class _LoginScreenState extends State<LoginScreen> {
     _usernameController.dispose();
     _passwordController.dispose();
     _deviceNameController.dispose();
+    _usernameFocus.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
@@ -82,18 +98,23 @@ class _LoginScreenState extends State<LoginScreen> {
       ServerClient.instance.avatarBase64 = result.avatarBase64;
       await AppSettingsService.instance.setDeviceName(deviceName);
 
-      if (_rememberMe) {
+      await AppSettingsService.instance.setLastUsername(
+        _rememberMe ? _usernameController.text.trim() : null,
+      );
+      if (_autoLogin) {
         await AppSettingsService.instance.saveSession(
           baseUrl: ServerClient.instance.baseUrl!,
           token: ServerClient.instance.token!,
           deviceName: deviceName,
           purpose: widget.purpose.name,
         );
+        await AppSettingsService.instance.setAutoLogin(true);
       } else {
-        // Guards against a stale remembered session (a different account,
-        // or this same one from before "Remember me" was unchecked) still
-        // silently auto-logging in next launch.
+        // Guards against a stale remembered session (a different account, or
+        // this same one from before auto-login was unchecked) still silently
+        // signing in next launch.
         await AppSettingsService.instance.clearSession();
+        await AppSettingsService.instance.setAutoLogin(false);
       }
 
       // Both services start out seeded with local-only defaults/empty state
@@ -147,6 +168,10 @@ class _LoginScreenState extends State<LoginScreen> {
         AppTextField(
           label: l10n.usernameOrEmailLabel,
           controller: _usernameController,
+          focusNode: _usernameFocus,
+          textInputAction: TextInputAction.next,
+          // Enter in username → jump to password.
+          onSubmitted: (_) => _passwordFocus.requestFocus(),
           validator: (v) => (v == null || v.trim().isEmpty)
               ? l10n.usernameRequiredValidator
               : null,
@@ -155,7 +180,13 @@ class _LoginScreenState extends State<LoginScreen> {
         AppTextField(
           label: l10n.passwordLabel,
           controller: _passwordController,
+          focusNode: _passwordFocus,
           obscureText: _obscurePassword,
+          textInputAction: TextInputAction.done,
+          // Enter in password → sign in (unless one's already in flight).
+          onSubmitted: (_) {
+            if (!_signingIn) _signIn();
+          },
           validator: (v) =>
               (v == null || v.isEmpty) ? l10n.passwordRequiredValidator : null,
           suffixIcon: IconButton(
@@ -166,17 +197,24 @@ class _LoginScreenState extends State<LoginScreen> {
                 setState(() => _obscurePassword = !_obscurePassword),
           ),
         ),
-        Row(
-          children: [
-            Checkbox(
-              value: _rememberMe,
-              onChanged: (v) => setState(() => _rememberMe = v ?? false),
-            ),
-            GestureDetector(
-              onTap: () => setState(() => _rememberMe = !_rememberMe),
-              child: Text(l10n.rememberMeLabel, style: const TextStyle(fontSize: 13)),
-            ),
-          ],
+        // Auto-login needs a remembered username to fall back to (see
+        // main.dart's idle-timeout path), so the two are linked: ticking
+        // auto-login forces "Remember me" on; clearing "Remember me" clears it.
+        _CheckRow(
+          value: _rememberMe,
+          label: l10n.rememberMeLabel,
+          onChanged: (v) => setState(() {
+            _rememberMe = v;
+            if (!v) _autoLogin = false;
+          }),
+        ),
+        _CheckRow(
+          value: _autoLogin,
+          label: l10n.autoLoginLabel,
+          onChanged: (v) => setState(() {
+            _autoLogin = v;
+            if (v) _rememberMe = true;
+          }),
         ),
         Align(
           alignment: Alignment.centerLeft,
@@ -233,18 +271,10 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: const BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.local_cafe,
-                    color: AppColors.accent,
-                    size: 34,
-                  ),
+                Image.asset(
+                  'assets/images/logo.png',
+                  width: 88,
+                  height: 88,
                 ),
                 const SizedBox(height: 20),
                 Text(
@@ -285,20 +315,19 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // On the dark olive panel the logo's own olive disc would
+                  // vanish — sit it on a light circular chip so it reads.
                   Container(
-                    width: 72,
-                    height: 72,
+                    width: 160,
+                    height: 160,
+                    padding: const EdgeInsets.all(18),
                     decoration: const BoxDecoration(
                       color: AppColors.accent,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
-                      Icons.local_cafe,
-                      color: AppColors.primary,
-                      size: 34,
-                    ),
+                    child: Image.asset('assets/images/logo.png'),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 28),
                   Text(
                     l10n.loginScreenTitle,
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -350,6 +379,31 @@ class _LoginScreenState extends State<LoginScreen> {
               : _mobileLayout(context),
         ),
       ),
+    );
+  }
+}
+
+class _CheckRow extends StatelessWidget {
+  const _CheckRow({
+    required this.value,
+    required this.label,
+    required this.onChanged,
+  });
+
+  final bool value;
+  final String label;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Checkbox(value: value, onChanged: (v) => onChanged(v ?? false)),
+        GestureDetector(
+          onTap: () => onChanged(!value),
+          child: Text(label, style: const TextStyle(fontSize: 13)),
+        ),
+      ],
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_message.dart';
 import '../../core/utils/formatting.dart';
 import '../../l10n/app_localizations.dart';
 import '../manager/services/shop_config_service.dart';
@@ -10,9 +11,14 @@ import 'order_taking_screen.dart';
 import 'services/printer_service.dart';
 
 class ReceiptScreen extends StatelessWidget {
-  const ReceiptScreen({super.key, required this.order});
+  const ReceiptScreen({super.key, required this.order, this.autoPrint = false});
 
   final Order order;
+
+  /// Print the receipt once, automatically, on arrival — unless the cashier
+  /// ticked "Don't print receipt" on the order screen. There's no manual
+  /// print button.
+  final bool autoPrint;
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +47,7 @@ class ReceiptScreen extends StatelessWidget {
                     child: _ReceiptPaper(order: order, baht: baht),
                   ),
                 ),
-                _BottomActions(order: order),
+                _BottomActions(order: order, autoPrint: autoPrint),
               ],
             ),
           ),
@@ -262,8 +268,9 @@ class _TotalRow extends StatelessWidget {
 }
 
 class _BottomActions extends StatefulWidget {
-  const _BottomActions({required this.order});
+  const _BottomActions({required this.order, required this.autoPrint});
   final Order order;
+  final bool autoPrint;
 
   @override
   State<_BottomActions> createState() => _BottomActionsState();
@@ -271,14 +278,21 @@ class _BottomActions extends StatefulWidget {
 
 class _BottomActionsState extends State<_BottomActions> {
   final _printerService = PrinterService();
-  bool _printing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.autoPrint) {
+      // After the first frame so a ScaffoldMessenger is available for the
+      // outcome snackbar.
+      WidgetsBinding.instance.addPostFrameCallback((_) => _print());
+    }
+  }
 
   Future<void> _print() async {
-    setState(() => _printing = true);
     final l10n = AppLocalizations.of(context)!;
     final result = await _printerService.printReceipt(widget.order);
     if (!mounted) return;
-    setState(() => _printing = false);
 
     final message = switch (result.outcome) {
       PrintOutcome.skipped => l10n.printSkippedMessage,
@@ -286,9 +300,7 @@ class _BottomActionsState extends State<_BottomActions> {
       PrintOutcome.noPrinterFound => l10n.printNoPrinterMessage,
       PrintOutcome.failed => l10n.printFailedMessage(result.errorDetail ?? ''),
     };
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    showAppMessage(context, message);
   }
 
   @override
@@ -298,21 +310,6 @@ class _BottomActionsState extends State<_BottomActions> {
       color: AppColors.background,
       child: Row(
         children: [
-          OutlinedButton.icon(
-            onPressed: _printing ? null : _print,
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            ),
-            icon: _printing
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.print_outlined, size: 18),
-            label: Text(AppLocalizations.of(context)!.printButtonLabel),
-          ),
-          const SizedBox(width: 12),
           Expanded(
             child: ElevatedButton(
               onPressed: () {

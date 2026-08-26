@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import '../../core/services/local_server_launcher.dart';
 import '../../core/services/server_client.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_message.dart';
 import '../../core/widgets/confirm_dialog.dart';
 import '../../l10n/app_localizations.dart';
 import '../connect/services/connection_service.dart';
@@ -82,10 +83,10 @@ class _ServerStatusScreenState extends State<ServerStatusScreen> {
     if (!mounted) return;
     setState(() => _restarting = false);
     if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(
-                AppLocalizations.of(context)!.startServerFailedMessage)),
+      showAppMessage(
+        context,
+        AppLocalizations.of(context)!.startServerFailedMessage,
+        isError: true,
       );
     }
     _check();
@@ -123,9 +124,7 @@ class _ServerStatusScreenState extends State<ServerStatusScreen> {
     if (!mounted) return;
     setState(() => _restarting = false);
     if (!relaunched) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.restartServerFailedMessage)),
-      );
+      showAppMessage(context, l10n.restartServerFailedMessage, isError: true);
     }
     _check();
   }
@@ -392,9 +391,7 @@ class _ServerLogsScreenState extends State<ServerLogsScreen> {
 
   void _copy() {
     Clipboard.setData(ClipboardData(text: _content ?? ''));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(AppLocalizations.of(context)!.logsCopiedSnackbar)),
-    );
+    showAppMessage(context, AppLocalizations.of(context)!.logsCopiedSnackbar);
   }
 
   Future<void> _openFolder() async {

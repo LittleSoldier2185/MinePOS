@@ -16,6 +16,9 @@ class AppTextField extends StatelessWidget {
     this.suffixIcon,
     this.onChanged,
     this.enabled = true,
+    this.focusNode,
+    this.textInputAction,
+    this.onSubmitted,
   });
 
   final String label;
@@ -27,6 +30,12 @@ class AppTextField extends StatelessWidget {
   final Widget? suffixIcon;
   final void Function(String)? onChanged;
   final bool enabled;
+  final FocusNode? focusNode;
+  final TextInputAction? textInputAction;
+
+  /// Fired when the user presses Enter / the keyboard action button — used on
+  /// Login to chain username → password → submit.
+  final void Function(String)? onSubmitted;
 
   @override
   Widget build(BuildContext context) {
@@ -47,8 +56,11 @@ class AppTextField extends StatelessWidget {
         ),
         TextFormField(
           controller: controller,
+          focusNode: focusNode,
           obscureText: obscureText,
           keyboardType: keyboardType,
+          textInputAction: textInputAction,
+          onFieldSubmitted: onSubmitted,
           validator: validator,
           onChanged: onChanged,
           enabled: enabled,

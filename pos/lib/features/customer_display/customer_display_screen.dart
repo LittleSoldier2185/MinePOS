@@ -533,6 +533,8 @@ class _PromptPayView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
+          Image.asset('assets/images/promptpay_logo.png', height: 40),
+          const SizedBox(height: 16),
           Container(
             width: 220,
             height: 220,

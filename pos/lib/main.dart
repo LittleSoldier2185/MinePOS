@@ -29,6 +29,7 @@ import 'l10n/app_localizations.dart';
 Future<Widget?> _tryAutoLogin() async {
   final remembered = await AppSettingsService.instance.getSession();
   if (remembered == null) return null;
+  if (!await AppSettingsService.instance.getAutoLogin()) return null;
 
   // A self-hosted shop's server isn't guaranteed to already be running when
   // the app relaunches: on Windows it's a detached process that only
@@ -57,12 +58,18 @@ Future<Widget?> _tryAutoLogin() async {
     // silently defeated "remember me" on its very first hiccup. Either way,
     // reset the runtime ServerClient fields so a half-populated session
     // doesn't leak into the WelcomeScreen fallback below.
-    if (result.unreachable) {
-      ServerClient.instance.baseUrl = null;
-      ServerClient.instance.token = null;
-      ServerClient.instance.deviceName = null;
-    } else {
-      ServerClient.instance.clear();
+    ServerClient.instance.baseUrl = null;
+    ServerClient.instance.token = null;
+    ServerClient.instance.deviceName = null;
+    if (!result.unreachable) {
+      // A definite rejection — expired, deactivated, revoked, or a worker's
+      // 30-min server-side idle timeout (see server `verifyToken`). Drop the
+      // dead session token, but keep the "Sign in automatically" preference
+      // and remembered username so the login screen re-arms itself and
+      // prefills — an idle timeout should only cost a password re-entry, not
+      // force the user to re-tick the box. `ServerClient.clear()` (a real
+      // sign-out) is the only thing that turns auto-login off.
+      await AppSettingsService.instance.clearSession();
     }
     return null;
   }

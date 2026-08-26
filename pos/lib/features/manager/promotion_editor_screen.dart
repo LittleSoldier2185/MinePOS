@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_message.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../core/widgets/image_crop_screen.dart';
 import '../../l10n/app_localizations.dart';
@@ -244,9 +245,7 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
           : await PromotionAdminService.instance.update(_saved!.id, promotion);
       if (!mounted) return;
       setState(() => _saved = result);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l10n.promotionSavedMessage)));
+      showAppMessage(context, l10n.promotionSavedMessage);
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = '$e');

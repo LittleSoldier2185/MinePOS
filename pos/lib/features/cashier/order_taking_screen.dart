@@ -6,6 +6,7 @@ import '../../core/responsive/breakpoints.dart';
 import '../../core/services/app_settings_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/formatting.dart';
+import '../../core/widgets/app_message.dart';
 import '../../core/widgets/confirm_dialog.dart';
 import '../../core/widgets/menu_sort_button.dart';
 import '../../l10n/app_localizations.dart';
@@ -44,6 +45,9 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
   final _searchController = TextEditingController();
   String _searchQuery = '';
   final _noteController = TextEditingController();
+  // Ticked = don't auto-print this order's receipt. Resets to false for the
+  // next order (a fresh screen instance) — there's no manual print anymore.
+  bool _skipPrint = false;
   MenuSortMode _sortMode = MenuSortMode.defaultOrder;
   List<Promotion> _combos = [];
 
@@ -78,12 +82,9 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         _syncDisplay();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              AppLocalizations.of(context)!.heldOrderResumedMessage,
-            ),
-          ),
+        showAppMessage(
+          context,
+          AppLocalizations.of(context)!.heldOrderResumedMessage,
         );
       });
     }
@@ -243,20 +244,27 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
   Future<void> _proceedToPayment() async {
     if (_cart.isEmpty) return;
     _sentToPayment = true;
-    // A completed sale leaves this screen via ReceiptScreen's
-    // pushAndRemoveUntil, which removes this route outright — so reaching
-    // this line means payment was cancelled/backed out of instead, and this
-    // same cart is still live and should go back to being holdable.
     final note = _noteController.text.trim();
-    await Navigator.of(context).push(
+    // PaymentScreen returns `true` (via its pushReplacement to ReceiptScreen)
+    // once the sale is completed. This screen stays in the stack behind the
+    // receipt until the cashier taps "New Order" (a pushAndRemoveUntil that
+    // disposes it) — so a completed sale must *latch* _sentToPayment, or that
+    // later dispose() would re-hold an already-sold cart. Only a cancelled /
+    // backed-out payment makes this cart live and holdable again.
+    final sold = await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => PaymentScreen(
           items: List.from(_cart),
           note: note.isEmpty ? null : note,
+          skipPrint: _skipPrint,
         ),
       ),
     );
-    _sentToPayment = false;
+    if (sold == true) {
+      if (mounted) setState(() => _cart.clear());
+    } else {
+      _sentToPayment = false;
+    }
   }
 
   void _setSortMode(MenuSortMode mode) {
@@ -643,6 +651,28 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
                   ),
                 ),
               ),
+            ),
+          ),
+        if (_cart.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 4, 16, 0),
+            child: Row(
+              children: [
+                Checkbox(
+                  value: _skipPrint,
+                  visualDensity: VisualDensity.compact,
+                  onChanged: (v) => setState(() => _skipPrint = v ?? false),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _skipPrint = !_skipPrint),
+                    child: Text(
+                      AppLocalizations.of(context)!.skipReceiptPrintLabel,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         Container(

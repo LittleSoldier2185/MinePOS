@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as io;
 import 'package:shelf_router/shelf_router.dart';
@@ -56,6 +57,9 @@ Future<RunningServer> startMinePosServer({
 }) async {
   ServerLog.open(config.dataDir);
   final db = await AppDb.open(config);
+  // A snapshot restored with "include ad media" carries the ad image/video
+  // files inline — write them back out to the ads dir on this first boot.
+  db.extractBundledAdMedia(p.join(config.dataDir, 'ads'));
   // Seeds the hub's cached ad-slide list from disk before any display
   // connects — otherwise a display that connects before the first upload
   // after a restart would see an empty list until something changed it.

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_message.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../l10n/app_localizations.dart';
 import 'services/password_reset_service.dart';
@@ -59,9 +60,7 @@ class _RecoveryCodeScreenState extends State<RecoveryCodeScreen> {
     if (ok) {
       final message = AppLocalizations.of(context)!.resetPasswordSuccessMessage;
       Navigator.of(context).popUntil((route) => route.isFirst);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
+      showAppMessage(context, message);
     } else {
       setState(
         () => _error = AppLocalizations.of(context)!.recoveryCodeResetErrorMessage,

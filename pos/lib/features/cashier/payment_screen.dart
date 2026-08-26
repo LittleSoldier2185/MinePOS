@@ -17,7 +17,12 @@ import 'services/promotion_service.dart';
 import 'services/promptpay_qr.dart';
 
 class PaymentScreen extends StatefulWidget {
-  const PaymentScreen({super.key, required this.items, this.note});
+  const PaymentScreen({
+    super.key,
+    required this.items,
+    this.note,
+    this.skipPrint = false,
+  });
 
   final List<OrderItem> items;
 
@@ -25,6 +30,11 @@ class PaymentScreen extends StatefulWidget {
   /// through to [OrderService.complete] unchanged; never shown on this
   /// screen or the receipt.
   final String? note;
+
+  /// Ticked on the order screen — the receipt is *not* auto-printed for this
+  /// sale. There's no manual print button anymore, so this is the only way to
+  /// not print.
+  final bool skipPrint;
 
   @override
   State<PaymentScreen> createState() => _PaymentScreenState();
@@ -234,8 +244,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
 
     if (!mounted) return;
+    // `result: true` travels back to OrderTakingScreen's awaited push() — its
+    // signal that the sale went through and its cart must not be re-held.
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => ReceiptScreen(order: order)),
+      MaterialPageRoute(
+        builder: (_) => ReceiptScreen(order: order, autoPrint: !widget.skipPrint),
+      ),
+      result: true,
     );
   }
 
@@ -721,6 +736,8 @@ class _PromptPayPanel extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              Image.asset('assets/images/promptpay_logo.png', height: 34),
+              const SizedBox(height: 16),
               QrImageView(
                 data: PromptPayQr.generatePayload(promptPayId, amount: total),
                 size: size,
@@ -756,6 +773,10 @@ class _PromptPayPanel extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
+            if (configured) ...[
+              Image.asset('assets/images/promptpay_logo.png', height: 26),
+              const SizedBox(height: 12),
+            ],
             GestureDetector(
               onTap: configured ? () => _showEnlarged(context, promptPayId) : null,
               child: Container(

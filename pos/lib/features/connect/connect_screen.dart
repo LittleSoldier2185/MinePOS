@@ -9,6 +9,7 @@ import '../../l10n/app_localizations.dart';
 import '../role_select/role_selection_screen.dart';
 import 'models/discovered_host.dart';
 import 'services/connection_service.dart';
+import 'services/lan_scan.dart';
 import 'services/mdns_discovery_service.dart';
 
 /// Entry point for joining an *existing* shop from a client device — asks
@@ -219,14 +220,55 @@ class _WifiDiscoverySection extends StatefulWidget {
 class _WifiDiscoverySectionState extends State<_WifiDiscoverySection> {
   final _discovery = MdnsDiscoveryService();
   bool _scanning = false;
-  List<DiscoveredHost> _hosts = const [];
+  bool _sweeping = false;
+  int _sweepDone = 0;
+  int _sweepTotal = 0;
+
+  // Keyed by "address:port" so an mDNS hit and a subnet-sweep hit for the
+  // same server collapse into one row.
+  final Map<String, DiscoveredHost> _hosts = {};
 
   Future<void> _scan() async {
-    setState(() => _scanning = true);
-    _discovery.hosts.listen((hosts) {
-      if (mounted) setState(() => _hosts = hosts);
+    setState(() {
+      _scanning = true;
+      _sweeping = true;
+      _sweepDone = 0;
+      _sweepTotal = 0;
+      _hosts.clear();
     });
-    await _discovery.start();
+
+    // mDNS — instant when the network actually forwards multicast. Skipped on
+    // Windows/Linux, where bonsoir's browser is buggy (off-thread channel
+    // callbacks) and the sweep below covers the same ground.
+    if (supportsMdnsBrowse) {
+      _discovery.hosts.listen((hosts) {
+        if (!mounted) return;
+        setState(() {
+          for (final h in hosts) {
+            _hosts[h.displayAddress] = h;
+          }
+        });
+      });
+      await _discovery.start();
+    }
+
+    // Subnet sweep — the LAN fallback for when mDNS is firewalled/blocked.
+    final swept = await sweepLan(
+      onProgress: (done, total) {
+        if (!mounted) return;
+        setState(() {
+          _sweepDone = done;
+          _sweepTotal = total;
+        });
+      },
+    );
+    if (!mounted) return;
+    setState(() {
+      _sweeping = false;
+      for (final h in swept) {
+        _hosts.putIfAbsent(h.displayAddress, () => h);
+      }
+    });
   }
 
   @override
@@ -259,25 +301,37 @@ class _WifiDiscoverySectionState extends State<_WifiDiscoverySection> {
               ),
             )
           else ...[
-            Row(
-              children: [
-                const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
-                ),
-                const SizedBox(width: 12),
-                Text(AppLocalizations.of(context)!.connectScanningLabel, style: const TextStyle(color: AppColors.muted)),
-              ],
-            ),
+            if (_sweeping)
+              Row(
+                children: [
+                  const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    _sweepTotal == 0
+                        ? AppLocalizations.of(context)!.connectScanningLabel
+                        : '${AppLocalizations.of(context)!.connectScanningLabel}  $_sweepDone/$_sweepTotal',
+                    style: const TextStyle(color: AppColors.muted),
+                  ),
+                ],
+              )
+            else
+              TextButton.icon(
+                onPressed: _scan,
+                icon: const Icon(Icons.refresh, size: 18),
+                label: Text(AppLocalizations.of(context)!.connectScanButton),
+              ),
             const SizedBox(height: 16),
-            if (_hosts.isEmpty)
+            if (_hosts.isEmpty && !_sweeping)
               Text(
                 AppLocalizations.of(context)!.connectNoShopsFound,
                 style: const TextStyle(color: AppColors.muted, fontStyle: FontStyle.italic),
               )
             else
-              ..._hosts.map(
+              ..._hosts.values.map(
                 (host) => Card(
                   child: ListTile(
                     leading: const Icon(Icons.storefront, color: AppColors.primary),
