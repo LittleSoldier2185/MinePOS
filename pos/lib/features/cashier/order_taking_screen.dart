@@ -18,6 +18,7 @@ import 'order_history_screen.dart';
 import 'payment_screen.dart';
 import 'services/menu_service.dart';
 import 'services/order_service.dart';
+import 'services/promotion_service.dart';
 
 class OrderTakingScreen extends StatefulWidget {
   const OrderTakingScreen({super.key});
@@ -49,7 +50,13 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
   // next order (a fresh screen instance) — there's no manual print anymore.
   bool _skipPrint = false;
   MenuSortMode _sortMode = MenuSortMode.defaultOrder;
+  List<Promotion> _promotions = [];
   List<Promotion> _combos = [];
+
+  // ponytail: pure fn recomputed every build — cart is a handful of lines,
+  // no code entry / approvals on this screen (those live in PaymentScreen).
+  PromotionEvaluation get _evaluation =>
+      PromotionService.evaluate(items: _cart, promotions: _promotions);
 
   // Set once this cart has actually been handed to PaymentScreen, so dispose()
   // doesn't re-hold a cart that was already sold (see pushAndRemoveUntil in
@@ -73,7 +80,7 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
     AppSettingsService.instance.getMenuSortMode().then((v) {
       if (mounted) setState(() => _sortMode = v);
     });
-    _loadCombos();
+    _loadPromotions();
     if (_heldCart != null && _heldCart!.isNotEmpty) {
       _cart.addAll(_heldCart!);
       _heldCart = null;
@@ -108,11 +115,12 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
     });
   }
 
-  Future<void> _loadCombos() async {
+  Future<void> _loadPromotions() async {
     try {
       final promotions = await PromotionAdminService.instance.list();
       if (!mounted) return;
       setState(() {
+        _promotions = promotions;
         _combos = promotions
             .where((p) => p.type == 'combo' && p.active)
             .toList();
@@ -123,6 +131,9 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
           _selectedCategory = _promotionsCategory;
         }
       });
+      // Promotions arrive async — if the cashier already built a cart, push
+      // the now-known discount to the customer display.
+      if (_cart.isNotEmpty) _syncDisplay();
     } catch (_) {
       // Combo shortcuts are a convenience on top of manually adding the same
       // items — nothing breaks by just not offering them this session.
@@ -136,10 +147,13 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
       3,
       '0',
     );
+    final eval = _evaluation;
     CustomerDisplayService.instance.publishCart(
       items: _cart,
-      total: _cartTotal,
+      total: _cartTotal - eval.totalDiscount,
       orderNumber: nextNum,
+      discountTotal: eval.totalDiscount,
+      promotionNames: eval.applied.map((a) => a.promotion.name).toList(),
     );
   }
 
@@ -573,6 +587,68 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
 
   // ── Cart panel ────────────────────────────────────────────────────────────
 
+  /// Rows shown above the Total: which promotions the current cart triggers
+  /// and what each takes off. `pendingApproval` promos are listed too but not
+  /// deducted — the cashier clears those at the payment step.
+  List<Widget> _buildPromotionLines() {
+    final eval = _evaluation;
+    if (eval.applied.isEmpty && eval.pendingApproval.isEmpty) return const [];
+    final l10n = AppLocalizations.of(context)!;
+    return [
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            l10n.promotionBreakdownHeader,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1,
+              color: AppColors.muted,
+            ),
+          ),
+          Text(
+            baht(_cartTotal),
+            style: const TextStyle(fontSize: 12, color: AppColors.muted),
+          ),
+        ],
+      ),
+      const SizedBox(height: 4),
+      for (final a in eval.applied)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 2),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  a.promotion.name,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.primary,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Text(
+                '-${baht(a.discountAmount)}',
+                style: const TextStyle(fontSize: 12, color: AppColors.primary),
+              ),
+            ],
+          ),
+        ),
+      for (final a in eval.pendingApproval)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 2),
+          child: Text(
+            l10n.promotionNeedsApprovalLabel(a.promotion.name),
+            style: const TextStyle(fontSize: 11, color: AppColors.muted),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      const Divider(height: 16),
+    ];
+  }
+
   Widget _buildCartPanel() {
     final nextNum = OrderService.instance.nextOrderNumber.toString().padLeft(
       3,
@@ -683,6 +759,7 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
           ),
           child: Column(
             children: [
+              ..._buildPromotionLines(),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -694,7 +771,7 @@ class _OrderTakingScreenState extends State<OrderTakingScreen>
                     ),
                   ),
                   Text(
-                    baht(_cartTotal),
+                    baht(_cartTotal - _evaluation.totalDiscount),
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 20,
